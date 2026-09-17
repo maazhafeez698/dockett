@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1788960915499,
-      "tag": "0000_abandoned_stark_industries",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1789125610696,
-      "tag": "0001_classy_changeling",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1789209961553,
-      "tag": "0002_silly_gressill",
+      "when": 1789587013900,
+      "tag": "0000_cuddly_jackal",
       "breakpoints": true
     }
   ]

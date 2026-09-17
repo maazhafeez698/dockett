@@ -20,6 +20,7 @@ export default function PublicFormPage() {
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!form?.fields) return;
@@ -30,11 +31,27 @@ export default function PublicFormPage() {
 
   const handleChange = (fieldId: string, v: string) => {
     setValues((s) => ({ ...s, [fieldId]: v }));
+    setMissingFieldIds((s) => {
+      if (!s.has(fieldId)) return s;
+      const next = new Set(s);
+      next.delete(fieldId);
+      return next;
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formId) return;
+    if (!formId || !form?.fields) return;
+
+    // Client-side check purely for immediate feedback — the server
+    // re-validates this regardless, since a client check alone can't be
+    // trusted (anyone can call the API directly).
+    const missing = form.fields.filter((f) => f.isRequired && !values[f.id]?.trim());
+
+    if (missing.length > 0) {
+      setMissingFieldIds(new Set(missing.map((f) => f.id)));
+      return;
+    }
 
     const payload = {
       formId,
@@ -45,6 +62,7 @@ export default function PublicFormPage() {
       await createSubmissionAsync(payload);
       setSubmitted(true);
       setValues((s) => Object.fromEntries(Object.keys(s).map((k) => [k, ""])));
+      setMissingFieldIds(new Set());
     } catch (err) {
       console.error("Submission failed:", err);
     }
@@ -65,62 +83,94 @@ export default function PublicFormPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {form.fields.map((f) => (
-            <div key={f.id} className="space-y-1">
-              <label className="block text-sm text-white/80">{f.label}</label>
-              {f.type === "TEXT" && (
-                <Input
-                  value={values[f.id] ?? ""}
-                  onChange={(e) => handleChange(f.id, e.target.value)}
-                  placeholder={f.placeholder ?? ""}
-                />
-              )}
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {form.fields.map((f) => {
+            const isMissing = missingFieldIds.has(f.id);
 
-              {f.type === "NUMBER" && (
-                <Input
-                  type="number"
-                  value={values[f.id] ?? ""}
-                  onChange={(e) => handleChange(f.id, e.target.value)}
-                  placeholder={f.placeholder ?? ""}
-                />
-              )}
+            return (
+              <div key={f.id} className="space-y-1">
+                <label className="block text-sm text-white/80">
+                  {f.label}
+                  {f.isRequired ? <span className="ml-1 text-red-400">*</span> : null}
+                </label>
 
-              {f.type === "EMAIL" && (
-                <Input
-                  type="email"
-                  value={values[f.id] ?? ""}
-                  onChange={(e) => handleChange(f.id, e.target.value)}
-                  placeholder={f.placeholder ?? ""}
-                />
-              )}
+                {f.type === "TEXT" && (
+                  <Input
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={isMissing ? "border-red-400" : undefined}
+                  />
+                )}
 
-              {f.type === "PASSWORD" && (
-                <Input
-                  type="password"
-                  value={values[f.id] ?? ""}
-                  onChange={(e) => handleChange(f.id, e.target.value)}
-                  placeholder={f.placeholder ?? ""}
-                />
-              )}
+                {f.type === "NUMBER" && (
+                  <Input
+                    type="number"
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={isMissing ? "border-red-400" : undefined}
+                  />
+                )}
 
-              {f.type === "YES_NO" && (
-                <select
-                  value={values[f.id] ?? ""}
-                  onChange={(e) => handleChange(f.id, e.target.value)}
-                  className="w-full rounded-md border bg-transparent px-3 py-2 text-sm text-white"
-                >
-                  <option value="">Select...</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              )}
+                {f.type === "EMAIL" && (
+                  <Input
+                    type="email"
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={isMissing ? "border-red-400" : undefined}
+                  />
+                )}
 
-              {f.description ? <div className="text-sm text-white/60">{f.description}</div> : null}
-            </div>
-          ))}
+                {f.type === "PASSWORD" && (
+                  <Input
+                    type="password"
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={isMissing ? "border-red-400" : undefined}
+                  />
+                )}
+
+                {f.type === "YES_NO" && (
+                  <select
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm text-white ${
+                      isMissing ? "border-red-400" : ""
+                    }`}
+                  >
+                    <option value="">Select...</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                )}
+
+                {f.description ? (
+                  <div className="text-sm text-white/60">{f.description}</div>
+                ) : null}
+                {isMissing ? (
+                  <div className="text-sm text-red-400">This field is required.</div>
+                ) : null}
+              </div>
+            );
+          })}
 
           {error ? <div className="text-sm text-red-400">{error.message}</div> : null}
+          {missingFieldIds.size > 0 ? (
+            <div className="text-sm text-red-400">Please fill in all required fields.</div>
+          ) : null}
 
           <div>
             <Button type="submit" disabled={status === "pending"} className="bg-white text-black">

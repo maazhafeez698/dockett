@@ -1,0 +1,4 @@
+# apps/web/.env.local
+
+NEXT_PUBLIC_API_URL=http://localhost:8000/trpc
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com

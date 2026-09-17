@@ -1,0 +1,20 @@
+# apps/api/.env  — this is the file the API actually loads at runtime
+# (its dev script is `dotenv -- tsx watch ./src/index.ts`, so cwd = apps/api)
+
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/dev
+PORT=8000
+NODE_ENV=development
+BASE_URL=http://localhost:8000
+WEB_URL=http://localhost:3000
+
+# must be >= 32 chars
+JWT_SECRET=8121e2dd0d08ad10eae25c52caa44afbb2a95bb5635863242d82b34b58ae30b604e0a218ba9f847b4c3617bc02064f676dcaf7ded2e3e094131af5c9fe0914d6
+
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL_DAYS=30
+RESET_TOKEN_TTL_MINUTES=60
+
+GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+
+RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM_EMAIL=onboarding@resend.dev

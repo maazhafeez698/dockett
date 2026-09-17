@@ -4,8 +4,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
 
-import { useSignin } from "~/hooks/api/auth";
+import { useSignin, useGoogleSignIn } from "~/hooks/api/auth";
+import { GoogleSignInButton } from "~/components/google-sign-in-button";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -13,6 +16,7 @@ import { Label } from "~/components/ui/label";
 export default function SigninPage() {
   const router = useRouter();
   const { signInUserWithEmailAndPasswordAsync, isPending, isSuccess, error } = useSignin();
+  const { signInWithGoogleAsync, isPending: isGooglePending, error: googleError } = useGoogleSignIn();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,12 +24,21 @@ export default function SigninPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    await signInUserWithEmailAndPasswordAsync({
-      email,
-      password,
-    });
+    try {
+      await signInUserWithEmailAndPasswordAsync({ email, password });
+      router.push("/dashboard/forms");
+    } catch {
+      // error is surfaced via the `error` state below
+    }
+  };
 
-    router.push("/dashboard/forms");
+  const handleGoogleCredential = async (idToken: string) => {
+    try {
+      await signInWithGoogleAsync({ idToken });
+      router.push("/dashboard/forms");
+    } catch {
+      toast.error("Google sign-in failed. Please try again.");
+    }
   };
 
   return (
@@ -37,6 +50,14 @@ export default function SigninPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="text-sm text-white/60">Enter your email and password to continue.</p>
+        </div>
+
+        <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isGooglePending} />
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs uppercase text-white/40">or</span>
+          <div className="h-px flex-1 bg-white/10" />
         </div>
 
         <div className="space-y-2">
@@ -52,7 +73,12 @@ export default function SigninPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link href="/forgot-password" className="text-xs text-white/50 hover:text-white/80">
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
@@ -64,6 +90,7 @@ export default function SigninPage() {
         </div>
 
         {error ? <p className="text-sm text-red-400">{error.message}</p> : null}
+        {googleError ? <p className="text-sm text-red-400">{googleError.message}</p> : null}
         {isSuccess ? <p className="text-sm text-emerald-400">Signed in.</p> : null}
 
         <Button
@@ -73,6 +100,13 @@ export default function SigninPage() {
         >
           {isPending ? "Signing in..." : "Sign in"}
         </Button>
+
+        <p className="text-center text-sm text-white/50">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-white hover:underline">
+            Sign up
+          </Link>
+        </p>
       </form>
     </main>
   );

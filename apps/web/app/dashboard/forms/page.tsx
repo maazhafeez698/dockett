@@ -4,9 +4,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Eye, PencilLine } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, PencilLine, LogOut } from "lucide-react";
 
 import { useCreateForm, useListForms } from "~/hooks/api/form";
+import { useLogout } from "~/hooks/api/auth";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -22,12 +24,19 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 
 export default function DashboardForms() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
   const { createFormAsync, error, status } = useCreateForm();
   const { forms, isLoading } = useListForms();
+  const { logoutAsync, isPending: isLoggingOut } = useLogout();
+
+  const handleLogout = async () => {
+    await logoutAsync();
+    router.push("/signin");
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,6 +60,7 @@ export default function DashboardForms() {
             <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           </div>
 
+          <div className="flex items-center gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-white text-black hover:bg-white/90">Create Form</Button>
@@ -104,6 +114,17 @@ export default function DashboardForms() {
               </form>
             </DialogContent>
           </Dialog>
+
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+          >
+            <LogOut className="mr-2 size-4" />
+            {isLoggingOut ? "Signing out..." : "Sign out"}
+          </Button>
+          </div>
         </div>
 
         <section className="grid gap-3">
