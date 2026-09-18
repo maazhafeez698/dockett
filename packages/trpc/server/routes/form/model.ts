@@ -1,5 +1,8 @@
-import { string, z } from "zod";
+import { z } from "zod";
 import { fieldOutputModel } from "../form-field/model";
+
+export const formStatusEnum = z.enum(["DRAFT", "PUBLISHED", "CLOSED"]);
+export const formVisibilityEnum = z.enum(["PUBLIC", "UNLISTED"]);
 
 export const createFormInputModel = z.object({
   title: z.string().max(55).describe("Title of the form"),
@@ -16,6 +19,8 @@ export const listFormsOutputModel = z.array(
     id: z.string().describe("ID of the form"),
     title: z.string().describe("Title of the form"),
     description: z.string().nullable().optional().describe("Description of the form"),
+    status: formStatusEnum,
+    visibility: formVisibilityEnum,
 
     createdAt: z.date().nullable().describe("Creation timestamp"),
     updatedAt: z.date().nullable().describe("Last updated timestamp"),
@@ -30,7 +35,27 @@ export const getFormOutputModel = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
+  status: formStatusEnum,
+  visibility: formVisibilityEnum,
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   fields: z.array(fieldOutputModel),
+});
+
+export const updateFormInputModel = z.object({
+  formId: z.uuid().describe("UUID of the form to update"),
+  title: z.string().min(1).max(50).optional(),
+  description: z.string().max(300).nullable().optional(),
+});
+
+export const updateFormOutputModel = z.object({
+  id: z.string(),
+});
+
+export const deleteFormInputModel = z.object({
+  formId: z.uuid().describe("UUID of the form to delete"),
+});
+
+export const deleteFormOutputModel = z.object({
+  id: z.string(),
 });

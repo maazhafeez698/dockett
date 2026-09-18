@@ -49,3 +49,56 @@ export function useGetFields(formId: string) {
     status,
   };
 }
+
+export function useUpdateField(formId: string) {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: updateFieldAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.formField.updateField.useMutation({
+    onSuccess: async () => {
+      await utils.formField.getFields.invalidate({ formId });
+    },
+  });
+
+  return { updateFieldAsync, error, isError, isSuccess, isPending };
+}
+
+export function useDeleteField(formId: string) {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: deleteFieldAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.formField.deleteField.useMutation({
+    onSuccess: async () => {
+      await utils.formField.getFields.invalidate({ formId });
+    },
+  });
+
+  return { deleteFieldAsync, error, isError, isSuccess, isPending };
+}
+
+export function useReorderFields(formId: string) {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: reorderFieldsAsync,
+    error,
+    isError,
+    isPending,
+  } = trpc.formField.reorderFields.useMutation({
+    onSuccess: async () => {
+      await utils.formField.getFields.invalidate({ formId });
+    },
+  });
+
+  return { reorderFieldsAsync, error, isError, isPending };
+}

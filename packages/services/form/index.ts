@@ -7,7 +7,32 @@ import {
   type CreateFormInputType,
   listFormsByUserIdInput,
   type ListFormsByUserIdInputType,
+  updateFormInput,
+  type UpdateFormInputType,
+  deleteFormInput,
+  type DeleteFormInputType,
 } from "./model";
+
+/**
+ * Shared ownership guard, used by every service that needs to confirm a
+ * form belongs to the caller (form fields, submissions, and the form
+ * service itself). A non-owner and a non-existent form get the same error
+ * — deliberately not distinguishing the two so a probing request can't
+ * learn whether a given formId exists.
+ */
+export async function assertFormOwnership(formId: string, userId: string) {
+  const rows = await db
+    .select({ id: formsTable.id, createdBy: formsTable.createdBy })
+    .from(formsTable)
+    .where(eq(formsTable.id, formId));
+
+  const form = rows[0];
+  if (!form || form.createdBy !== userId) {
+    throw new Error("Form not found");
+  }
+
+  return form;
+}
 
 export default class FormService {
   public async createForm(payload: CreateFormInputType) {
@@ -40,6 +65,8 @@ export default class FormService {
         id: formsTable.id,
         title: formsTable.title,
         description: formsTable.description,
+        status: formsTable.status,
+        visibility: formsTable.visibility,
         createdAt: formsTable.createdAt,
         updatedAt: formsTable.updatedAt,
       })
@@ -55,6 +82,8 @@ export default class FormService {
         id: formsTable.id,
         title: formsTable.title,
         description: formsTable.description,
+        status: formsTable.status,
+        visibility: formsTable.visibility,
         createdAt: formsTable.createdAt,
         updatedAt: formsTable.updatedAt,
 
@@ -65,6 +94,7 @@ export default class FormService {
         field_description: formFieldsTable.description,
         field_placeholder: formFieldsTable.placeholder,
         field_isRequired: formFieldsTable.isRequired,
+        field_config: formFieldsTable.config,
         field_index: formFieldsTable.index,
         field_type: formFieldsTable.type,
         field_createdAt: formFieldsTable.createdAt,
@@ -75,12 +105,6 @@ export default class FormService {
       .where(eq(formsTable.id, formId))
       .orderBy(formFieldsTable.index);
 
-    /*
-        {formdetails, field details},
-        {formdetails, field details},
-        .......
-            */
-
     if (!rows || rows.length === 0) throw new Error(`Form with ID ${formId} not found`);
 
     const first = rows[0]!;
@@ -89,6 +113,8 @@ export default class FormService {
       id: first.id,
       title: first.title,
       description: first.description ?? null,
+      status: first.status,
+      visibility: first.visibility,
       createdAt: first.createdAt ? first.createdAt.toISOString() : null,
       updatedAt: first.updatedAt ? first.updatedAt.toISOString() : null,
       fields: [] as Array<any>,
@@ -105,6 +131,7 @@ export default class FormService {
         description: r.field_description ?? null,
         placeholder: r.field_placeholder ?? null,
         isRequired: r.field_isRequired,
+        config: r.field_config ?? null,
         index: r.field_index!.toString(),
         type: r.field_type,
         createdAt: r.field_createdAt ? r.field_createdAt.toISOString() : null,
@@ -113,5 +140,32 @@ export default class FormService {
     }
 
     return form;
+  }
+
+  public async updateForm(payload: UpdateFormInputType) {
+    const { formId, userId, title, description } = await updateFormInput.parseAsync(payload);
+
+    await assertFormOwnership(formId, userId);
+
+    const updates: Partial<typeof formsTable.$inferInsert> = {};
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+
+    if (Object.keys(updates).length === 0) return { id: formId };
+
+    await db.update(formsTable).set(updates).where(eq(formsTable.id, formId));
+
+    return { id: formId };
+  }
+
+  public async deleteForm(payload: DeleteFormInputType) {
+    const { formId, userId } = await deleteFormInput.parseAsync(payload);
+
+    await assertFormOwnership(formId, userId);
+
+    // Fields and submissions cascade via the FK's onDelete: "cascade".
+    await db.delete(formsTable).where(eq(formsTable.id, formId));
+
+    return { id: formId };
   }
 }

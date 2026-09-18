@@ -17,7 +17,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
-        <h1 className="text-3xl font-semibold">ChaiForms</h1>
+        <h1 className="text-3xl font-semibold">Formless</h1>
         <p className="text-sm text-white/60">Server Status: {data?.status}</p>
 
         <div className="flex gap-3 justify-center">

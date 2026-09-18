@@ -69,3 +69,42 @@ export const useGetFormWithFields = (formId: string) => {
     status,
   };
 };
+
+export function useUpdateForm() {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: updateFormAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.form.updateForm.useMutation({
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        utils.form.listForms.invalidate(),
+        utils.form.getFormWithFields.invalidate({ formId: variables.formId }),
+      ]);
+    },
+  });
+
+  return { updateFormAsync, error, isError, isSuccess, isPending };
+}
+
+export function useDeleteForm() {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: deleteFormAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.form.deleteForm.useMutation({
+    onSuccess: async () => {
+      await utils.form.listForms.invalidate();
+    },
+  });
+
+  return { deleteFormAsync, error, isError, isSuccess, isPending };
+}

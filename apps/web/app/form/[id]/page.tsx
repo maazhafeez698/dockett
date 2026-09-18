@@ -10,6 +10,14 @@ import { useCreateSubmission } from "~/hooks/api/form-submission";
 
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
+import { Textarea } from "~/components/ui/textarea";
+import { Checkbox } from "~/components/ui/checkbox";
+
+interface FieldConfig {
+  options?: string[];
+  maxLength?: number;
+  max?: number;
+}
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -37,6 +45,18 @@ export default function PublicFormPage() {
       next.delete(fieldId);
       return next;
     });
+  };
+
+  // Multi-select / checkbox group store their selections as a
+  // comma-separated string, since a submission value is a single string —
+  // this is a Phase 2 stopgap; Phase 4's rebuild is the right place to
+  // reconsider the submission value shape if a real array type is wanted.
+  const toggleMultiValue = (fieldId: string, option: string) => {
+    const current = values[fieldId] ? values[fieldId].split(",").filter(Boolean) : [];
+    const next = current.includes(option)
+      ? current.filter((o) => o !== option)
+      : [...current, option];
+    handleChange(fieldId, next.join(","));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -86,6 +106,8 @@ export default function PublicFormPage() {
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {form.fields.map((f) => {
             const isMissing = missingFieldIds.has(f.id);
+            const config = (f.config ?? {}) as FieldConfig;
+            const inputClass = isMissing ? "border-red-400" : undefined;
 
             return (
               <div key={f.id} className="space-y-1">
@@ -101,7 +123,19 @@ export default function PublicFormPage() {
                     placeholder={f.placeholder ?? ""}
                     required={f.isRequired}
                     aria-invalid={isMissing}
-                    className={isMissing ? "border-red-400" : undefined}
+                    className={inputClass}
+                  />
+                )}
+
+                {f.type === "LONG_TEXT" && (
+                  <Textarea
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                    maxLength={config.maxLength}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={inputClass}
                   />
                 )}
 
@@ -113,7 +147,7 @@ export default function PublicFormPage() {
                     placeholder={f.placeholder ?? ""}
                     required={f.isRequired}
                     aria-invalid={isMissing}
-                    className={isMissing ? "border-red-400" : undefined}
+                    className={inputClass}
                   />
                 )}
 
@@ -125,7 +159,7 @@ export default function PublicFormPage() {
                     placeholder={f.placeholder ?? ""}
                     required={f.isRequired}
                     aria-invalid={isMissing}
-                    className={isMissing ? "border-red-400" : undefined}
+                    className={inputClass}
                   />
                 )}
 
@@ -137,8 +171,38 @@ export default function PublicFormPage() {
                     placeholder={f.placeholder ?? ""}
                     required={f.isRequired}
                     aria-invalid={isMissing}
-                    className={isMissing ? "border-red-400" : undefined}
+                    className={inputClass}
                   />
+                )}
+
+                {f.type === "DATE" && (
+                  <Input
+                    type="date"
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={inputClass}
+                  />
+                )}
+
+                {f.type === "RATING" && (
+                  <div className="flex gap-2">
+                    {Array.from({ length: config.max ?? 5 }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleChange(f.id, String(n))}
+                        className={`size-9 rounded-md border text-sm ${
+                          values[f.id] === String(n)
+                            ? "border-white bg-white text-black"
+                            : "border-white/10 bg-white/5 text-white/70"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 )}
 
                 {f.type === "YES_NO" && (
@@ -155,6 +219,45 @@ export default function PublicFormPage() {
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                   </select>
+                )}
+
+                {f.type === "DROPDOWN" && (
+                  <select
+                    value={values[f.id] ?? ""}
+                    onChange={(e) => handleChange(f.id, e.target.value)}
+                    required={f.isRequired}
+                    aria-invalid={isMissing}
+                    className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm text-white ${
+                      isMissing ? "border-red-400" : ""
+                    }`}
+                  >
+                    <option value="">Select...</option>
+                    {(config.options ?? []).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {(f.type === "MULTI_SELECT" || f.type === "CHECKBOX_GROUP") && (
+                  <div className="space-y-2">
+                    {(config.options ?? []).map((opt) => {
+                      const selected = (values[f.id] ?? "")
+                        .split(",")
+                        .filter(Boolean)
+                        .includes(opt);
+                      return (
+                        <label key={opt} className="flex items-center gap-2 text-sm text-white/80">
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={() => toggleMultiValue(f.id, opt)}
+                          />
+                          {opt}
+                        </label>
+                      );
+                    })}
+                  </div>
                 )}
 
                 {f.description ? (

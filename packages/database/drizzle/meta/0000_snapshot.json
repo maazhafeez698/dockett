@@ -1,5 +1,5 @@
 {
-  "id": "9c83415e-e5a0-4d9c-a6be-1b4d62c43848",
+  "id": "639713f7-621f-4585-b599-ea8b402b3616",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -85,6 +85,22 @@
           "type": "varchar(300)",
           "primaryKey": false,
           "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "form_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "form_visibility_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PUBLIC'"
         },
         "created_by": {
           "name": "created_by",
@@ -176,6 +192,12 @@
           "notNull": true,
           "default": false
         },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "index": {
           "name": "index",
           "type": "numeric",
@@ -215,7 +237,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -274,7 +296,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -501,6 +523,23 @@
     }
   },
   "enums": {
+    "public.form_status_enum": {
+      "name": "form_status_enum",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "PUBLISHED",
+        "CLOSED"
+      ]
+    },
+    "public.form_visibility_enum": {
+      "name": "form_visibility_enum",
+      "schema": "public",
+      "values": [
+        "PUBLIC",
+        "UNLISTED"
+      ]
+    },
     "public.field_type_enum": {
       "name": "field_type_enum",
       "schema": "public",
@@ -509,7 +548,13 @@
         "EMAIL",
         "NUMBER",
         "YES_NO",
-        "PASSWORD"
+        "PASSWORD",
+        "LONG_TEXT",
+        "DROPDOWN",
+        "MULTI_SELECT",
+        "CHECKBOX_GROUP",
+        "DATE",
+        "RATING"
       ]
     },
     "public.oauth_provider": {
