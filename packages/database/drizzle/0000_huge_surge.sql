@@ -1,4 +1,5 @@
 CREATE TYPE "public"."form_status_enum" AS ENUM('DRAFT', 'PUBLISHED', 'CLOSED');--> statement-breakpoint
+CREATE TYPE "public"."form_theme_enum" AS ENUM('MIDNIGHT', 'CORAL', 'MINT', 'LAVENDER', 'OCEAN');--> statement-breakpoint
 CREATE TYPE "public"."form_visibility_enum" AS ENUM('PUBLIC', 'UNLISTED');--> statement-breakpoint
 CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_NO', 'PASSWORD', 'LONG_TEXT', 'DROPDOWN', 'MULTI_SELECT', 'CHECKBOX_GROUP', 'DATE', 'RATING');--> statement-breakpoint
 CREATE TYPE "public"."oauth_provider" AS ENUM('google');--> statement-breakpoint
@@ -18,6 +19,7 @@ CREATE TABLE "forms" (
 	"decription" varchar(300),
 	"status" "form_status_enum" DEFAULT 'DRAFT' NOT NULL,
 	"visibility" "form_visibility_enum" DEFAULT 'PUBLIC' NOT NULL,
+	"theme" "form_theme_enum" DEFAULT 'MIDNIGHT' NOT NULL,
 	"created_by" uuid,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp

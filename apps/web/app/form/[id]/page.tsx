@@ -4,20 +4,13 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 
 import { useGetFormWithFields } from "~/hooks/api/form";
 import { useCreateSubmission } from "~/hooks/api/form-submission";
-
-import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Textarea } from "~/components/ui/textarea";
-import { Checkbox } from "~/components/ui/checkbox";
-
-interface FieldConfig {
-  options?: string[];
-  maxLength?: number;
-  max?: number;
-}
+import { FormFieldRenderer } from "~/components/form-field-renderer";
+import { getFormTheme } from "~/lib/form-themes";
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -45,18 +38,6 @@ export default function PublicFormPage() {
       next.delete(fieldId);
       return next;
     });
-  };
-
-  // Multi-select / checkbox group store their selections as a
-  // comma-separated string, since a submission value is a single string —
-  // this is a Phase 2 stopgap; Phase 4's rebuild is the right place to
-  // reconsider the submission value shape if a real array type is wanted.
-  const toggleMultiValue = (fieldId: string, option: string) => {
-    const current = values[fieldId] ? values[fieldId].split(",").filter(Boolean) : [];
-    const next = current.includes(option)
-      ? current.filter((o) => o !== option)
-      : [...current, option];
-    handleChange(fieldId, next.join(","));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -88,199 +69,77 @@ export default function PublicFormPage() {
     }
   };
 
-  if (isLoading) return <div className="p-6">Loading form…</div>;
-  if (!form) return <div className="p-6">Form not found.</div>;
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading form…
+      </main>
+    );
+  }
+
+  if (!form) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Form not found.
+      </main>
+    );
+  }
+
+  const theme = getFormTheme(form.theme);
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-6">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-semibold mb-2">{form.title}</h1>
-        {form.description ? <p className="text-white/60 mb-6">{form.description}</p> : null}
+    <main className="min-h-screen bg-background">
+      {/* Theme hero band — the vibrant accent-card treatment, applied here
+          as a page header rather than a literal card. */}
+      <div
+        className="px-6 py-16"
+        style={{
+          background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+        }}
+      >
+        <div className="mx-auto max-w-2xl" style={{ color: theme.onGradient }}>
+          <h1 className="text-3xl font-semibold tracking-tight">{form.title}</h1>
+          {form.description ? <p className="mt-2 opacity-80">{form.description}</p> : null}
+        </div>
+      </div>
 
-        {submitted ? (
-          <div className="mb-6 rounded-md bg-white/5 p-4 text-white/80">
-            Thank you. Your submission has been received.
-          </div>
-        ) : null}
+      <div className="mx-auto -mt-8 max-w-2xl px-6 pb-16">
+        <div className="glass-strong rounded-3xl p-6 sm:p-8">
+          {submitted ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <CheckCircle2 className="size-10" style={{ color: theme.accent }} />
+              <p className="text-lg font-medium">Thank you.</p>
+              <p className="text-sm text-muted-foreground">Your submission has been received.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} noValidate className="space-y-6">
+              {form.fields.map((f) => (
+                <FormFieldRenderer
+                  key={f.id}
+                  field={f}
+                  value={values[f.id] ?? ""}
+                  onChange={(v) => handleChange(f.id, v)}
+                  isMissing={missingFieldIds.has(f.id)}
+                  accent={theme.accent}
+                />
+              ))}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {form.fields.map((f) => {
-            const isMissing = missingFieldIds.has(f.id);
-            const config = (f.config ?? {}) as FieldConfig;
-            const inputClass = isMissing ? "border-red-400" : undefined;
+              {error ? <div className="text-sm text-destructive">{error.message}</div> : null}
+              {missingFieldIds.size > 0 ? (
+                <div className="text-sm text-destructive">Please fill in all required fields.</div>
+              ) : null}
 
-            return (
-              <div key={f.id} className="space-y-1">
-                <label className="block text-sm text-white/80">
-                  {f.label}
-                  {f.isRequired ? <span className="ml-1 text-red-400">*</span> : null}
-                </label>
-
-                {f.type === "TEXT" && (
-                  <Input
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    placeholder={f.placeholder ?? ""}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "LONG_TEXT" && (
-                  <Textarea
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    placeholder={f.placeholder ?? ""}
-                    maxLength={config.maxLength}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "NUMBER" && (
-                  <Input
-                    type="number"
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    placeholder={f.placeholder ?? ""}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "EMAIL" && (
-                  <Input
-                    type="email"
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    placeholder={f.placeholder ?? ""}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "PASSWORD" && (
-                  <Input
-                    type="password"
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    placeholder={f.placeholder ?? ""}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "DATE" && (
-                  <Input
-                    type="date"
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={inputClass}
-                  />
-                )}
-
-                {f.type === "RATING" && (
-                  <div className="flex gap-2">
-                    {Array.from({ length: config.max ?? 5 }, (_, i) => i + 1).map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => handleChange(f.id, String(n))}
-                        className={`size-9 rounded-md border text-sm ${
-                          values[f.id] === String(n)
-                            ? "border-white bg-white text-black"
-                            : "border-white/10 bg-white/5 text-white/70"
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {f.type === "YES_NO" && (
-                  <select
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm text-white ${
-                      isMissing ? "border-red-400" : ""
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                )}
-
-                {f.type === "DROPDOWN" && (
-                  <select
-                    value={values[f.id] ?? ""}
-                    onChange={(e) => handleChange(f.id, e.target.value)}
-                    required={f.isRequired}
-                    aria-invalid={isMissing}
-                    className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm text-white ${
-                      isMissing ? "border-red-400" : ""
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {(config.options ?? []).map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {(f.type === "MULTI_SELECT" || f.type === "CHECKBOX_GROUP") && (
-                  <div className="space-y-2">
-                    {(config.options ?? []).map((opt) => {
-                      const selected = (values[f.id] ?? "")
-                        .split(",")
-                        .filter(Boolean)
-                        .includes(opt);
-                      return (
-                        <label key={opt} className="flex items-center gap-2 text-sm text-white/80">
-                          <Checkbox
-                            checked={selected}
-                            onCheckedChange={() => toggleMultiValue(f.id, opt)}
-                          />
-                          {opt}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {f.description ? (
-                  <div className="text-sm text-white/60">{f.description}</div>
-                ) : null}
-                {isMissing ? (
-                  <div className="text-sm text-red-400">This field is required.</div>
-                ) : null}
-              </div>
-            );
-          })}
-
-          {error ? <div className="text-sm text-red-400">{error.message}</div> : null}
-          {missingFieldIds.size > 0 ? (
-            <div className="text-sm text-red-400">Please fill in all required fields.</div>
-          ) : null}
-
-          <div>
-            <Button type="submit" disabled={status === "pending"} className="bg-white text-black">
-              {status === "pending" ? "Submitting..." : "Submit"}
-            </Button>
-          </div>
-        </form>
+              <Button
+                type="submit"
+                disabled={status === "pending"}
+                style={{ background: theme.accent, color: "#fff" }}
+                className="w-full border-0 hover:opacity-90"
+              >
+                {status === "pending" ? "Submitting..." : "Submit"}
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
     </main>
   );

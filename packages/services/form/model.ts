@@ -19,6 +19,10 @@ export const updateFormInput = z.object({
   userId: z.uuid().describe("UUID of the user making the request"),
   title: z.string().min(1).max(50).optional().describe("New title of the form"),
   description: z.string().max(300).nullable().optional().describe("New description of the form"),
+  theme: z
+    .enum(["MIDNIGHT", "CORAL", "MINT", "LAVENDER", "OCEAN"])
+    .optional()
+    .describe("Visual theme preset applied to the form's public page"),
 });
 
 export type UpdateFormInputType = z.infer<typeof updateFormInput>;

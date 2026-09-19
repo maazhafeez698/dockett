@@ -7,6 +7,16 @@ import { usersTable } from "./user";
 export const formStatusEnum = pgEnum("form_status_enum", ["DRAFT", "PUBLISHED", "CLOSED"]);
 export const formVisibilityEnum = pgEnum("form_visibility_enum", ["PUBLIC", "UNLISTED"]);
 
+// Kept in sync with FORM_THEMES in apps/web/lib/form-themes.ts — a curated
+// preset list, not a free-form color picker.
+export const formThemeEnum = pgEnum("form_theme_enum", [
+  "MIDNIGHT",
+  "CORAL",
+  "MINT",
+  "LAVENDER",
+  "OCEAN",
+]);
+
 export const formsTable = pgTable("forms", {
   id: uuid("id").primaryKey().defaultRandom(),
 
@@ -15,6 +25,7 @@ export const formsTable = pgTable("forms", {
 
   status: formStatusEnum("status").default("DRAFT").notNull(),
   visibility: formVisibilityEnum("visibility").default("PUBLIC").notNull(),
+  theme: formThemeEnum("theme").default("MIDNIGHT").notNull(),
 
   createdBy: uuid("created_by").references(() => usersTable.id),
 

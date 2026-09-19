@@ -67,6 +67,7 @@ export default class FormService {
         description: formsTable.description,
         status: formsTable.status,
         visibility: formsTable.visibility,
+        theme: formsTable.theme,
         createdAt: formsTable.createdAt,
         updatedAt: formsTable.updatedAt,
       })
@@ -84,6 +85,7 @@ export default class FormService {
         description: formsTable.description,
         status: formsTable.status,
         visibility: formsTable.visibility,
+        theme: formsTable.theme,
         createdAt: formsTable.createdAt,
         updatedAt: formsTable.updatedAt,
 
@@ -115,6 +117,7 @@ export default class FormService {
       description: first.description ?? null,
       status: first.status,
       visibility: first.visibility,
+      theme: first.theme,
       createdAt: first.createdAt ? first.createdAt.toISOString() : null,
       updatedAt: first.updatedAt ? first.updatedAt.toISOString() : null,
       fields: [] as Array<any>,
@@ -143,13 +146,14 @@ export default class FormService {
   }
 
   public async updateForm(payload: UpdateFormInputType) {
-    const { formId, userId, title, description } = await updateFormInput.parseAsync(payload);
+    const { formId, userId, title, description, theme } = await updateFormInput.parseAsync(payload);
 
     await assertFormOwnership(formId, userId);
 
     const updates: Partial<typeof formsTable.$inferInsert> = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
+    if (theme !== undefined) updates.theme = theme;
 
     if (Object.keys(updates).length === 0) return { id: formId };
 

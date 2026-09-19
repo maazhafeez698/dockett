@@ -1,5 +1,5 @@
 {
-  "id": "639713f7-621f-4585-b599-ea8b402b3616",
+  "id": "921369b2-2b0a-4515-b5d0-9dbcfcdecf13",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -101,6 +101,14 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'PUBLIC'"
+        },
+        "theme": {
+          "name": "theme",
+          "type": "form_theme_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MIDNIGHT'"
         },
         "created_by": {
           "name": "created_by",
@@ -530,6 +538,17 @@
         "DRAFT",
         "PUBLISHED",
         "CLOSED"
+      ]
+    },
+    "public.form_theme_enum": {
+      "name": "form_theme_enum",
+      "schema": "public",
+      "values": [
+        "MIDNIGHT",
+        "CORAL",
+        "MINT",
+        "LAVENDER",
+        "OCEAN"
       ]
     },
     "public.form_visibility_enum": {
