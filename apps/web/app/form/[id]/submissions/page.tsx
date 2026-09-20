@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useGetSubmissionsByFormId } from "~/hooks/api/form-submission";
 import { useGetFields } from "~/hooks/api/form-field";
+import { AppShell } from "~/components/app-shell";
 
 type Submission = {
   id: string;
@@ -23,76 +24,77 @@ export default function FormSubmissions() {
   const { fields, isLoading: fieldsLoading } = useGetFields(formId ?? "");
 
   const rows = useMemo(() => (submissions ?? []) as Submission[], [submissions]);
+  const orderedFields = useMemo(
+    () => (fields ?? []).slice().sort((a, b) => parseFloat(a.index) - parseFloat(b.index)),
+    [fields],
+  );
 
   const loading = subsLoading || fieldsLoading;
 
-  if (loading) return <div className="min-h-screen bg-black px-6 py-6 text-white">Loading submissions…</div>;
-  if (error) return <div className="min-h-screen bg-black px-6 py-6 text-red-400">Error loading submissions</div>;
-
   return (
-    <main className="min-h-screen bg-black px-6 py-6 text-white">
-      <div className="mx-auto max-w-5xl rounded-md border border-white/10 bg-white/5 p-6 shadow-sm">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-white/60">Form responses</p>
-            <h2 className="text-2xl font-semibold tracking-tight">Submissions</h2>
+    <AppShell>
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="glass-strong rounded-2xl p-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Form responses</p>
+              <h1 className="text-2xl font-semibold tracking-tight">Submissions</h1>
+            </div>
+            <div className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
+              Total: {rows.length}
+            </div>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/70">
-            Total: {rows.length}
-          </div>
-        </div>
 
-        {fields && fields.length > 0 && (
-          <div className="mb-5 text-xs text-white/50">
-            Fields: {fields.map((f) => f.label).join(", ")}
-          </div>
-        )}
-
-        {rows.length === 0 ? (
-          <div className="rounded-md border border-white/10 bg-white/5 p-4 text-sm text-white/60">
-            No submissions yet.
-          </div>
-        ) : (
-          <div className="overflow-auto rounded-md border border-white/10">
-            <table className="min-w-full table-fixed text-sm">
-              <thead className="bg-zinc-900 text-left text-white">
-                <tr>
-                  <th className="w-1/5 px-4 py-3 font-medium text-white/80">Submitted</th>
-                  {(fields ?? [])
-                    .slice()
-                    .sort((a, b) => parseFloat(a.index) - parseFloat(b.index))
-                    .map((f) => (
-                      <th key={f.id} className="px-4 py-3 text-left text-sm font-medium text-white/80">
+          {loading ? (
+            <div className="glass rounded-xl p-6 text-sm text-muted-foreground">
+              Loading submissions...
+            </div>
+          ) : error ? (
+            <div className="glass rounded-xl p-6 text-sm text-destructive">
+              Error loading submissions.
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="glass rounded-xl p-6 text-sm text-muted-foreground">
+              No submissions yet.
+            </div>
+          ) : (
+            <div className="overflow-auto rounded-xl border border-border">
+              <table className="min-w-full table-fixed text-sm">
+                <thead className="bg-muted/60 text-left">
+                  <tr>
+                    <th className="w-1/5 px-4 py-3 font-medium text-muted-foreground">Submitted</th>
+                    {orderedFields.map((f) => (
+                      <th
+                        key={f.id}
+                        className="px-4 py-3 text-left font-medium text-muted-foreground"
+                      >
                         {f.label}
                       </th>
                     ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-white/10 odd:bg-white/5 even:bg-zinc-950/40">
-                    <td className="px-4 py-3 align-top text-xs text-white/70">
-                      {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-                    </td>
-
-                    {(fields ?? [])
-                      .slice()
-                      .sort((a, b) => parseFloat(a.index) - parseFloat(b.index))
-                      .map((f) => {
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-t border-border odd:bg-muted/20">
+                      <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                        {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                      </td>
+                      {orderedFields.map((f) => {
                         const v = r.values?.find((x) => x.fieldId === f.id);
                         return (
-                          <td key={f.id} className="px-4 py-3 align-top text-xs text-white/80">
+                          <td key={f.id} className="px-4 py-3 align-top text-xs">
                             {v ? v.value : "-"}
                           </td>
                         );
                       })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

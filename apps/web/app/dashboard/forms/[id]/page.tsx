@@ -2,10 +2,28 @@
 
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
-import { GripVertical, Pencil, Trash2, Eye, Palette } from "lucide-react";
+import {
+  ArrowLeft,
+  GripVertical,
+  Trash2,
+  Eye,
+  Pencil,
+  Type,
+  AlignLeft,
+  Hash,
+  Mail,
+  ToggleLeft,
+  KeyRound,
+  ChevronDown,
+  CheckSquare,
+  ListChecks,
+  Calendar,
+  Star,
+} from "lucide-react";
 
 import {
   DndContext,
@@ -34,22 +52,13 @@ import {
 } from "~/hooks/api/form-field";
 import { useDeleteForm, useGetFormWithFields, useUpdateForm } from "~/hooks/api/form";
 
-import { AppHeader } from "~/components/app-header";
 import { Button } from "~/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
 import { FormFieldRenderer } from "~/components/form-field-renderer";
 import { ThemePicker } from "~/components/theme-picker";
+import { ThemeToggle } from "~/components/theme-toggle";
 import { getFormTheme } from "~/lib/form-themes";
 
 type FieldType =
@@ -65,19 +74,23 @@ type FieldType =
   | "DATE"
   | "RATING";
 
-const FIELD_TYPE_LABELS: Record<FieldType, string> = {
-  TEXT: "Short text",
-  LONG_TEXT: "Long text",
-  NUMBER: "Number",
-  EMAIL: "Email",
-  YES_NO: "Yes / No",
-  PASSWORD: "Password",
-  DROPDOWN: "Dropdown",
-  MULTI_SELECT: "Multi-select",
-  CHECKBOX_GROUP: "Checkbox group",
-  DATE: "Date",
-  RATING: "Rating",
-};
+const PALETTE: { type: FieldType; label: string; icon: typeof Type }[] = [
+  { type: "TEXT", label: "Short Text", icon: Type },
+  { type: "LONG_TEXT", label: "Long Text", icon: AlignLeft },
+  { type: "EMAIL", label: "Email", icon: Mail },
+  { type: "NUMBER", label: "Number", icon: Hash },
+  { type: "YES_NO", label: "Yes / No", icon: ToggleLeft },
+  { type: "PASSWORD", label: "Password", icon: KeyRound },
+  { type: "DROPDOWN", label: "Dropdown", icon: ChevronDown },
+  { type: "MULTI_SELECT", label: "Multi-select", icon: ListChecks },
+  { type: "CHECKBOX_GROUP", label: "Checkbox group", icon: CheckSquare },
+  { type: "DATE", label: "Date", icon: Calendar },
+  { type: "RATING", label: "Rating", icon: Star },
+];
+
+const FIELD_TYPE_LABELS: Record<FieldType, string> = Object.fromEntries(
+  PALETTE.map((p) => [p.type, p.label]),
+) as Record<FieldType, string>;
 
 const OPTION_TYPES = new Set<FieldType>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
 
@@ -87,51 +100,24 @@ interface FieldConfig {
   max?: number;
 }
 
-function OptionsEditor({
-  options,
-  onChange,
-}: {
-  options: string[];
-  onChange: (next: string[]) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      {options.map((opt, i) => (
-        <div key={i} className="flex gap-2">
-          <Input
-            value={opt}
-            onChange={(e) => {
-              const next = [...options];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-            placeholder={`Option ${i + 1}`}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onChange(options.filter((_, idx) => idx !== i))}
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      ))}
-      <Button type="button" variant="outline" onClick={() => onChange([...options, ""])}>
-        Add option
-      </Button>
-    </div>
-  );
-}
+type FieldRow = NonNullable<ReturnType<typeof useGetFields>["fields"]>[number];
 
-/** One row in the canvas — drag handle + summary + actions. */
-function SortableFieldRow({
+function SortableFieldCard({
   field: f,
-  onEdit,
-  onDelete,
+  selected,
+  onSelect,
+  previewMode,
+  previewValue,
+  onPreviewChange,
+  accent,
 }: {
-  field: NonNullable<ReturnType<typeof useGetFields>["fields"]>[number];
-  onEdit: () => void;
-  onDelete: () => void;
+  field: FieldRow;
+  selected: boolean;
+  onSelect: () => void;
+  previewMode: boolean;
+  previewValue: string;
+  onPreviewChange: (v: string) => void;
+  accent: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: f.id,
@@ -143,12 +129,33 @@ function SortableFieldRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  if (previewMode) {
+    return (
+      <div ref={setNodeRef} style={style} className="glass rounded-2xl p-4">
+        <FormFieldRenderer
+          field={f}
+          value={previewValue}
+          onChange={onPreviewChange}
+          accent={accent}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div ref={setNodeRef} style={style} className="glass flex items-center gap-3 rounded-2xl p-4">
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onSelect}
+      className={`glass flex cursor-pointer items-center gap-3 rounded-2xl p-4 transition-colors ${
+        selected ? "ring-2 ring-primary" : "hover:bg-muted/20"
+      }`}
+    >
       <button
         type="button"
         {...attributes}
         {...listeners}
+        onClick={(e) => e.stopPropagation()}
         className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
         aria-label="Drag to reorder"
       >
@@ -168,21 +175,6 @@ function SortableFieldRow({
       <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
         {FIELD_TYPE_LABELS[f.type as FieldType]}
       </span>
-
-      <div className="flex shrink-0 items-center gap-1">
-        <Button type="button" variant="ghost" size="icon" onClick={onEdit}>
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
     </div>
   );
 }
@@ -192,121 +184,88 @@ export default function FormBuilder() {
   const router = useRouter();
   const formId = params?.id as string | undefined;
 
-  const { form, isLoading: formLoading } = useGetFormWithFields(formId ?? "");
+  const { form } = useGetFormWithFields(formId ?? "");
   const { fields, isLoading: fieldsLoading } = useGetFields(formId ?? "");
 
-  const {
-    createFieldAsync,
-    status: createStatus,
-    error: createError,
-  } = useCreateField(formId ?? "");
-  const {
-    updateFieldAsync,
-    isPending: isUpdatingField,
-    error: updateError,
-  } = useUpdateField(formId ?? "");
+  const { createFieldAsync } = useCreateField(formId ?? "");
+  const { updateFieldAsync, isPending: isSavingField } = useUpdateField(formId ?? "");
   const { deleteFieldAsync } = useDeleteField(formId ?? "");
   const { reorderFieldsAsync } = useReorderFields(formId ?? "");
-  const { updateFormAsync, isPending: isUpdatingForm } = useUpdateForm();
-  const { deleteFormAsync, isPending: isDeletingForm } = useDeleteForm();
+  const { updateFormAsync, isPending: isSavingForm } = useUpdateForm();
+  const { deleteFormAsync } = useDeleteForm();
 
-  // --- field create/edit dialog state ---
-  const [open, setOpen] = useState(false);
-  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
-  const [label, setLabel] = useState("");
-  const [type, setType] = useState<FieldType>("TEXT");
-  const [description, setDescription] = useState("");
-  const [placeholder, setPlaceholder] = useState("");
-  const [isRequired, setIsRequired] = useState(false);
-  const [options, setOptions] = useState<string[]>([""]);
-  const [maxLength, setMaxLength] = useState<string>("");
-  const [ratingMax, setRatingMax] = useState<string>("5");
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
 
-  const resetDialog = () => {
-    setEditingFieldId(null);
-    setLabel("");
-    setType("TEXT");
-    setDescription("");
-    setPlaceholder("");
-    setIsRequired(false);
-    setOptions([""]);
-    setMaxLength("");
-    setRatingMax("5");
-  };
+  const selectedField = fields?.find((f) => f.id === selectedFieldId) ?? null;
 
-  const openCreateDialog = () => {
-    resetDialog();
-    setOpen(true);
-  };
+  // --- inspector draft state, synced whenever the selection changes ---
+  const [draftLabel, setDraftLabel] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+  const [draftPlaceholder, setDraftPlaceholder] = useState("");
+  const [draftRequired, setDraftRequired] = useState(false);
+  const [draftOptions, setDraftOptions] = useState<string[]>([""]);
+  const [draftMaxLength, setDraftMaxLength] = useState("");
+  const [draftRatingMax, setDraftRatingMax] = useState("5");
 
-  const openEditDialog = (f: NonNullable<typeof fields>[number]) => {
-    setEditingFieldId(f.id);
-    setLabel(f.label);
-    setType(f.type as FieldType);
-    setDescription(f.description ?? "");
-    setPlaceholder(f.placeholder ?? "");
-    setIsRequired(f.isRequired);
-    const cfg = (f.config ?? {}) as FieldConfig;
-    setOptions(cfg.options && cfg.options.length > 0 ? cfg.options : [""]);
-    setMaxLength(cfg.maxLength ? String(cfg.maxLength) : "");
-    setRatingMax(cfg.max ? String(cfg.max) : "5");
-    setOpen(true);
-  };
+  useEffect(() => {
+    if (!selectedField) return;
+    setDraftLabel(selectedField.label);
+    setDraftDescription(selectedField.description ?? "");
+    setDraftPlaceholder(selectedField.placeholder ?? "");
+    setDraftRequired(selectedField.isRequired);
+    const cfg = (selectedField.config ?? {}) as FieldConfig;
+    setDraftOptions(cfg.options && cfg.options.length > 0 ? cfg.options : [""]);
+    setDraftMaxLength(cfg.maxLength ? String(cfg.maxLength) : "");
+    setDraftRatingMax(cfg.max ? String(cfg.max) : "5");
+  }, [selectedField?.id]);
 
-  const buildConfig = (): FieldConfig | undefined => {
-    if (OPTION_TYPES.has(type)) {
-      const cleaned = options.map((o) => o.trim()).filter(Boolean);
-      return { options: cleaned };
+  const handleAddField = async (type: FieldType) => {
+    if (!formId) return;
+    try {
+      const created = await createFieldAsync({ label: FIELD_TYPE_LABELS[type], type, formId });
+      setSelectedFieldId(created.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add field");
     }
-    if (type === "LONG_TEXT" && maxLength.trim()) return { maxLength: Number(maxLength) };
-    if (type === "RATING") return { max: ratingMax.trim() ? Number(ratingMax) : 5 };
+  };
+
+  const buildConfig = (type: FieldType): FieldConfig | undefined => {
+    if (OPTION_TYPES.has(type))
+      return { options: draftOptions.map((o) => o.trim()).filter(Boolean) };
+    if (type === "LONG_TEXT" && draftMaxLength.trim()) return { maxLength: Number(draftMaxLength) };
+    if (type === "RATING") return { max: draftRatingMax.trim() ? Number(draftRatingMax) : 5 };
     return undefined;
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!formId) return;
-
-    const config = buildConfig();
-
+  const handleSaveField = async () => {
+    if (!selectedField) return;
     try {
-      if (editingFieldId) {
-        await updateFieldAsync({
-          fieldId: editingFieldId,
-          label: label.trim(),
-          description: description.trim() ? description.trim() : null,
-          placeholder: placeholder.trim() ? placeholder.trim() : null,
-          isRequired,
-          config,
-        });
-      } else {
-        await createFieldAsync({
-          label: label.trim(),
-          type,
-          formId,
-          description: description.trim() ? description.trim() : undefined,
-          placeholder: placeholder.trim() ? placeholder.trim() : undefined,
-          isRequired,
-          config,
-        });
-      }
-      setOpen(false);
-      resetDialog();
-    } catch {
-      // error surfaced via createError/updateError below
+      await updateFieldAsync({
+        fieldId: selectedField.id,
+        label: draftLabel.trim(),
+        description: draftDescription.trim() ? draftDescription.trim() : null,
+        placeholder: draftPlaceholder.trim() ? draftPlaceholder.trim() : null,
+        isRequired: draftRequired,
+        config: buildConfig(selectedField.type as FieldType),
+      });
+      toast.success("Field updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update field");
     }
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (!confirm("Delete this field? This can't be undone.")) return;
+    if (!confirm("Delete this field?")) return;
     try {
       await deleteFieldAsync({ fieldId });
+      if (selectedFieldId === fieldId) setSelectedFieldId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete field");
     }
   };
 
-  // --- drag-and-drop reordering ---
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -321,7 +280,6 @@ export default function FormBuilder() {
     if (oldIndex === -1 || newIndex === -1) return;
 
     const reordered = arrayMove(fields, oldIndex, newIndex);
-
     try {
       await reorderFieldsAsync({ formId, orderedFieldIds: reordered.map((f) => f.id) });
     } catch (err) {
@@ -329,39 +287,27 @@ export default function FormBuilder() {
     }
   };
 
-  // --- form title/description/theme editing ---
-  const [editingForm, setEditingForm] = useState(false);
-  const [formTitle, setFormTitle] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [showThemePicker, setShowThemePicker] = useState(false);
-
+  const [titleDraft, setTitleDraft] = useState("");
   useEffect(() => {
-    if (form) {
-      setFormTitle(form.title);
-      setFormDescription(form.description ?? "");
-    }
-  }, [form]);
+    if (form) setTitleDraft(form.title);
+  }, [form?.title]);
 
-  const handleSaveForm = async () => {
-    if (!formId) return;
+  const handleTitleBlur = async () => {
+    if (!formId || !form || titleDraft.trim() === form.title) return;
     try {
-      await updateFormAsync({
-        formId,
-        title: formTitle.trim(),
-        description: formDescription.trim() ? formDescription.trim() : null,
-      });
-      setEditingForm(false);
+      await updateFormAsync({ formId, title: titleDraft.trim() || "Untitled Form" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update form");
+      toast.error(err instanceof Error ? err.message : "Failed to rename form");
     }
   };
-
-  type FormThemeKey = "MIDNIGHT" | "CORAL" | "MINT" | "LAVENDER" | "OCEAN";
 
   const handleThemeChange = async (themeKey: string) => {
     if (!formId) return;
     try {
-      await updateFormAsync({ formId, theme: themeKey as FormThemeKey });
+      await updateFormAsync({
+        formId,
+        theme: themeKey as "MIDNIGHT" | "CORAL" | "MINT" | "LAVENDER" | "OCEAN",
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update theme");
     }
@@ -375,319 +321,292 @@ export default function FormBuilder() {
       await deleteFormAsync({ formId });
       router.push("/dashboard/forms");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update form");
+      toast.error(err instanceof Error ? err.message : "Failed to delete form");
     }
   };
 
-  const error = createError ?? updateError;
   const theme = getFormTheme(form?.theme);
 
-  // Local, purely-visual values for the live preview — never submitted anywhere.
-  const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
-
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <main className="px-4 py-6 sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          {/* --- form header --- */}
-          <div className="mb-6 space-y-3">
-            {editingForm ? (
-              <div className="glass space-y-3 rounded-2xl p-4">
-                <Input
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="Form title"
-                  className="text-lg font-semibold"
-                />
-                <Textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Form description (optional)"
-                />
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveForm} disabled={isUpdatingForm}>
-                    {isUpdatingForm ? "Saving..." : "Save"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditingForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    {formLoading ? "Loading..." : form?.title}
-                  </h1>
-                  {form?.description ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{form.description}</p>
-                  ) : null}
-                </div>
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      {/* --- top toolbar --- */}
+      <header className="glass-flat flex h-14 shrink-0 items-center gap-3 border-b border-border/60 px-4">
+        <Link href="/dashboard/forms" className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+        </Link>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => setShowThemePicker((v) => !v)}>
-                    <Palette className="mr-2 size-4" />
-                    Theme
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditingForm(true)}>
-                    <Pencil className="mr-2 size-4" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleDeleteForm}
-                    disabled={isDeletingForm}
-                    className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
-                  >
-                    <Trash2 className="mr-2 size-4" />
-                    Delete Form
-                  </Button>
-                </div>
-              </div>
-            )}
+        <input
+          value={titleDraft}
+          onChange={(e) => setTitleDraft(e.target.value)}
+          onBlur={handleTitleBlur}
+          className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none sm:flex-none sm:w-64"
+        />
 
-            {showThemePicker && (
-              <div className="glass rounded-2xl p-4">
-                <p className="mb-3 text-sm font-medium text-muted-foreground">
-                  Theme — applied to this form's public page
-                </p>
-                <ThemePicker value={form?.theme ?? "MIDNIGHT"} onChange={handleThemeChange} />
-              </div>
-            )}
+        <span className="hidden rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">
+          {form?.status ?? "..."}
+        </span>
+
+        <div className="flex-1" />
+
+        <Button
+          variant={previewMode ? "default" : "outline"}
+          size="sm"
+          onClick={() => setPreviewMode((v) => !v)}
+        >
+          <Eye className="mr-1.5 size-3.5" />
+          Preview
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDeleteForm}
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-1.5 size-3.5" />
+          Delete
+        </Button>
+
+        <ThemeToggle />
+      </header>
+
+      {/* --- three panes --- */}
+      <div className="grid flex-1 grid-cols-[72px_1fr] overflow-hidden lg:grid-cols-[220px_1fr_320px]">
+        {/* Field palette */}
+        <aside className="glass-flat overflow-y-auto border-r border-border/60 p-3">
+          <p className="mb-2 hidden px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase lg:block">
+            Fields
+          </p>
+          <div className="space-y-1">
+            {PALETTE.map(({ type, label, icon: Icon }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleAddField(type)}
+                className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground lg:px-3"
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className="hidden truncate lg:inline">{label}</span>
+              </button>
+            ))}
           </div>
+        </aside>
 
-          {/* --- canvas + live preview, side by side --- */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Canvas */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground">Fields</h2>
-
-                <Dialog
-                  open={open}
-                  onOpenChange={(v) => {
-                    setOpen(v);
-                    if (!v) resetDialog();
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={openCreateDialog}>
-                      Add field
-                    </Button>
-                  </DialogTrigger>
-
-                  <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>{editingFieldId ? "Edit Field" : "Create Field"}</DialogTitle>
-                      <DialogDescription>
-                        {editingFieldId ? "Update this field." : "Add a field to this form."}
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <form className="space-y-4" onSubmit={handleSubmit}>
-                      <div>
-                        <label className="mb-1 block text-sm text-muted-foreground">Label</label>
-                        <Input
-                          value={label}
-                          onChange={(e) => setLabel(e.target.value)}
-                          placeholder="Field label"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-sm text-muted-foreground">Type</label>
-                        {editingFieldId ? (
-                          <div className="rounded-lg border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                            {FIELD_TYPE_LABELS[type]} (type can't be changed after creation)
-                          </div>
-                        ) : (
-                          <select
-                            value={type}
-                            onChange={(e) => setType(e.target.value as FieldType)}
-                            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
-                          >
-                            {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map((t) => (
-                              <option key={t} value={t}>
-                                {FIELD_TYPE_LABELS[t]}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-
-                      {OPTION_TYPES.has(type) ? (
-                        <div>
-                          <label className="mb-1 block text-sm text-muted-foreground">
-                            Options
-                          </label>
-                          <OptionsEditor options={options} onChange={setOptions} />
-                        </div>
-                      ) : null}
-
-                      {type === "LONG_TEXT" ? (
-                        <div>
-                          <label className="mb-1 block text-sm text-muted-foreground">
-                            Max length (optional)
-                          </label>
-                          <Input
-                            type="number"
-                            value={maxLength}
-                            onChange={(e) => setMaxLength(e.target.value)}
-                            placeholder="e.g. 500"
-                          />
-                        </div>
-                      ) : null}
-
-                      {type === "RATING" ? (
-                        <div>
-                          <label className="mb-1 block text-sm text-muted-foreground">
-                            Scale (2-10)
-                          </label>
-                          <Input
-                            type="number"
-                            min={2}
-                            max={10}
-                            value={ratingMax}
-                            onChange={(e) => setRatingMax(e.target.value)}
-                          />
-                        </div>
-                      ) : null}
-
-                      <div>
-                        <label className="mb-1 block text-sm text-muted-foreground">
-                          Description
-                        </label>
-                        <Textarea
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="Optional helper text"
-                        />
-                      </div>
-
-                      {!OPTION_TYPES.has(type) && type !== "YES_NO" ? (
-                        <div>
-                          <label className="mb-1 block text-sm text-muted-foreground">
-                            Placeholder
-                          </label>
-                          <Input
-                            value={placeholder}
-                            onChange={(e) => setPlaceholder(e.target.value)}
-                            placeholder="Optional placeholder"
-                          />
-                        </div>
-                      ) : null}
-
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={isRequired}
-                          onCheckedChange={(v) => setIsRequired(Boolean(v))}
-                        />
-                        <span className="text-sm text-muted-foreground">Required</span>
-                      </div>
-
-                      {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
-
-                      <DialogFooter>
-                        <Button
-                          type="submit"
-                          disabled={createStatus === "pending" || isUpdatingField || !label.trim()}
-                        >
-                          {createStatus === "pending" || isUpdatingField
-                            ? "Saving..."
-                            : editingFieldId
-                              ? "Save Changes"
-                              : "Create Field"}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {fieldsLoading ? (
-                <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
-                  Loading fields...
-                </div>
-              ) : fields && fields.length > 0 ? (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={fields.map((f) => f.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2">
-                      {fields.map((f) => (
-                        <SortableFieldRow
-                          key={f.id}
-                          field={f}
-                          onEdit={() => openEditDialog(f)}
-                          onDelete={() => handleDeleteField(f.id)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                <div className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
-                  No fields yet — add your first one above.
-                </div>
-              )}
-            </section>
-
-            {/* Live preview — the real public-page renderer, not a lookalike */}
-            <section className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-              <h2 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <Eye className="size-3.5" />
-                Live preview
-              </h2>
-
+        {/* Canvas */}
+        <main className="overflow-y-auto p-6">
+          <div className="mx-auto max-w-2xl">
+            {previewMode && (
               <div
-                className="overflow-hidden rounded-2xl"
+                className="mb-4 overflow-hidden rounded-2xl p-6"
                 style={{
                   background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+                  color: theme.onGradient,
                 }}
               >
-                <div className="p-6" style={{ color: theme.onGradient }}>
-                  <h3 className="text-xl font-semibold">{form?.title || "Untitled form"}</h3>
-                  {form?.description ? (
-                    <p className="mt-1 text-sm opacity-80">{form.description}</p>
-                  ) : null}
-                </div>
-
-                <div className="glass-strong m-3 rounded-xl p-5">
-                  {!fields || fields.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Add a field to see it here.</p>
-                  ) : (
-                    <div className="space-y-5">
-                      {fields.map((f) => (
-                        <FormFieldRenderer
-                          key={f.id}
-                          field={f}
-                          value={previewValues[f.id] ?? ""}
-                          onChange={(v) => setPreviewValues((s) => ({ ...s, [f.id]: v }))}
-                          accent={theme.accent}
-                        />
-                      ))}
-                      <Button
-                        type="button"
-                        disabled
-                        style={{ background: theme.accent, color: "#fff" }}
-                        className="w-full cursor-default border-0 opacity-90"
-                      >
-                        Submit
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <h2 className="text-xl font-semibold">{form?.title}</h2>
+                {form?.description ? (
+                  <p className="mt-1 text-sm opacity-80">{form.description}</p>
+                ) : null}
               </div>
-            </section>
+            )}
+
+            {fieldsLoading ? (
+              <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
+                Loading fields...
+              </div>
+            ) : fields && fields.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={fields.map((f) => f.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {fields.map((f) => (
+                      <SortableFieldCard
+                        key={f.id}
+                        field={f}
+                        selected={selectedFieldId === f.id}
+                        onSelect={() => setSelectedFieldId(f.id)}
+                        previewMode={previewMode}
+                        previewValue={previewValues[f.id] ?? ""}
+                        onPreviewChange={(v) => setPreviewValues((s) => ({ ...s, [f.id]: v }))}
+                        accent={theme.accent}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+                Click a field type on the left to add your first field.
+              </div>
+            )}
           </div>
-        </div>
-      </main>
+        </main>
+
+        {/* Inspector */}
+        <aside className="glass-flat hidden overflow-y-auto border-l border-border/60 p-5 xl:block">
+          {selectedField ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">
+                  {FIELD_TYPE_LABELS[selectedField.type as FieldType]}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteField(selectedField.id)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Delete field"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Label</label>
+                <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Description</label>
+                <Textarea
+                  value={draftDescription}
+                  onChange={(e) => setDraftDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              {!OPTION_TYPES.has(selectedField.type as FieldType) &&
+              selectedField.type !== "YES_NO" ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Placeholder</label>
+                  <Input
+                    value={draftPlaceholder}
+                    onChange={(e) => setDraftPlaceholder(e.target.value)}
+                  />
+                </div>
+              ) : null}
+
+              {OPTION_TYPES.has(selectedField.type as FieldType) ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Options</label>
+                  <div className="space-y-2">
+                    {draftOptions.map((opt, i) => (
+                      <div key={i} className="flex gap-1.5">
+                        <Input
+                          value={opt}
+                          onChange={(e) => {
+                            const next = [...draftOptions];
+                            next[i] = e.target.value;
+                            setDraftOptions(next);
+                          }}
+                          placeholder={`Option ${i + 1}`}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() =>
+                            setDraftOptions(draftOptions.filter((_, idx) => idx !== i))
+                          }
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDraftOptions([...draftOptions, ""])}
+                    >
+                      Add option
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedField.type === "LONG_TEXT" ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Max length (optional)</label>
+                  <Input
+                    type="number"
+                    value={draftMaxLength}
+                    onChange={(e) => setDraftMaxLength(e.target.value)}
+                  />
+                </div>
+              ) : null}
+
+              {selectedField.type === "RATING" ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Scale (2-10)</label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={draftRatingMax}
+                    onChange={(e) => setDraftRatingMax(e.target.value)}
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                  checked={draftRequired}
+                  onCheckedChange={(v) => setDraftRequired(Boolean(v))}
+                />
+                <span className="text-sm text-muted-foreground">Required</span>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleSaveField}
+                disabled={isSavingField || !draftLabel.trim()}
+              >
+                {isSavingField ? "Saving..." : "Save changes"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div>
+                <h3 className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+                  <Pencil className="size-3.5" />
+                  Form details
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  No field selected — editing the form itself.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Description</label>
+                <Textarea
+                  defaultValue={form?.description ?? ""}
+                  rows={3}
+                  onBlur={(e) => {
+                    if (!formId || e.target.value === (form?.description ?? "")) return;
+                    updateFormAsync({
+                      formId,
+                      description: e.target.value.trim() ? e.target.value.trim() : null,
+                    }).catch(() => toast.error("Failed to update description"));
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-muted-foreground">Theme</label>
+                <ThemePicker value={form?.theme ?? "MIDNIGHT"} onChange={handleThemeChange} />
+              </div>
+
+              {isSavingForm ? <p className="text-xs text-muted-foreground">Saving...</p> : null}
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
