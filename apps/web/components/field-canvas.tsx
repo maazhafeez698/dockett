@@ -55,9 +55,29 @@ function CanvasInner({
   onDeleteField,
   onDropNewField,
 }: FieldCanvasProps) {
-  const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
-  const { zoom } = useViewport();
+  const { screenToFlowPosition, zoomIn, zoomOut, fitView, setViewport } = useReactFlow();
+  const { x, y, zoom } = useViewport();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isEditingZoom, setIsEditingZoom] = useState(false);
+  const [zoomInput, setZoomInput] = useState(String(Math.round(zoom * 100)));
+  const [zoomError, setZoomError] = useState(false);
+
+  useEffect(() => {
+    if (!isEditingZoom) setZoomInput(String(Math.round(zoom * 100)));
+  }, [isEditingZoom, zoom]);
+
+  const commitZoom = () => {
+    const percentage = Number(zoomInput);
+    if (!Number.isFinite(percentage) || percentage < 25 || percentage > 200) {
+      setZoomError(true);
+      return;
+    }
+
+    setZoomError(false);
+    setIsEditingZoom(false);
+    setZoomInput(String(Math.round(percentage)));
+    void setViewport({ x, y, zoom: percentage / 100 }, { duration: 150 });
+  };
 
   const buildNodes = useCallback(
     (list: CanvasField[]): Node<FieldNodeData>[] =>
@@ -181,9 +201,33 @@ function CanvasInner({
           >
             -
           </button>
-          <span className="w-11 text-center text-xs font-medium text-muted-foreground tabular-nums">
-            {Math.round(zoom * 100)}%
-          </span>
+          <input
+            type="number"
+            min={25}
+            max={200}
+            step={1}
+            value={zoomInput}
+            onFocus={() => setIsEditingZoom(true)}
+            onChange={(event) => {
+              setZoomInput(event.target.value);
+              setZoomError(false);
+            }}
+            onBlur={commitZoom}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                setZoomInput(String(Math.round(zoom * 100)));
+                setZoomError(false);
+                event.currentTarget.blur();
+              }
+            }}
+            className={`h-8 w-14 border-0 bg-transparent p-0 text-center text-xs font-medium tabular-nums text-muted-foreground outline-none focus:text-foreground ${zoomError ? "text-destructive" : ""}`}
+            aria-label="Canvas zoom percentage"
+            aria-invalid={zoomError}
+            title={
+              zoomError ? "Enter a zoom percentage from 25 to 200" : "Zoom percentage (25-200)"
+            }
+          />
           <button
             type="button"
             onClick={() => void zoomIn()}

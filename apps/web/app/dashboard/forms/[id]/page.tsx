@@ -158,7 +158,12 @@ export default function FormBuilder() {
   const handleAddField = async (type: FieldType) => {
     if (!formId) return;
     try {
-      const created = await createFieldAsync({ label: FIELD_TYPE_LABELS[type], type, formId });
+      const created = await createFieldAsync({
+        label: FIELD_TYPE_LABELS[type],
+        type,
+        formId,
+        config: OPTION_TYPES.has(type) ? { options: ["Option 1"] } : undefined,
+      });
       setSelectedFieldId(created.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add field");
@@ -178,6 +183,7 @@ export default function FormBuilder() {
         label: FIELD_TYPE_LABELS[fieldType],
         type: fieldType,
         formId,
+        config: OPTION_TYPES.has(fieldType) ? { options: ["Option 1"] } : undefined,
       });
       setSelectedFieldId(created.id);
 
@@ -482,7 +488,8 @@ export default function FormBuilder() {
               </div>
 
               {!OPTION_TYPES.has(selectedField.type as FieldType) &&
-              selectedField.type !== "YES_NO" ? (
+              selectedField.type !== "YES_NO" &&
+              selectedField.type !== "RATING" ? (
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">Placeholder</label>
                   <Input
