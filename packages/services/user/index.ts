@@ -58,7 +58,9 @@ export default class UserService {
   private generateAccessToken(payload: GenerateUserTokenPayloadType) {
     const { id } = generateUserTokenPayload.parse(payload);
 
-    return jwt.sign({ id }, env.JWT_SECRET, { expiresIn: env.ACCESS_TOKEN_TTL as jwt.SignOptions["expiresIn"] });
+    return jwt.sign({ id }, env.JWT_SECRET, {
+      expiresIn: env.ACCESS_TOKEN_TTL as jwt.SignOptions["expiresIn"],
+    });
   }
 
   private async issueTokenPair(userId: string): Promise<TokenPair> {
@@ -120,13 +122,21 @@ export default class UserService {
 
   public async getUserInfoById(id: string) {
     const user = await db
-      .select({ id: usersTable.id, fullName: usersTable.fullName, email: usersTable.email })
+      .select({
+        id: usersTable.id,
+        fullName: usersTable.fullName,
+        email: usersTable.email,
+        passwordHash: usersTable.passwordHash,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, id));
 
     if (!user || user.length === 0) throw new Error("User with this ID does not exist");
 
-    return user[0]!;
+    const { passwordHash, ...rest } = user[0]!;
+    // Never send the hash itself to the client — just whether one exists,
+    // which is what the UI needs to decide which password flow to show.
+    return { ...rest, hasPassword: Boolean(passwordHash) };
   }
 
   public async verifyAndDecodeAccessToken(token: string) {
@@ -181,7 +191,9 @@ export default class UserService {
     await db
       .update(refreshTokensTable)
       .set({ revokedAt: new Date() })
-      .where(and(eq(refreshTokensTable.tokenHash, tokenHash), isNull(refreshTokensTable.revokedAt)));
+      .where(
+        and(eq(refreshTokensTable.tokenHash, tokenHash), isNull(refreshTokensTable.revokedAt)),
+      );
   }
 
   public async revokeAllRefreshTokensForUser(userId: string) {
@@ -201,6 +213,11 @@ export default class UserService {
 
     const existingUser = await this.getUserByEmail(email);
     if (!existingUser) return;
+
+    // No password on the account (Google-only) — nothing to reset. Stay
+    // silent here too, same as the "user doesn't exist" case above, so
+    // this endpoint can't be used to probe which accounts use a password.
+    if (!existingUser.passwordHash) return;
 
     try {
       const rawToken = generateOpaqueToken();
@@ -236,6 +253,14 @@ export default class UserService {
       throw new Error("This password reset link is invalid or has expired");
     }
 
+    // Closes a loophole: without this, a stale reset link for a
+    // Google-only account (issued before this rule existed, or requested
+    // some other way) could still silently grant that account a password.
+    const user = await this.getUserById(record.userId);
+    if (!user?.passwordHash) {
+      throw new Error("This account doesn't use a password — sign in with Google instead");
+    }
+
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, record.userId));
@@ -257,12 +282,17 @@ export default class UserService {
     const user = await this.getUserById(userId);
     if (!user) throw new Error("User with this ID does not exist");
 
-    if (user.passwordHash) {
-      if (!currentPassword) throw new Error("Current password is required to set a new one");
-
-      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
-      if (!isValid) throw new Error("Current password is incorrect");
+    // Google-only accounts can't add a password in this flow — only an
+    // account that already has one can change it. See the decisions log
+    // for why this is deliberate, not an oversight.
+    if (!user.passwordHash) {
+      throw new Error("This account uses Google sign-in and doesn't support setting a password");
     }
+
+    if (!currentPassword) throw new Error("Current password is required to set a new one");
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) throw new Error("Current password is incorrect");
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));

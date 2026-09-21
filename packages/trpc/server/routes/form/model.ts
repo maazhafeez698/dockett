@@ -4,6 +4,7 @@ import { fieldOutputModel } from "../form-field/model";
 export const formStatusEnum = z.enum(["DRAFT", "PUBLISHED", "CLOSED"]);
 export const formVisibilityEnum = z.enum(["PUBLIC", "UNLISTED"]);
 export const formThemeEnum = z.enum(["MIDNIGHT", "CORAL", "MINT", "LAVENDER", "OCEAN"]);
+export const formSubmissionAccessEnum = z.enum(["ANYONE", "AUTHENTICATED_ONLY", "ANONYMOUS_ONLY"]);
 
 export const createFormInputModel = z.object({
   title: z.string().max(55).describe("Title of the form"),
@@ -22,6 +23,7 @@ export const listFormsOutputModel = z.array(
     description: z.string().nullable().optional().describe("Description of the form"),
     status: formStatusEnum,
     visibility: formVisibilityEnum,
+    submissionAccess: formSubmissionAccessEnum,
     theme: formThemeEnum,
 
     createdAt: z.date().nullable().describe("Creation timestamp"),
@@ -39,6 +41,7 @@ export const getFormOutputModel = z.object({
   description: z.string().nullable(),
   status: formStatusEnum,
   visibility: formVisibilityEnum,
+  submissionAccess: formSubmissionAccessEnum,
   theme: formThemeEnum,
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
@@ -50,6 +53,9 @@ export const updateFormInputModel = z.object({
   title: z.string().min(1).max(50).optional(),
   description: z.string().max(300).nullable().optional(),
   theme: formThemeEnum.optional(),
+  status: formStatusEnum.optional(),
+  visibility: formVisibilityEnum.optional(),
+  submissionAccess: formSubmissionAccessEnum.optional(),
 });
 
 export const updateFormOutputModel = z.object({

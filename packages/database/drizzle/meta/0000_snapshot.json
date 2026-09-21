@@ -1,5 +1,5 @@
 {
-  "id": "5c4501f7-e4f8-4b68-a29a-140117bd8230",
+  "id": "0d8e35c8-5a7b-4b4a-9c15-688755b0b6b4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -101,6 +101,14 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'PUBLIC'"
+        },
+        "submission_access": {
+          "name": "submission_access",
+          "type": "form_submission_access_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ANYONE'"
         },
         "theme": {
           "name": "theme",
@@ -538,6 +546,15 @@
         "DRAFT",
         "PUBLISHED",
         "CLOSED"
+      ]
+    },
+    "public.form_submission_access_enum": {
+      "name": "form_submission_access_enum",
+      "schema": "public",
+      "values": [
+        "ANYONE",
+        "AUTHENTICATED_ONLY",
+        "ANONYMOUS_ONLY"
       ]
     },
     "public.form_theme_enum": {

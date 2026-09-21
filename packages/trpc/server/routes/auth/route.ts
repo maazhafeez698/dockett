@@ -53,7 +53,11 @@ function toReadableMessage(error: unknown, fallback: string) {
 
 function setAuthCookies(ctx: Context, tokens: TokenPair) {
   ctx.setCookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, accessTokenCookieOpts());
-  ctx.setCookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, refreshTokenCookieOpts(tokens.refreshTokenExpiresAt));
+  ctx.setCookie(
+    REFRESH_TOKEN_COOKIE,
+    tokens.refreshToken,
+    refreshTokenCookieOpts(tokens.refreshTokenExpiresAt),
+  );
 }
 
 function clearAuthCookies(ctx: Context) {
@@ -76,7 +80,11 @@ export const authRouter = router({
       const { fullName, email, password } = input;
 
       try {
-        const created = await userService.createUserWithEmailAndPassword({ fullName, email, password });
+        const created = await userService.createUserWithEmailAndPassword({
+          fullName,
+          email,
+          password,
+        });
         setAuthCookies(ctx, created.tokens);
         return { id: created.id };
       } catch (error) {
@@ -218,7 +226,10 @@ export const authRouter = router({
     .output(resetPasswordOutputModel)
     .mutation(async ({ input, ctx }) => {
       try {
-        await userService.resetPasswordWithToken({ token: input.token, newPassword: input.newPassword });
+        await userService.resetPasswordWithToken({
+          token: input.token,
+          newPassword: input.newPassword,
+        });
         // The reset itself already revokes every refresh token for the
         // user, so clear whatever session cookies this browser is holding.
         clearAuthCookies(ctx);
@@ -270,12 +281,13 @@ export const authRouter = router({
     .input(getLoggedInUserInfoInputModel)
     .output(getLoggedInUserInfoOutputModel)
     .query(async ({ ctx }) => {
-      const { fullName, email, id } = await userService.getUserInfoById(ctx.user.id);
+      const { fullName, email, id, hasPassword } = await userService.getUserInfoById(ctx.user.id);
 
       return {
         id,
         fullName,
         email,
+        hasPassword,
       };
     }),
 });

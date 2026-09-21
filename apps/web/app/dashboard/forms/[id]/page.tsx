@@ -8,7 +8,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  GripVertical,
   Trash2,
   Eye,
   Pencil,
@@ -23,25 +22,12 @@ import {
   ListChecks,
   Calendar,
   Star,
+  Share2,
+  Rocket,
+  Sparkles,
 } from "lucide-react";
 
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { FieldCanvas, type CanvasField } from "~/components/field-canvas";
 
 import {
   useCreateField,
@@ -59,6 +45,8 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { FormFieldRenderer } from "~/components/form-field-renderer";
 import { ThemePicker } from "~/components/theme-picker";
 import { ThemeToggle } from "~/components/theme-toggle";
+import { ShareFormDialog } from "~/components/share-form-dialog";
+import { PublishFormDialog } from "~/components/publish-form-dialog";
 import { getFormTheme } from "~/lib/form-themes";
 
 type FieldType =
@@ -102,79 +90,25 @@ interface FieldConfig {
 
 type FieldRow = NonNullable<ReturnType<typeof useGetFields>["fields"]>[number];
 
-function SortableFieldCard({
+function PreviewFieldCard({
   field: f,
-  selected,
-  onSelect,
-  previewMode,
   previewValue,
   onPreviewChange,
   accent,
 }: {
   field: FieldRow;
-  selected: boolean;
-  onSelect: () => void;
-  previewMode: boolean;
   previewValue: string;
   onPreviewChange: (v: string) => void;
   accent: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: f.id,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  if (previewMode) {
-    return (
-      <div ref={setNodeRef} style={style} className="glass rounded-2xl p-4">
-        <FormFieldRenderer
-          field={f}
-          value={previewValue}
-          onChange={onPreviewChange}
-          accent={accent}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={onSelect}
-      className={`glass flex cursor-pointer items-center gap-3 rounded-2xl p-4 transition-colors ${
-        selected ? "ring-2 ring-primary" : "hover:bg-muted/20"
-      }`}
-    >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        aria-label="Drag to reorder"
-      >
-        <GripVertical className="size-4" />
-      </button>
-
-      <div className="min-w-0 flex-1">
-        <div className="font-medium">
-          {f.label}
-          {f.isRequired ? <span className="ml-1 text-destructive">*</span> : null}
-        </div>
-        <div className="truncate text-sm text-muted-foreground">
-          {f.description || f.placeholder || ""}
-        </div>
-      </div>
-
-      <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-        {FIELD_TYPE_LABELS[f.type as FieldType]}
-      </span>
+    <div className="glass rounded-2xl p-4">
+      <FormFieldRenderer
+        field={f}
+        value={previewValue}
+        onChange={onPreviewChange}
+        accent={accent}
+      />
     </div>
   );
 }
@@ -231,6 +165,39 @@ export default function FormBuilder() {
     }
   };
 
+  // Dropped from the palette onto the canvas at a specific position —
+  // create it, then reorder if it didn't land at the end (createField
+  // always appends; the drop position may have meant "insert here").
+  const handleDropNewField = async (type: string, afterFieldId: string | undefined) => {
+    if (!formId || !fields) return;
+    const fieldType = type as FieldType;
+    if (!FIELD_TYPE_LABELS[fieldType]) return;
+
+    try {
+      const created = await createFieldAsync({
+        label: FIELD_TYPE_LABELS[fieldType],
+        type: fieldType,
+        formId,
+      });
+      setSelectedFieldId(created.id);
+
+      const withoutNew = fields.map((f) => f.id);
+      const insertAt = afterFieldId ? withoutNew.indexOf(afterFieldId) + 1 : 0;
+      const reordered = [
+        ...withoutNew.slice(0, insertAt),
+        created.id,
+        ...withoutNew.slice(insertAt),
+      ];
+
+      // Only reorder if it wasn't already appended at the end.
+      if (insertAt < withoutNew.length) {
+        await reorderFieldsAsync({ formId, orderedFieldIds: reordered });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add field");
+    }
+  };
+
   const buildConfig = (type: FieldType): FieldConfig | undefined => {
     if (OPTION_TYPES.has(type))
       return { options: draftOptions.map((o) => o.trim()).filter(Boolean) };
@@ -266,22 +233,10 @@ export default function FormBuilder() {
     }
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!fields || !formId || !over || active.id === over.id) return;
-
-    const oldIndex = fields.findIndex((f) => f.id === active.id);
-    const newIndex = fields.findIndex((f) => f.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(fields, oldIndex, newIndex);
+  const handleReorder = async (orderedIds: string[]) => {
+    if (!formId) return;
     try {
-      await reorderFieldsAsync({ formId, orderedFieldIds: reordered.map((f) => f.id) });
+      await reorderFieldsAsync({ formId, orderedFieldIds: orderedIds });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reorder fields");
     }
@@ -349,6 +304,15 @@ export default function FormBuilder() {
         <div className="flex-1" />
 
         <Button
+          variant="outline"
+          size="sm"
+          onClick={() => toast.info("AI-assisted editing is coming soon.")}
+        >
+          <Sparkles className="mr-1.5 size-3.5" />
+          AI Generate
+        </Button>
+
+        <Button
           variant={previewMode ? "default" : "outline"}
           size="sm"
           onClick={() => setPreviewMode((v) => !v)}
@@ -356,6 +320,29 @@ export default function FormBuilder() {
           <Eye className="mr-1.5 size-3.5" />
           Preview
         </Button>
+
+        {formId ? (
+          <ShareFormDialog formId={formId}>
+            <Button variant="outline" size="sm">
+              <Share2 className="mr-1.5 size-3.5" />
+              Share
+            </Button>
+          </ShareFormDialog>
+        ) : null}
+
+        {formId && form ? (
+          <PublishFormDialog
+            formId={formId}
+            currentStatus={form.status}
+            currentVisibility={form.visibility}
+            currentSubmissionAccess={form.submissionAccess}
+          >
+            <Button size="sm">
+              <Rocket className="mr-1.5 size-3.5" />
+              Publish
+            </Button>
+          </PublishFormDialog>
+        ) : null}
 
         <Button
           variant="outline"
@@ -372,7 +359,7 @@ export default function FormBuilder() {
 
       {/* --- three panes --- */}
       <div className="grid flex-1 grid-cols-[72px_1fr] overflow-hidden lg:grid-cols-[220px_1fr_320px]">
-        {/* Field palette */}
+        {/* Field palette — draggable onto the canvas, or click to append */}
         <aside className="glass-flat overflow-y-auto border-r border-border/60 p-3">
           <p className="mb-2 hidden px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase lg:block">
             Fields
@@ -382,8 +369,10 @@ export default function FormBuilder() {
               <button
                 key={type}
                 type="button"
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData("application/formless-field-type", type)}
                 onClick={() => handleAddField(type)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground lg:px-3"
+                className="flex w-full cursor-grab items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing lg:px-3"
               >
                 <Icon className="size-4 shrink-0" />
                 <span className="hidden truncate lg:inline">{label}</span>
@@ -393,9 +382,9 @@ export default function FormBuilder() {
         </aside>
 
         {/* Canvas */}
-        <main className="overflow-y-auto p-6">
-          <div className="mx-auto max-w-2xl">
-            {previewMode && (
+        <main className={previewMode ? "overflow-y-auto p-6" : "relative overflow-hidden"}>
+          {previewMode ? (
+            <div className="mx-auto max-w-2xl">
               <div
                 className="mb-4 overflow-hidden rounded-2xl p-6"
                 style={{
@@ -408,44 +397,56 @@ export default function FormBuilder() {
                   <p className="mt-1 text-sm opacity-80">{form.description}</p>
                 ) : null}
               </div>
-            )}
 
-            {fieldsLoading ? (
-              <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-                Loading fields...
-              </div>
-            ) : fields && fields.length > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={fields.map((f) => f.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {fields.map((f) => (
-                      <SortableFieldCard
-                        key={f.id}
-                        field={f}
-                        selected={selectedFieldId === f.id}
-                        onSelect={() => setSelectedFieldId(f.id)}
-                        previewMode={previewMode}
-                        previewValue={previewValues[f.id] ?? ""}
-                        onPreviewChange={(v) => setPreviewValues((s) => ({ ...s, [f.id]: v }))}
-                        accent={theme.accent}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            ) : (
+              {fieldsLoading ? (
+                <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
+                  Loading fields...
+                </div>
+              ) : fields && fields.length > 0 ? (
+                <div className="space-y-3">
+                  {fields.map((f) => (
+                    <PreviewFieldCard
+                      key={f.id}
+                      field={f}
+                      previewValue={previewValues[f.id] ?? ""}
+                      onPreviewChange={(v) => setPreviewValues((s) => ({ ...s, [f.id]: v }))}
+                      accent={theme.accent}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+                  No fields yet.
+                </div>
+              )}
+            </div>
+          ) : fieldsLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Loading fields...</div>
+          ) : fields && fields.length > 0 ? (
+            <FieldCanvas
+              fields={fields.map(
+                (f): CanvasField => ({
+                  id: f.id,
+                  label: f.label,
+                  description: f.description,
+                  isRequired: f.isRequired,
+                  type: f.type,
+                  typeLabel: FIELD_TYPE_LABELS[f.type as FieldType],
+                }),
+              )}
+              selectedFieldId={selectedFieldId}
+              onSelectField={setSelectedFieldId}
+              onReorder={handleReorder}
+              onDeleteField={handleDeleteField}
+              onDropNewField={handleDropNewField}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center p-10">
               <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-                Click a field type on the left to add your first field.
+                Drag a field type from the left, or click one to add your first field.
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </main>
 
         {/* Inspector */}

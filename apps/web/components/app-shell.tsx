@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Logo } from "~/components/logo";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { useCreateForm } from "~/hooks/api/form";
-import { useLogout } from "~/hooks/api/auth";
+import { LogoutConfirm } from "~/components/logout-confirm";
 
 const NAV_ITEMS = [
   { href: "/dashboard/forms", label: "Forms", icon: FilePlus2, isCreate: true },
@@ -30,7 +30,6 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { createFormAsync } = useCreateForm();
-  const { logoutAsync } = useLogout();
 
   const handleCreateForm = async () => {
     try {
@@ -41,25 +40,22 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
     }
   };
 
-  const handleLogout = async () => {
-    await logoutAsync();
-    router.push("/signin");
-  };
-
   return (
     <div className="grid h-screen grid-cols-[72px_1fr] overflow-hidden bg-background lg:grid-cols-[240px_1fr]">
       {/* --- left nav rail --- */}
       <aside className="glass-flat flex flex-col border-r border-border/60 py-5">
         <div className="mb-6 flex justify-center px-4 lg:justify-start">
           <Link href="/dashboard/forms">
-            <Logo markOnly className="lg:hidden" />
+            {/* <Logo markOnly className="lg:hidden" /> */}
             <Logo className="hidden lg:flex" />
           </Link>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || (item.isCreate && pathname?.startsWith("/dashboard/forms/"));
+            const active =
+              pathname === item.href ||
+              (item.isCreate && pathname?.startsWith("/dashboard/forms/"));
             const Icon = item.icon;
 
             if (item.isCreate) {
@@ -94,7 +90,9 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                  active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  active
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
@@ -108,22 +106,27 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
           <div className="flex items-center justify-center px-3 py-1 lg:justify-start">
             <ThemeToggle />
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="size-4 shrink-0" />
-            <span className="hidden lg:inline">Sign out</span>
-          </button>
+          <LogoutConfirm>
+            <button
+              type="button"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="size-4 shrink-0" />
+              <span className="hidden lg:inline">Sign out</span>
+            </button>
+          </LogoutConfirm>
         </div>
       </aside>
 
       {/* --- center workspace + optional right panel --- */}
-      <div className={`grid h-screen overflow-hidden ${rightPanel ? "grid-cols-1 xl:grid-cols-[1fr_320px]" : "grid-cols-1"}`}>
+      <div
+        className={`grid h-screen overflow-hidden ${rightPanel ? "grid-cols-1 xl:grid-cols-[1fr_320px]" : "grid-cols-1"}`}
+      >
         <main className="overflow-y-auto">{children}</main>
         {rightPanel ? (
-          <aside className="glass-flat hidden overflow-y-auto border-l border-border/60 xl:block">{rightPanel}</aside>
+          <aside className="glass-flat hidden overflow-y-auto border-l border-border/60 xl:block">
+            {rightPanel}
+          </aside>
         ) : null}
       </div>
     </div>

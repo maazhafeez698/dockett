@@ -23,6 +23,20 @@ export const updateFormInput = z.object({
     .enum(["MIDNIGHT", "CORAL", "MINT", "LAVENDER", "OCEAN"])
     .optional()
     .describe("Visual theme preset applied to the form's public page"),
+  status: z
+    .enum(["DRAFT", "PUBLISHED", "CLOSED"])
+    .optional()
+    .describe("Publish status of the form"),
+  visibility: z
+    .enum(["PUBLIC", "UNLISTED"])
+    .optional()
+    .describe("Who can find the form's public page"),
+  submissionAccess: z
+    .enum(["ANYONE", "AUTHENTICATED_ONLY", "ANONYMOUS_ONLY"])
+    .optional()
+    .describe(
+      "Who is allowed to submit responses — not yet enforced, schema only until the visibility phase",
+    ),
 });
 
 export type UpdateFormInputType = z.infer<typeof updateFormInput>;

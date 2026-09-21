@@ -24,6 +24,9 @@ export const getLoggedInUserInfoOutputModel = z.object({
   id: z.string().describe("ID of the user"),
   fullName: z.string().describe("Name of the user"),
   email: z.email().describe("Email of the user"),
+  hasPassword: z
+    .boolean()
+    .describe("Whether the account has a password set (false for Google-only accounts)"),
 });
 
 export const refreshAccessTokenInputModel = z.object({});
