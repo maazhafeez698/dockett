@@ -10,6 +10,7 @@ export function useCreateForm() {
     failureCount,
     isError,
     isIdle,
+    isPending,
     isSuccess,
     status,
   } = trpc.form.createForm.useMutation({
@@ -25,6 +26,7 @@ export function useCreateForm() {
     failureCount,
     isError,
     isIdle,
+    isPending,
     isSuccess,
     status,
   };
@@ -50,7 +52,7 @@ export function useListForms() {
   };
 }
 
-export const useGetFormWithFields = (formId: string) => {
+export const useGetFormWithFields = (formId: string, accessCode?: string, enabled = true) => {
   const {
     data: form,
     error,
@@ -58,7 +60,11 @@ export const useGetFormWithFields = (formId: string) => {
     isFetching,
     isLoading,
     status,
-  } = trpc.form.getFormWithFields.useQuery({ formId });
+    refetch,
+  } = trpc.form.getFormWithFields.useQuery(
+    { formId, accessCode },
+    { enabled: !!formId && enabled, retry: false },
+  );
 
   return {
     form,
@@ -67,8 +73,60 @@ export const useGetFormWithFields = (formId: string) => {
     isFetching,
     isLoading,
     status,
+    refetch,
   };
 };
+
+/** Cheap, always-public metadata — fetched first so the fill page can
+ * decide which gate (if any) to show before attempting getFormWithFields. */
+export const useGetFormAccessInfo = (formId: string) => {
+  const {
+    data: accessInfo,
+    error,
+    isFetched,
+    isFetching,
+    isLoading,
+    status,
+  } = trpc.form.getFormAccessInfo.useQuery({ formId }, { enabled: !!formId, retry: false });
+
+  return { accessInfo, error, isFetched, isFetching, isLoading, status };
+};
+
+export function useCreateFormFromTemplate() {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: createFormFromTemplateAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.form.createFormFromTemplate.useMutation({
+    onSuccess: async () => {
+      await utils.form.listForms.invalidate();
+    },
+  });
+
+  return { createFormFromTemplateAsync, error, isError, isSuccess, isPending };
+}
+
+export function useRegenerateAccessCode() {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: regenerateAccessCodeAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.form.regenerateAccessCode.useMutation({
+    onSuccess: async (_, variables) => {
+      await utils.form.getFormWithFields.invalidate({ formId: variables.formId });
+    },
+  });
+
+  return { regenerateAccessCodeAsync, error, isError, isSuccess, isPending };
+}
 
 export function useUpdateForm() {
   const utils = trpc.useUtils();
