@@ -2,9 +2,10 @@
 
 import { TRPCError } from "@trpc/server";
 
-import { authenticatedProcedure, publicProcedure, router } from "../../trpc";
+import { authenticatedProcedure, optionalAuthProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { formSubmissionService } from "../../services";
+import { assertFormOwnership } from "@repo/services/form";
 
 import {
   createSubmissionInputModel,
@@ -17,13 +18,16 @@ const TAGS = ["FormSubmission"];
 const getPath = generatePath("/form-submission");
 
 export const formSubmissionRouter = router({
-  createSubmission: publicProcedure
+  createSubmission: optionalAuthProcedure
     .meta({ openapi: { method: "POST", path: getPath("/createSubmission"), tags: TAGS } })
     .input(createSubmissionInputModel)
     .output(createSubmissionOutputModel)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        const result = await formSubmissionService.createSubmission(input as any);
+        const result = await formSubmissionService.createSubmission({
+          ...input,
+          requesterId: ctx.user?.id,
+        });
         return result;
       } catch (error) {
         throw new TRPCError({
@@ -43,8 +47,18 @@ export const formSubmissionRouter = router({
     })
     .input(getSubmissionsByFormIdInputModel)
     .output(getSubmissionsByFormIdOutputModel)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { formId } = input;
+
+      // IDOR fix: this previously returned any form's submissions to any
+      // signed-in user, not just the owner. Same "not found" message for a
+      // non-owner and a nonexistent form, matching the rest of the app.
+      try {
+        await assertFormOwnership(formId, ctx.user.id);
+      } catch {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
+      }
+
       const result = await formSubmissionService.getSubmissionsByFormId(formId);
       return result;
     }),

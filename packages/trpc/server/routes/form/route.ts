@@ -1,21 +1,27 @@
 import { TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 
-import { authenticatedProcedure, publicProcedure, router } from "../../trpc";
+import { authenticatedProcedure, optionalAuthProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { formService } from "../../services";
 
 import {
   createFormInputModel,
   createFormOutputModel,
+  createFormFromTemplateInputModel,
+  createFormFromTemplateOutputModel,
   listFormsInputModel,
   listFormsOutputModel,
   getFormInputModel,
   getFormOutputModel,
+  getFormAccessInfoInputModel,
+  getFormAccessInfoOutputModel,
   updateFormInputModel,
   updateFormOutputModel,
   deleteFormInputModel,
   deleteFormOutputModel,
+  regenerateAccessCodeInputModel,
+  regenerateAccessCodeOutputModel,
 } from "./model";
 
 const TAGS = ["Form"];
@@ -26,6 +32,27 @@ function toReadableMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+/** Maps the service's gate signals to the right tRPC error code + a
+ * message the client can key off of to render a gate screen instead of a
+ * generic error toast. */
+function toGatedError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message === "ACCESS_CODE_REQUIRED") {
+    return new TRPCError({ code: "FORBIDDEN", message: "ACCESS_CODE_REQUIRED" });
+  }
+  if (message === "LOGIN_REQUIRED") {
+    return new TRPCError({ code: "UNAUTHORIZED", message: "LOGIN_REQUIRED" });
+  }
+  if (message === "Form not found") {
+    return new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
+  }
+  return new TRPCError({
+    code: "BAD_REQUEST",
+    message: toReadableMessage(error, "Failed to load form"),
+  });
+}
+
 export const formRouter = router({
   createForm: authenticatedProcedure
     .meta({
@@ -34,15 +61,43 @@ export const formRouter = router({
     .input(createFormInputModel)
     .output(createFormOutputModel)
     .mutation(async ({ input, ctx }) => {
-      const { title, description } = input;
+      const { title, description, template, submissionLayout } = input;
 
       const { id } = await formService.createForm({
         title,
         description,
+        template,
+        submissionLayout,
         createdBy: ctx.user.id,
       });
 
       return { id };
+    }),
+
+  createFormFromTemplate: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/createFormFromTemplate"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(createFormFromTemplateInputModel)
+    .output(createFormFromTemplateOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const result = await formService.createFormFromTemplate({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return result;
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: toReadableMessage(error, "Failed to create form from template"),
+        });
+      }
     }),
 
   listForms: authenticatedProcedure
@@ -59,16 +114,37 @@ export const formRouter = router({
       return forms;
     }),
 
-  getFormWithFields: publicProcedure
+  getFormAccessInfo: optionalAuthProcedure
+    .meta({
+      openapi: { method: "GET", path: getPath("/getFormAccessInfo"), tags: TAGS },
+    })
+    .input(getFormAccessInfoInputModel)
+    .output(getFormAccessInfoOutputModel)
+    .query(async ({ input }) => {
+      try {
+        return await formService.getFormAccessInfo(input.formId);
+      } catch (error) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
+      }
+    }),
+
+  getFormWithFields: optionalAuthProcedure
     .meta({
       openapi: { method: "GET", path: getPath("/getForm"), tags: TAGS },
     })
     .input(getFormInputModel)
     .output(getFormOutputModel)
-    .query(async ({ input }) => {
-      const { formId } = input;
-      const form = await formService.getFormWithFields(formId);
-      return form;
+    .query(async ({ input, ctx }) => {
+      try {
+        const form = await formService.getFormWithFields({
+          formId: input.formId,
+          accessCode: input.accessCode,
+          requesterId: ctx.user?.id,
+        });
+        return form;
+      } catch (error) {
+        throw toGatedError(error);
+      }
     }),
 
   updateForm: authenticatedProcedure
@@ -85,6 +161,28 @@ export const formRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: toReadableMessage(error, "Failed to update form"),
+        });
+      }
+    }),
+
+  regenerateAccessCode: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/regenerateAccessCode"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(regenerateAccessCodeInputModel)
+    .output(regenerateAccessCodeOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        return await formService.regenerateAccessCode({ formId: input.formId, userId: ctx.user.id });
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: toReadableMessage(error, "Failed to regenerate access code"),
         });
       }
     }),

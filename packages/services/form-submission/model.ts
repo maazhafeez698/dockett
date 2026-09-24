@@ -8,6 +8,8 @@ export const submissionValue = z.object({
 export const createSubmissionInput = z.object({
   formId: z.uuid().describe("UUID of the form"),
   values: z.array(submissionValue).describe("Array of field/value pairs"),
+  requesterId: z.uuid().optional().describe("Signed-in respondent, if any"),
+  accessCode: z.string().max(12).optional().describe("Code entered by the respondent, if prompted"),
 });
 
 export const createSubmissionOutput = z.object({

@@ -3,16 +3,69 @@ import { fieldOutputModel } from "../form-field/model";
 
 export const formStatusEnum = z.enum(["DRAFT", "PUBLISHED", "CLOSED"]);
 export const formVisibilityEnum = z.enum(["PUBLIC", "UNLISTED"]);
-export const formThemeEnum = z.enum(["MIDNIGHT", "CORAL", "MINT", "LAVENDER", "OCEAN"]);
-export const formSubmissionAccessEnum = z.enum(["ANYONE", "AUTHENTICATED_ONLY", "ANONYMOUS_ONLY"]);
+export const formTemplateEnum = z.enum([
+  "CORPORATE",
+  "SURVEY",
+  "EDUCATION",
+  "DEVELOPER",
+  "RETRO",
+  "INVITATION",
+  "TICKET",
+  "LANDING",
+  "CLASSIC",
+]);
+export const formSubmissionLayoutEnum = z.enum(["ONE_AT_A_TIME", "ALL_AT_ONCE"]);
+export const formSubmissionAccessEnum = z.enum(["ANYONE", "ACCESS_CODE", "AUTHENTICATED_ONLY"]);
+
+const templateFieldModel = z.object({
+  label: z.string().min(1).max(100),
+  type: z.enum([
+    "TEXT",
+    "EMAIL",
+    "NUMBER",
+    "YES_NO",
+    "PASSWORD",
+    "LONG_TEXT",
+    "DROPDOWN",
+    "MULTI_SELECT",
+    "CHECKBOX_GROUP",
+    "DATE",
+    "RATING",
+  ]),
+  isRequired: z.boolean().optional().default(false),
+  placeholder: z.string().optional(),
+  description: z.string().max(1000).optional(),
+  config: z
+    .object({
+      options: z.array(z.string().min(1).max(200)).max(50).optional(),
+      maxLength: z.number().int().positive().max(5000).optional(),
+      max: z.number().int().min(2).max(10).optional(),
+    })
+    .nullable()
+    .optional(),
+});
 
 export const createFormInputModel = z.object({
   title: z.string().max(55).describe("Title of the form"),
   description: z.string().max(300).optional().describe("Description of the form"),
+  template: formTemplateEnum.optional(),
+  submissionLayout: formSubmissionLayoutEnum.optional(),
 });
 
 export const createFormOutputModel = z.object({
   id: z.string().describe("ID of the created form"),
+});
+
+export const createFormFromTemplateInputModel = z.object({
+  title: z.string().min(1).max(50),
+  description: z.string().max(300).optional(),
+  template: formTemplateEnum,
+  submissionLayout: formSubmissionLayoutEnum,
+  fields: z.array(templateFieldModel).max(60),
+});
+
+export const createFormFromTemplateOutputModel = z.object({
+  id: z.string(),
 });
 
 export const listFormsInputModel = z.undefined();
@@ -24,7 +77,9 @@ export const listFormsOutputModel = z.array(
     status: formStatusEnum,
     visibility: formVisibilityEnum,
     submissionAccess: formSubmissionAccessEnum,
-    theme: formThemeEnum,
+    template: formTemplateEnum,
+    submissionLayout: formSubmissionLayoutEnum,
+    accessCode: z.string().nullable().optional(),
 
     createdAt: z.date().nullable().describe("Creation timestamp"),
     updatedAt: z.date().nullable().describe("Last updated timestamp"),
@@ -33,6 +88,7 @@ export const listFormsOutputModel = z.array(
 
 export const getFormInputModel = z.object({
   formId: z.uuid().describe("UUID of the form to fetch"),
+  accessCode: z.string().max(12).optional().describe("Code entered by the visitor, if prompted"),
 });
 
 export const getFormOutputModel = z.object({
@@ -42,17 +98,33 @@ export const getFormOutputModel = z.object({
   status: formStatusEnum,
   visibility: formVisibilityEnum,
   submissionAccess: formSubmissionAccessEnum,
-  theme: formThemeEnum,
+  template: formTemplateEnum,
+  submissionLayout: formSubmissionLayoutEnum,
+  accessCode: z.string().nullable(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   fields: z.array(fieldOutputModel),
+});
+
+export const getFormAccessInfoInputModel = z.object({
+  formId: z.uuid(),
+});
+
+export const getFormAccessInfoOutputModel = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  status: formStatusEnum,
+  submissionAccess: formSubmissionAccessEnum,
+  template: formTemplateEnum,
 });
 
 export const updateFormInputModel = z.object({
   formId: z.uuid().describe("UUID of the form to update"),
   title: z.string().min(1).max(50).optional(),
   description: z.string().max(300).nullable().optional(),
-  theme: formThemeEnum.optional(),
+  template: formTemplateEnum.optional(),
+  submissionLayout: formSubmissionLayoutEnum.optional(),
   status: formStatusEnum.optional(),
   visibility: formVisibilityEnum.optional(),
   submissionAccess: formSubmissionAccessEnum.optional(),
@@ -68,4 +140,12 @@ export const deleteFormInputModel = z.object({
 
 export const deleteFormOutputModel = z.object({
   id: z.string(),
+});
+
+export const regenerateAccessCodeInputModel = z.object({
+  formId: z.uuid(),
+});
+
+export const regenerateAccessCodeOutputModel = z.object({
+  accessCode: z.string(),
 });

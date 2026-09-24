@@ -1,5 +1,6 @@
 import { pgTable, uuid, timestamp, json } from "drizzle-orm/pg-core";
 import { formsTable } from "./form";
+import { usersTable } from "./user";
 
 export interface FormSubmissionValue {
   fieldId: string;
@@ -12,6 +13,12 @@ export const formSubmissionsTable = pgTable("form_submissions", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   formId: uuid("form_id").references(() => formsTable.id, { onDelete: "cascade" }),
+
+  // Set when the respondent was signed in to a Formless account at submit
+  // time (AUTHENTICATED_ONLY forms always have this; ANYONE/ACCESS_CODE
+  // forms may or may not, depending on whether the visitor happened to be
+  // logged in). Null means an anonymous submission.
+  submittedBy: uuid("submitted_by").references(() => usersTable.id),
 
   values: json("values").$type<FormSubmissionValueRow>(),
 
