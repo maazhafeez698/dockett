@@ -1,8 +1,12 @@
 // apps/web/lib/templates-data.ts
 //
-// Each template is a real, distinct field set for a real use case — not
-// the same 3 fields recolored. "theme" picks a sensible default from the
-// existing 5 presets; the differentiation that matters is the structure.
+// 8 templates, each pairing a real field set for a real use case with a
+// structurally distinct design (see components/form-templates/*) — not a
+// recolor of one layout. `template` selects the design; `submissionLayout`
+// is each template's sensible default pacing (the owner can still change
+// either after "Use Template").
+
+import type { FormTemplateId } from "./template-designs";
 
 export type TemplateFieldType =
   | "TEXT"
@@ -28,77 +32,146 @@ export interface TemplateField {
 export interface FormTemplate {
   id: string;
   name: string;
-  category: string;
+  template: FormTemplateId;
   description: string;
-  theme: "MIDNIGHT" | "CORAL" | "MINT" | "LAVENDER" | "OCEAN";
+  submissionLayout: "ONE_AT_A_TIME" | "ALL_AT_ONCE";
   fields: TemplateField[];
 }
 
 export const FORM_TEMPLATES: FormTemplate[] = [
   {
-    id: "customer-feedback",
-    name: "Customer Feedback",
-    category: "Professional",
-    description: "Satisfaction, praise, and improvement areas from real customers.",
-    theme: "OCEAN",
-    fields: [
-      { label: "Name", type: "TEXT", isRequired: true },
-      { label: "Email", type: "EMAIL", isRequired: true },
-      { label: "Overall satisfaction", type: "RATING", isRequired: true, config: { max: 5 } },
-      { label: "What did you like most?", type: "LONG_TEXT" },
-      { label: "What could we improve?", type: "LONG_TEXT" },
-      { label: "Would you recommend us to others?", type: "YES_NO", isRequired: true },
-    ],
-  },
-  {
-    id: "job-application",
+    id: "corporate-job-application",
     name: "Job Application",
-    category: "Professional",
-    description: "Candidate intake with role, experience, and portfolio links.",
-    theme: "MIDNIGHT",
+    template: "CORPORATE",
+    description:
+      "Formal candidate intake — role, experience, and portfolio, laid out like a real HR form.",
+    submissionLayout: "ALL_AT_ONCE",
     fields: [
       { label: "Full name", type: "TEXT", isRequired: true },
       { label: "Email", type: "EMAIL", isRequired: true },
       { label: "Position applying for", type: "TEXT", isRequired: true },
       { label: "Years of experience", type: "NUMBER" },
-      { label: "LinkedIn or portfolio URL", type: "TEXT" },
+      {
+        label: "Employment type",
+        type: "DROPDOWN",
+        isRequired: true,
+        config: { options: ["Full-time", "Part-time", "Contract", "Internship"] },
+      },
+      { label: "LinkedIn or portfolio URL", type: "TEXT", placeholder: "https://" },
       { label: "Why do you want to join us?", type: "LONG_TEXT", isRequired: true },
     ],
   },
   {
-    id: "event-rsvp",
-    name: "Event RSVP",
-    category: "Team & Collaboration",
-    description: "Attendance, guest count, and dietary needs for an event.",
-    theme: "CORAL",
+    id: "survey-customer-feedback",
+    name: "Customer Feedback",
+    template: "SURVEY",
+    description: "Satisfaction and NPS-style pulse check, one focused question at a time.",
+    submissionLayout: "ONE_AT_A_TIME",
     fields: [
-      { label: "Full name", type: "TEXT", isRequired: true },
-      { label: "Email", type: "EMAIL", isRequired: true },
-      { label: "Will you attend?", type: "YES_NO", isRequired: true },
-      { label: "Number of guests", type: "NUMBER" },
-      { label: "Dietary restrictions", type: "LONG_TEXT" },
+      { label: "Overall satisfaction", type: "RATING", isRequired: true, config: { max: 5 } },
+      {
+        label: "How likely are you to recommend us to a friend?",
+        type: "RATING",
+        isRequired: true,
+        config: { max: 10 },
+      },
+      { label: "What did you like most?", type: "LONG_TEXT" },
+      { label: "What could we improve?", type: "LONG_TEXT" },
+      { label: "Email (optional, for follow-up)", type: "EMAIL" },
     ],
   },
   {
-    id: "team-retro",
-    name: "Team Retrospective",
-    category: "Team & Collaboration",
-    description: "What went well, what didn't, and action items for next sprint.",
-    theme: "OCEAN",
+    id: "education-course-enrollment",
+    name: "Course Enrollment",
+    template: "EDUCATION",
+    description: "Student sign-up with schedule preference and prior experience level.",
+    submissionLayout: "ALL_AT_ONCE",
+    fields: [
+      { label: "Student name", type: "TEXT", isRequired: true },
+      { label: "Student email", type: "EMAIL", isRequired: true },
+      {
+        label: "Course",
+        type: "DROPDOWN",
+        isRequired: true,
+        config: { options: ["Introduction", "Intermediate", "Advanced"] },
+      },
+      {
+        label: "Preferred schedule",
+        type: "DROPDOWN",
+        isRequired: true,
+        config: { options: ["Weekday mornings", "Weekday evenings", "Weekends"] },
+      },
+      { label: "Prior experience level", type: "RATING", config: { max: 5 } },
+      { label: "Anything else we should know?", type: "LONG_TEXT" },
+    ],
+  },
+  {
+    id: "developer-bug-report",
+    name: "Bug Report",
+    template: "DEVELOPER",
+    description: "Structured bug intake — environment, severity, repro steps, and logs.",
+    submissionLayout: "ALL_AT_ONCE",
+    fields: [
+      { label: "reporter", type: "TEXT", isRequired: true },
+      {
+        label: "environment",
+        type: "DROPDOWN",
+        isRequired: true,
+        config: { options: ["production", "staging", "local"] },
+      },
+      {
+        label: "severity",
+        type: "DROPDOWN",
+        isRequired: true,
+        config: { options: ["critical", "high", "medium", "low"] },
+      },
+      { label: "steps_to_reproduce", type: "LONG_TEXT", isRequired: true },
+      { label: "expected_vs_actual", type: "LONG_TEXT", isRequired: true },
+      {
+        label: "stack_trace",
+        type: "LONG_TEXT",
+        placeholder: "// paste logs here",
+      },
+    ],
+  },
+  {
+    id: "retro-guestbook",
+    name: "Retro Guestbook",
+    template: "RETRO",
+    description: "A playful, nostalgic guestbook — sign in and leave a message.",
+    submissionLayout: "ALL_AT_ONCE",
     fields: [
       { label: "Your name", type: "TEXT", isRequired: true },
-      { label: "What went well?", type: "LONG_TEXT", isRequired: true },
-      { label: "What didn't go well?", type: "LONG_TEXT", isRequired: true },
-      { label: "Action items for next sprint", type: "LONG_TEXT" },
-      { label: "Overall sprint rating", type: "RATING", config: { max: 5 } },
+      { label: "Your website", type: "TEXT", placeholder: "https://" },
+      { label: "Message", type: "LONG_TEXT", isRequired: true },
+      { label: "Mood", type: "DROPDOWN", config: { options: [":)", ":(", ":P", "<3"] } },
+      { label: "I promise to be nice", type: "YES_NO" },
     ],
   },
   {
-    id: "it-support-request",
+    id: "invitation-party-rsvp",
+    name: "Wedding / Party RSVP",
+    template: "INVITATION",
+    description: "Elegant guest RSVP with meal choice and a message for the hosts.",
+    submissionLayout: "ALL_AT_ONCE",
+    fields: [
+      { label: "Guest name", type: "TEXT", isRequired: true },
+      { label: "Will you attend?", type: "YES_NO", isRequired: true },
+      {
+        label: "Meal choice",
+        type: "DROPDOWN",
+        config: { options: ["Chicken", "Fish", "Vegetarian", "Vegan"] },
+      },
+      { label: "Number of guests", type: "NUMBER" },
+      { label: "Message for the couple", type: "LONG_TEXT" },
+    ],
+  },
+  {
+    id: "ticket-it-support",
     name: "IT Support Request",
-    category: "Team & Collaboration",
-    description: "Internal ticket intake with category, priority, and description.",
-    theme: "MIDNIGHT",
+    template: "TICKET",
+    description: "Internal ticket intake with department, category, and priority.",
+    submissionLayout: "ALL_AT_ONCE",
     fields: [
       { label: "Requester name", type: "TEXT", isRequired: true },
       {
@@ -123,127 +196,11 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     ],
   },
   {
-    id: "course-enrollment",
-    name: "Course Enrollment",
-    category: "Education",
-    description: "Student sign-up for a course, with schedule and experience level.",
-    theme: "MINT",
-    fields: [
-      { label: "Student name", type: "TEXT", isRequired: true },
-      { label: "Student email", type: "EMAIL", isRequired: true },
-      {
-        label: "Course",
-        type: "DROPDOWN",
-        isRequired: true,
-        config: { options: ["Introduction", "Intermediate", "Advanced"] },
-      },
-      {
-        label: "Preferred schedule",
-        type: "DROPDOWN",
-        isRequired: true,
-        config: { options: ["Weekday mornings", "Weekday evenings", "Weekends"] },
-      },
-      { label: "Prior experience level", type: "RATING", config: { max: 5 } },
-    ],
-  },
-  {
-    id: "lecture-feedback",
-    name: "Lecture Feedback",
-    category: "Education",
-    description: "Post-lecture pulse check on clarity, pace, and unclear topics.",
-    theme: "LAVENDER",
-    fields: [
-      { label: "Student name", type: "TEXT" },
-      {
-        label: "Which topics were unclear?",
-        type: "CHECKBOX_GROUP",
-        config: { options: ["Topic 1", "Topic 2", "Topic 3"] },
-      },
-      { label: "Rate the lecture pace", type: "RATING", isRequired: true, config: { max: 5 } },
-      { label: "Additional comments", type: "LONG_TEXT" },
-    ],
-  },
-  {
-    id: "bug-report",
-    name: "Bug Report",
-    category: "Developer",
-    description: "Structured bug intake — environment, severity, repro steps, logs.",
-    theme: "MIDNIGHT",
-    fields: [
-      { label: "Reporter", type: "TEXT", isRequired: true },
-      {
-        label: "Environment",
-        type: "DROPDOWN",
-        isRequired: true,
-        config: { options: ["Production", "Staging", "Local"] },
-      },
-      {
-        label: "Severity",
-        type: "DROPDOWN",
-        isRequired: true,
-        config: { options: ["Critical", "High", "Medium", "Low"] },
-      },
-      { label: "Steps to reproduce", type: "LONG_TEXT", isRequired: true },
-      { label: "Expected vs actual behavior", type: "LONG_TEXT", isRequired: true },
-      {
-        label: "Log output / stack trace",
-        type: "LONG_TEXT",
-        placeholder: "Paste relevant logs here",
-      },
-    ],
-  },
-  {
-    id: "feature-request",
-    name: "Feature Request",
-    category: "Developer",
-    description: "Problem, proposed solution, and priority — console-style intake.",
-    theme: "MIDNIGHT",
-    fields: [
-      { label: "Submitted by", type: "TEXT", isRequired: true },
-      { label: "Feature title", type: "TEXT", isRequired: true },
-      { label: "Problem it solves", type: "LONG_TEXT", isRequired: true },
-      { label: "Proposed solution", type: "LONG_TEXT" },
-      { label: "Priority", type: "RATING", config: { max: 5 } },
-    ],
-  },
-  {
-    id: "retro-guestbook",
-    name: "Retro Guestbook",
-    category: "Retro",
-    description: "A playful, nostalgic guestbook — sign in and leave a message.",
-    theme: "LAVENDER",
-    fields: [
-      { label: "Your name", type: "TEXT", isRequired: true },
-      { label: "Your website", type: "TEXT", placeholder: "https://" },
-      { label: "Message", type: "LONG_TEXT", isRequired: true },
-      { label: "Mood", type: "DROPDOWN", config: { options: [":)", ":(", ":P", "<3"] } },
-      { label: "I promise to be nice", type: "YES_NO" },
-    ],
-  },
-  {
-    id: "party-rsvp",
-    name: "Wedding / Party RSVP",
-    category: "Lifestyle",
-    description: "Guest RSVP with meal choice and a message for the hosts.",
-    theme: "CORAL",
-    fields: [
-      { label: "Guest name", type: "TEXT", isRequired: true },
-      { label: "Will you attend?", type: "YES_NO", isRequired: true },
-      {
-        label: "Meal choice",
-        type: "DROPDOWN",
-        config: { options: ["Chicken", "Fish", "Vegetarian", "Vegan"] },
-      },
-      { label: "Song request", type: "TEXT" },
-      { label: "Message for the couple", type: "LONG_TEXT" },
-    ],
-  },
-  {
-    id: "waitlist-signup",
+    id: "landing-waitlist-signup",
     name: "Newsletter / Waitlist",
-    category: "Marketing",
-    description: "Lightweight lead capture with interest tags.",
-    theme: "MINT",
+    template: "LANDING",
+    description: "Lightweight lead capture with interest tags — one field per screen to convert.",
+    submissionLayout: "ONE_AT_A_TIME",
     fields: [
       { label: "Name", type: "TEXT", isRequired: true },
       { label: "Email", type: "EMAIL", isRequired: true },
@@ -260,3 +217,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     ],
   },
 ];
+
+export function getTemplateById(id: string): FormTemplate | undefined {
+  return FORM_TEMPLATES.find((t) => t.id === id);
+}
