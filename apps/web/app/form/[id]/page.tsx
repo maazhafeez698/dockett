@@ -1,146 +1,238 @@
 // apps/web/app/form/[id]/page.tsx
+//
+// Respondent-facing fill page. Flow:
+//   1. getFormAccessInfo (always public) — cheap metadata, decides which
+//      gate (if any) to show before we try to load the real fields.
+//   2. If gated (access code / sign-in), show that screen first.
+//   3. getFormWithFields (with accessCode if applicable) — the server
+//      re-checks everything regardless of what the client already showed.
+//   4. Render via the form's template shell, pacing fields per its
+//      submissionLayout.
 
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { useParams } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { use, useState } from "react";
+import Link from "next/link";
+import { AlertCircle, KeyRound, Lock, LogIn } from "lucide-react";
 
-import { useGetFormWithFields } from "~/hooks/api/form";
+import { useGetFormAccessInfo, useGetFormWithFields } from "~/hooks/api/form";
 import { useCreateSubmission } from "~/hooks/api/form-submission";
+import { useUser } from "~/hooks/api/auth";
+import { useSubmissionFlow } from "~/hooks/use-submission-flow";
+import { FormTemplateRenderer } from "~/components/form-templates";
 import { Button } from "~/components/ui/button";
-import { FormFieldRenderer } from "~/components/form-field-renderer";
-import { getFormTheme } from "~/lib/form-themes";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 
-export default function PublicFormPage() {
-  const params = useParams();
-  const formId = params?.id as string | undefined;
+function CenteredMessage({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center px-4">
+      <div className="glass-strong flex max-w-sm flex-col items-center gap-3 rounded-2xl p-8 text-center">
+        {icon}
+        <p className="text-lg font-semibold">{title}</p>
+        <p className="text-sm text-muted-foreground">{body}</p>
+        {action}
+      </div>
+    </div>
+  );
+}
 
-  const { form, isLoading } = useGetFormWithFields(formId ?? "");
-  const { createSubmissionAsync, status, error } = useCreateSubmission();
-
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!form?.fields) return;
-    const initial: Record<string, string> = {};
-    for (const f of form.fields) initial[f.id] = "";
-    setValues(initial);
-  }, [form?.fields]);
-
-  const handleChange = (fieldId: string, v: string) => {
-    setValues((s) => ({ ...s, [fieldId]: v }));
-    setMissingFieldIds((s) => {
-      if (!s.has(fieldId)) return s;
-      const next = new Set(s);
-      next.delete(fieldId);
-      return next;
-    });
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!formId || !form?.fields) return;
-
-    // Client-side check purely for immediate feedback — the server
-    // re-validates this regardless, since a client check alone can't be
-    // trusted (anyone can call the API directly).
-    const missing = form.fields.filter((f) => f.isRequired && !values[f.id]?.trim());
-
-    if (missing.length > 0) {
-      setMissingFieldIds(new Set(missing.map((f) => f.id)));
-      return;
-    }
-
-    const payload = {
-      formId,
-      values: Object.entries(values).map(([fieldId, value]) => ({ fieldId, value })),
-    };
-
-    try {
-      await createSubmissionAsync(payload);
-      setSubmitted(true);
-      setValues((s) => Object.fromEntries(Object.keys(s).map((k) => [k, ""])));
-      setMissingFieldIds(new Set());
-    } catch (err) {
-      console.error("Submission failed:", err);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading form…
-      </main>
-    );
-  }
-
-  if (!form) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Form not found.
-      </main>
-    );
-  }
-
-  const theme = getFormTheme(form.theme);
+function AccessCodeGate({
+  onSubmit,
+  submitting,
+  error,
+}: {
+  onSubmit: (code: string) => void;
+  submitting: boolean;
+  error?: string | null;
+}) {
+  const [code, setCode] = useState("");
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Theme hero band — the vibrant accent-card treatment, applied here
-          as a page header rather than a literal card. */}
-      <div
-        className="px-6 py-16"
-        style={{
-          background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+    <div className="flex min-h-[70vh] items-center justify-center px-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(code.trim());
         }}
+        className="glass-strong flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl p-8 text-center"
       >
-        <div className="mx-auto max-w-2xl" style={{ color: theme.onGradient }}>
-          <h1 className="text-3xl font-semibold tracking-tight">{form.title}</h1>
-          {form.description ? <p className="mt-2 opacity-80">{form.description}</p> : null}
+        <KeyRound className="size-8 text-muted-foreground" />
+        <p className="text-lg font-semibold">This form needs an access code</p>
+        <p className="text-sm text-muted-foreground">
+          Ask whoever shared this form's link for the code.
+        </p>
+        <div className="w-full space-y-1.5 text-left">
+          <Label htmlFor="access-code">Access code</Label>
+          <Input
+            id="access-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="e.g. 7F3KQ2"
+            className="text-center tracking-[0.3em] uppercase"
+            maxLength={12}
+            autoFocus
+          />
         </div>
-      </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button type="submit" disabled={!code.trim() || submitting} className="w-full">
+          {submitting ? "Checking..." : "Continue"}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
-      <div className="mx-auto -mt-8 max-w-2xl px-6 pb-16">
-        <div className="glass-strong rounded-3xl p-6 sm:p-8">
-          {submitted ? (
-            <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <CheckCircle2 className="size-10" style={{ color: theme.accent }} />
-              <p className="text-lg font-medium">Thank you.</p>
-              <p className="text-sm text-muted-foreground">Your submission has been received.</p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate className="space-y-6">
-              {form.fields.map((f) => (
-                <FormFieldRenderer
-                  key={f.id}
-                  field={f}
-                  value={values[f.id] ?? ""}
-                  onChange={(v) => handleChange(f.id, v)}
-                  isMissing={missingFieldIds.has(f.id)}
-                  accent={theme.accent}
-                />
-              ))}
+export default function PublicFormPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
 
-              {error ? <div className="text-sm text-destructive">{error.message}</div> : null}
-              {missingFieldIds.size > 0 ? (
-                <div className="text-sm text-destructive">Please fill in all required fields.</div>
-              ) : null}
+  const {
+    accessInfo,
+    isLoading: accessInfoLoading,
+    error: accessInfoError,
+  } = useGetFormAccessInfo(id);
+  const { user, isLoading: userLoading } = useUser();
 
-              <Button
-                type="submit"
-                disabled={status === "pending"}
-                style={{ background: theme.accent, color: "#fff" }}
-                className="w-full border-0 hover:opacity-90"
-              >
-                {status === "pending" ? "Submitting..." : "Submit"}
-              </Button>
-            </form>
-          )}
-        </div>
-      </div>
-    </main>
+  const [enteredCode, setEnteredCode] = useState<string | undefined>(undefined);
+
+  const needsCodeAttempt =
+    accessInfo?.submissionAccess === "ACCESS_CODE" && enteredCode === undefined;
+  const needsLogin = accessInfo?.submissionAccess === "AUTHENTICATED_ONLY" && !userLoading && !user;
+
+  const {
+    form,
+    isLoading: formLoading,
+    error: formError,
+  } = useGetFormWithFields(id, enteredCode, !!accessInfo && !needsCodeAttempt && !needsLogin);
+
+  const { createSubmissionAsync, isPending: submitting } = useCreateSubmission();
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const fields = form?.fields ?? [];
+  const flow = useSubmissionFlow(fields, form?.submissionLayout ?? "ONE_AT_A_TIME");
+
+  if (accessInfoLoading) return null;
+
+  if (accessInfoError || !accessInfo) {
+    return (
+      <CenteredMessage
+        icon={<AlertCircle className="size-8 text-muted-foreground" />}
+        title="Form not found"
+        body="This form doesn't exist, or the link is incorrect."
+      />
+    );
+  }
+
+  if (accessInfo.status !== "PUBLISHED") {
+    return (
+      <CenteredMessage
+        icon={<Lock className="size-8 text-muted-foreground" />}
+        title="Not accepting responses"
+        body="This form isn't published right now. Check back later."
+      />
+    );
+  }
+
+  if (needsLogin) {
+    return (
+      <CenteredMessage
+        icon={<LogIn className="size-8 text-muted-foreground" />}
+        title="Sign in to continue"
+        body={`"${accessInfo.title}" only accepts responses from signed-in Formless accounts.`}
+        action={
+          <Button asChild className="w-full">
+            <Link href={`/signin?next=/form/${id}`}>Sign in</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (needsCodeAttempt) {
+    return (
+      <AccessCodeGate
+        submitting={formLoading}
+        error={
+          enteredCode !== undefined && formError
+            ? "That code didn't work — double check and try again."
+            : null
+        }
+        onSubmit={(code) => setEnteredCode(code)}
+      />
+    );
+  }
+
+  if (formError && !needsCodeAttempt) {
+    if (formError.message === "ACCESS_CODE_REQUIRED" || formError.data?.code === "FORBIDDEN") {
+      return (
+        <AccessCodeGate
+          submitting={formLoading}
+          error="That code didn't work — try again."
+          onSubmit={setEnteredCode}
+        />
+      );
+    }
+    return (
+      <CenteredMessage
+        icon={<AlertCircle className="size-8 text-muted-foreground" />}
+        title="Can't load this form"
+        body={formError.message || "Something went wrong."}
+      />
+    );
+  }
+
+  if (formLoading || !form) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitError(null);
+    if (!flow.validateAll()) return;
+
+    try {
+      await createSubmissionAsync({
+        formId: id,
+        values: flow.toSubmissionValues(),
+        accessCode: enteredCode,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit");
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background px-4 py-10 sm:py-16">
+      <FormTemplateRenderer
+        template={form.template}
+        title={form.title}
+        description={form.description}
+        fields={fields}
+        visibleFields={flow.visibleFields}
+        values={flow.values}
+        onChange={flow.onChange}
+        missingFieldIds={flow.missingFieldIds}
+        layout={form.submissionLayout}
+        stepIndex={flow.step}
+        isFirstStep={flow.isFirstStep}
+        isLastStep={flow.isLastStep}
+        onNext={flow.onNext}
+        onBack={flow.onBack}
+        onSubmit={handleSubmit}
+        submitting={submitting}
+        submitted={submitted}
+        errorMessage={submitError}
+      />
+    </div>
   );
 }

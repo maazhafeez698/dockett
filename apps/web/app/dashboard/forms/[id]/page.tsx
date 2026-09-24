@@ -42,12 +42,16 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
-import { FormFieldRenderer } from "~/components/form-field-renderer";
-import { ThemePicker } from "~/components/theme-picker";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { ShareFormDialog } from "~/components/share-form-dialog";
 import { PublishFormDialog } from "~/components/publish-form-dialog";
-import { getFormTheme } from "~/lib/form-themes";
+import { FormTemplateRenderer } from "~/components/form-templates";
+import { useSubmissionFlow } from "~/hooks/use-submission-flow";
+import {
+  GALLERY_TEMPLATE_IDS,
+  getTemplateDesign,
+  type FormTemplateId,
+} from "~/lib/template-designs";
 
 type FieldType =
   | "TEXT"
@@ -88,31 +92,6 @@ interface FieldConfig {
   max?: number;
 }
 
-type FieldRow = NonNullable<ReturnType<typeof useGetFields>["fields"]>[number];
-
-function PreviewFieldCard({
-  field: f,
-  previewValue,
-  onPreviewChange,
-  accent,
-}: {
-  field: FieldRow;
-  previewValue: string;
-  onPreviewChange: (v: string) => void;
-  accent: string;
-}) {
-  return (
-    <div className="glass rounded-2xl p-4">
-      <FormFieldRenderer
-        field={f}
-        value={previewValue}
-        onChange={onPreviewChange}
-        accent={accent}
-      />
-    </div>
-  );
-}
-
 export default function FormBuilder() {
   const params = useParams();
   const router = useRouter();
@@ -130,7 +109,8 @@ export default function FormBuilder() {
 
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
-  const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
+
+  const previewFlow = useSubmissionFlow(fields ?? [], form?.submissionLayout ?? "ONE_AT_A_TIME");
 
   const selectedField = fields?.find((f) => f.id === selectedFieldId) ?? null;
 
@@ -262,15 +242,21 @@ export default function FormBuilder() {
     }
   };
 
-  const handleThemeChange = async (themeKey: string) => {
+  const handleTemplateChange = async (templateId: string) => {
     if (!formId) return;
     try {
-      await updateFormAsync({
-        formId,
-        theme: themeKey as "MIDNIGHT" | "CORAL" | "MINT" | "LAVENDER" | "OCEAN",
-      });
+      await updateFormAsync({ formId, template: templateId as FormTemplateId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update theme");
+      toast.error(err instanceof Error ? err.message : "Failed to update template");
+    }
+  };
+
+  const handleLayoutChange = async (layout: "ONE_AT_A_TIME" | "ALL_AT_ONCE") => {
+    if (!formId) return;
+    try {
+      await updateFormAsync({ formId, submissionLayout: layout });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update layout");
     }
   };
 
@@ -285,8 +271,6 @@ export default function FormBuilder() {
       toast.error(err instanceof Error ? err.message : "Failed to delete form");
     }
   };
-
-  const theme = getFormTheme(form?.theme);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -327,8 +311,12 @@ export default function FormBuilder() {
           Preview
         </Button>
 
-        {formId ? (
-          <ShareFormDialog formId={formId}>
+        {formId && form ? (
+          <ShareFormDialog
+            formId={formId}
+            submissionAccess={form.submissionAccess}
+            accessCode={form.accessCode}
+          >
             <Button variant="outline" size="sm">
               <Share2 className="mr-1.5 size-3.5" />
               Share
@@ -342,6 +330,7 @@ export default function FormBuilder() {
             currentStatus={form.status}
             currentVisibility={form.visibility}
             currentSubmissionAccess={form.submissionAccess}
+            currentAccessCode={form.accessCode}
           >
             <Button size="sm">
               <Rocket className="mr-1.5 size-3.5" />
@@ -391,35 +380,35 @@ export default function FormBuilder() {
         <main className={previewMode ? "overflow-y-auto p-6" : "relative overflow-hidden"}>
           {previewMode ? (
             <div className="mx-auto max-w-2xl">
-              <div
-                className="mb-4 overflow-hidden rounded-2xl p-6"
-                style={{
-                  background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
-                  color: theme.onGradient,
-                }}
-              >
-                <h2 className="text-xl font-semibold">{form?.title}</h2>
-                {form?.description ? (
-                  <p className="mt-1 text-sm opacity-80">{form.description}</p>
-                ) : null}
-              </div>
-
               {fieldsLoading ? (
                 <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
                   Loading fields...
                 </div>
               ) : fields && fields.length > 0 ? (
-                <div className="space-y-3">
-                  {fields.map((f) => (
-                    <PreviewFieldCard
-                      key={f.id}
-                      field={f}
-                      previewValue={previewValues[f.id] ?? ""}
-                      onPreviewChange={(v) => setPreviewValues((s) => ({ ...s, [f.id]: v }))}
-                      accent={theme.accent}
-                    />
-                  ))}
-                </div>
+                <FormTemplateRenderer
+                  template={form?.template}
+                  title={form?.title ?? ""}
+                  description={form?.description}
+                  fields={fields}
+                  visibleFields={previewFlow.visibleFields}
+                  values={previewFlow.values}
+                  onChange={previewFlow.onChange}
+                  missingFieldIds={previewFlow.missingFieldIds}
+                  layout={form?.submissionLayout ?? "ONE_AT_A_TIME"}
+                  stepIndex={previewFlow.step}
+                  isFirstStep={previewFlow.isFirstStep}
+                  isLastStep={previewFlow.isLastStep}
+                  onNext={previewFlow.onNext}
+                  onBack={previewFlow.onBack}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!previewFlow.validateAll()) return;
+                    toast.info("This is a preview — publish the form to collect real responses.");
+                  }}
+                  submitting={false}
+                  submitted={false}
+                  isPreview
+                />
               ) : (
                 <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
                   No fields yet.
@@ -428,7 +417,7 @@ export default function FormBuilder() {
             </div>
           ) : fieldsLoading ? (
             <div className="p-6 text-sm text-muted-foreground">Loading fields...</div>
-          ) : fields && fields.length > 0 ? (
+          ) : fields ? (
             <FieldCanvas
               fields={fields.map(
                 (f): CanvasField => ({
@@ -446,13 +435,7 @@ export default function FormBuilder() {
               onDeleteField={handleDeleteField}
               onDropNewField={handleDropNewField}
             />
-          ) : (
-            <div className="flex h-full items-center justify-center p-10">
-              <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-                Drag a field type from the left, or click one to add your first field.
-              </div>
-            </div>
-          )}
+          ) : null}
         </main>
 
         {/* Inspector */}
@@ -605,9 +588,47 @@ export default function FormBuilder() {
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-xs text-muted-foreground">Theme</label>
-                <ThemePicker value={form?.theme ?? "MIDNIGHT"} onChange={handleThemeChange} />
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Template</label>
+                <select
+                  value={form?.template ?? "CLASSIC"}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                >
+                  <option value="CLASSIC">Classic (default)</option>
+                  {GALLERY_TEMPLATE_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {getTemplateDesign(id).name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Changes the structure and design of the public submission page.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Field pacing</label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form?.submissionLayout === "ALL_AT_ONCE" ? "outline" : "default"}
+                    className="flex-1"
+                    onClick={() => handleLayoutChange("ONE_AT_A_TIME")}
+                  >
+                    One at a time
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form?.submissionLayout === "ALL_AT_ONCE" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleLayoutChange("ALL_AT_ONCE")}
+                  >
+                    All at once
+                  </Button>
+                </div>
               </div>
 
               {isSavingForm ? <p className="text-xs text-muted-foreground">Saving...</p> : null}

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 
 import { useDeleteForm, useListForms } from "~/hooks/api/form";
-import { getFormTheme } from "~/lib/form-themes";
+import { getTemplateDesign } from "~/lib/template-designs";
 import { AppShell } from "~/components/app-shell";
 import { DashboardRightPanel } from "~/components/dashboard-right-panel";
 import { AiGenerateBar } from "~/components/ai-generate-bar";
@@ -44,7 +44,7 @@ export default function DashboardForms() {
           ) : forms && forms.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {forms.map((form) => {
-                const theme = getFormTheme(form.theme);
+                const design = getTemplateDesign(form.template);
                 return (
                   <Link
                     key={form.id}
@@ -54,7 +54,7 @@ export default function DashboardForms() {
                     <div
                       className="absolute inset-x-0 top-0 h-1"
                       style={{
-                        background: `linear-gradient(90deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+                        background: `linear-gradient(90deg, ${design.accentGradient[0]}, ${design.accentGradient[1]})`,
                       }}
                     />
                     <div className="flex items-start justify-between gap-2">

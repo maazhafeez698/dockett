@@ -1,6 +1,7 @@
 CREATE TYPE "public"."form_status_enum" AS ENUM('DRAFT', 'PUBLISHED', 'CLOSED');--> statement-breakpoint
-CREATE TYPE "public"."form_submission_access_enum" AS ENUM('ANYONE', 'AUTHENTICATED_ONLY', 'ANONYMOUS_ONLY');--> statement-breakpoint
-CREATE TYPE "public"."form_theme_enum" AS ENUM('MIDNIGHT', 'CORAL', 'MINT', 'LAVENDER', 'OCEAN');--> statement-breakpoint
+CREATE TYPE "public"."form_submission_access_enum" AS ENUM('ANYONE', 'ACCESS_CODE', 'AUTHENTICATED_ONLY');--> statement-breakpoint
+CREATE TYPE "public"."form_submission_layout_enum" AS ENUM('ONE_AT_A_TIME', 'ALL_AT_ONCE');--> statement-breakpoint
+CREATE TYPE "public"."form_template_enum" AS ENUM('CORPORATE', 'SURVEY', 'EDUCATION', 'DEVELOPER', 'RETRO', 'INVITATION', 'TICKET', 'LANDING', 'CLASSIC');--> statement-breakpoint
 CREATE TYPE "public"."form_visibility_enum" AS ENUM('PUBLIC', 'UNLISTED');--> statement-breakpoint
 CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_NO', 'PASSWORD', 'LONG_TEXT', 'DROPDOWN', 'MULTI_SELECT', 'CHECKBOX_GROUP', 'DATE', 'RATING');--> statement-breakpoint
 CREATE TYPE "public"."oauth_provider" AS ENUM('google');--> statement-breakpoint
@@ -21,7 +22,9 @@ CREATE TABLE "forms" (
 	"status" "form_status_enum" DEFAULT 'DRAFT' NOT NULL,
 	"visibility" "form_visibility_enum" DEFAULT 'PUBLIC' NOT NULL,
 	"submission_access" "form_submission_access_enum" DEFAULT 'ANYONE' NOT NULL,
-	"theme" "form_theme_enum" DEFAULT 'MIDNIGHT' NOT NULL,
+	"template" "form_template_enum" DEFAULT 'CLASSIC' NOT NULL,
+	"submission_layout" "form_submission_layout_enum" DEFAULT 'ONE_AT_A_TIME' NOT NULL,
+	"access_code" varchar(12),
 	"created_by" uuid,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp
@@ -45,6 +48,7 @@ CREATE TABLE "form_fields" (
 CREATE TABLE "form_submissions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"form_id" uuid,
+	"submitted_by" uuid,
 	"values" json,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp
@@ -82,6 +86,7 @@ CREATE TABLE "oauth_accounts" (
 ALTER TABLE "forms" ADD CONSTRAINT "forms_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_fields" ADD CONSTRAINT "form_fields_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_submitted_by_users_id_fk" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;

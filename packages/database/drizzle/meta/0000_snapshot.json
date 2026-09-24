@@ -1,5 +1,5 @@
 {
-  "id": "0d8e35c8-5a7b-4b4a-9c15-688755b0b6b4",
+  "id": "d5c3bc8e-5400-44af-afca-6fbb18c782a7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -110,13 +110,27 @@
           "notNull": true,
           "default": "'ANYONE'"
         },
-        "theme": {
-          "name": "theme",
-          "type": "form_theme_enum",
+        "template": {
+          "name": "template",
+          "type": "form_template_enum",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'MIDNIGHT'"
+          "default": "'CLASSIC'"
+        },
+        "submission_layout": {
+          "name": "submission_layout",
+          "type": "form_submission_layout_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ONE_AT_A_TIME'"
+        },
+        "access_code": {
+          "name": "access_code",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_by": {
           "name": "created_by",
@@ -280,6 +294,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "submitted_by": {
+          "name": "submitted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "values": {
           "name": "values",
           "type": "json",
@@ -313,6 +333,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "form_submissions_submitted_by_users_id_fk": {
+          "name": "form_submissions_submitted_by_users_id_fk",
+          "tableFrom": "form_submissions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "submitted_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -553,19 +586,31 @@
       "schema": "public",
       "values": [
         "ANYONE",
-        "AUTHENTICATED_ONLY",
-        "ANONYMOUS_ONLY"
+        "ACCESS_CODE",
+        "AUTHENTICATED_ONLY"
       ]
     },
-    "public.form_theme_enum": {
-      "name": "form_theme_enum",
+    "public.form_submission_layout_enum": {
+      "name": "form_submission_layout_enum",
       "schema": "public",
       "values": [
-        "MIDNIGHT",
-        "CORAL",
-        "MINT",
-        "LAVENDER",
-        "OCEAN"
+        "ONE_AT_A_TIME",
+        "ALL_AT_ONCE"
+      ]
+    },
+    "public.form_template_enum": {
+      "name": "form_template_enum",
+      "schema": "public",
+      "values": [
+        "CORPORATE",
+        "SURVEY",
+        "EDUCATION",
+        "DEVELOPER",
+        "RETRO",
+        "INVITATION",
+        "TICKET",
+        "LANDING",
+        "CLASSIC"
       ]
     },
     "public.form_visibility_enum": {

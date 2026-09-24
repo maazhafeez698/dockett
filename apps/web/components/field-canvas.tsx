@@ -13,11 +13,11 @@ import {
   useViewport,
   type Node,
   type Edge,
+  type Connection,
   type NodeMouseHandler,
   type OnNodeDrag,
 } from "@xyflow/react";
 // React Flow ships this stylesheet without TypeScript declarations.
-// @ts-expect-error The CSS import is handled by the app bundler.
 import "@xyflow/react/dist/style.css";
 
 import { FieldNode, type FieldNodeData } from "~/components/field-node";
@@ -123,6 +123,26 @@ function CanvasInner({
   const handleNodeClick: NodeMouseHandler = (_e, node) => onSelectField(node.id);
   const handlePaneClick = () => onSelectField(null);
 
+  const handleConnect = useCallback(
+    ({ source, target }: Connection) => {
+      if (!source || !target || source === target) return;
+
+      const currentOrder = fields.map((field) => field.id);
+      const sourceIndex = currentOrder.indexOf(source);
+      const targetIndex = currentOrder.indexOf(target);
+      if (sourceIndex === -1 || targetIndex === -1) return;
+
+      const reordered = [...currentOrder];
+      reordered.splice(sourceIndex, 1);
+      reordered.splice(reordered.indexOf(target), 0, source);
+
+      if (reordered.join(",") !== currentOrder.join(",")) {
+        onReorder(reordered);
+      }
+    },
+    [fields, onReorder],
+  );
+
   const handleNodeDragStop: OnNodeDrag<Node<FieldNodeData>> = (_e, draggedNode) => {
     // Reorder by the dragged node's new vertical position relative to the
     // others — simplest reliable mapping from "drag it somewhere" to a
@@ -169,6 +189,7 @@ function CanvasInner({
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onConnect={handleConnect}
         onNodeDragStop={handleNodeDragStop}
         onNodesChange={(changes) => {
           // Allow live dragging to feel smooth; canonical position is
@@ -248,6 +269,13 @@ function CanvasInner({
             FIT
           </button>
         </Panel>
+        {fields.length === 0 ? (
+          <Panel position="top-center" className="pointer-events-none !top-1/2 !-translate-y-1/2">
+            <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+              Drag a field type from the left, or click one to add your first field.
+            </div>
+          </Panel>
+        ) : null}
       </ReactFlow>
     </div>
   );
