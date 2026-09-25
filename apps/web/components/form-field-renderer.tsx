@@ -34,6 +34,8 @@ interface FormFieldRendererProps {
   isMissing?: boolean;
   /** Accent hex from the form's theme — used for the rating scale's selected state. */
   accent?: string;
+  fieldBackground?: string;
+  fieldForeground?: string;
 }
 
 export function FormFieldRenderer({
@@ -42,9 +44,12 @@ export function FormFieldRenderer({
   onChange,
   isMissing = false,
   accent = "var(--primary)",
+  fieldBackground = "var(--background)",
+  fieldForeground = "var(--foreground)",
 }: FormFieldRendererProps) {
   const config = (f.config ?? {}) as FieldConfig;
   const inputClass = isMissing ? "border-destructive" : undefined;
+  const fieldStyle = { backgroundColor: fieldBackground, color: fieldForeground };
 
   const toggleMultiValue = (option: string) => {
     const current = value ? value.split(",").filter(Boolean) : [];
@@ -56,7 +61,10 @@ export function FormFieldRenderer({
 
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-foreground/90">
+      <label
+        className="block text-sm font-medium"
+        style={{ color: fieldForeground }}
+      >
         {f.label}
         {f.isRequired ? <span className="ml-1 text-destructive">*</span> : null}
       </label>
@@ -69,6 +77,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -81,6 +90,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -93,6 +103,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -105,6 +116,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -117,6 +129,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -128,6 +141,7 @@ export function FormFieldRenderer({
           required={f.isRequired}
           aria-invalid={isMissing}
           className={inputClass}
+          style={fieldStyle}
         />
       )}
 
@@ -163,10 +177,11 @@ export function FormFieldRenderer({
           className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm ${
             isMissing ? "border-destructive" : "border-input"
           }`}
+          style={fieldStyle}
         >
-          <option value="">Select...</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
+          <option value="" style={fieldStyle}>Select...</option>
+          <option value="true" style={fieldStyle}>Yes</option>
+          <option value="false" style={fieldStyle}>No</option>
         </select>
       )}
 
@@ -179,10 +194,11 @@ export function FormFieldRenderer({
           className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm ${
             isMissing ? "border-destructive" : "border-input"
           }`}
+          style={fieldStyle}
         >
-          <option value="">Select...</option>
+          <option value="" style={fieldStyle}>Select...</option>
           {(config.options ?? []).map((opt) => (
-            <option key={opt} value={opt}>
+            <option key={opt} value={opt} style={fieldStyle}>
               {opt}
             </option>
           ))}
@@ -194,7 +210,11 @@ export function FormFieldRenderer({
           {(config.options ?? []).map((opt) => {
             const selected = value.split(",").filter(Boolean).includes(opt);
             return (
-              <label key={opt} className="flex items-center gap-2 text-sm text-foreground/80">
+              <label
+                key={opt}
+                className="flex items-center gap-2 text-sm"
+                style={{ color: fieldForeground }}
+              >
                 <Checkbox checked={selected} onCheckedChange={() => toggleMultiValue(opt)} />
                 {opt}
               </label>
@@ -203,7 +223,11 @@ export function FormFieldRenderer({
         </div>
       )}
 
-      {f.description ? <div className="text-sm text-muted-foreground">{f.description}</div> : null}
+      {f.description ? (
+        <div className="text-sm" style={{ color: fieldForeground, opacity: 0.72 }}>
+          {f.description}
+        </div>
+      ) : null}
       {isMissing ? <div className="text-sm text-destructive">This field is required.</div> : null}
     </div>
   );

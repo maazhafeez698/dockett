@@ -34,6 +34,8 @@ export interface TemplateDesign {
   accentGradient: [string, string];
   accent: string;
   badgeClass: string;
+  fieldBackground: string;
+  fieldForeground: string;
 }
 
 export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
@@ -45,6 +47,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#1E293B", "#334155"],
     accent: "#334155",
     badgeClass: "bg-slate-500/15 text-slate-300",
+    fieldBackground: "#FFFFFF",
+    fieldForeground: "#0F172A",
   },
   SURVEY: {
     id: "SURVEY",
@@ -54,6 +58,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#0F766E", "#2DD4BF"],
     accent: "#2DD4BF",
     badgeClass: "bg-teal-500/15 text-teal-300",
+    fieldBackground: "rgba(15, 118, 110, 0.12)",
+    fieldForeground: "#CCFBF1",
   },
   EDUCATION: {
     id: "EDUCATION",
@@ -63,6 +69,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#166534", "#4ADE80"],
     accent: "#4ADE80",
     badgeClass: "bg-green-500/15 text-green-300",
+    fieldBackground: "#FFFDF6",
+    fieldForeground: "#14532D",
   },
   DEVELOPER: {
     id: "DEVELOPER",
@@ -72,6 +80,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#052e16", "#22C55E"],
     accent: "#22C55E",
     badgeClass: "bg-emerald-500/15 text-emerald-300 font-mono",
+    fieldBackground: "#111A11",
+    fieldForeground: "#D1FAE5",
   },
   RETRO: {
     id: "RETRO",
@@ -81,6 +91,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#1E3A8A", "#60A5FA"],
     accent: "#0A246A",
     badgeClass: "bg-blue-500/15 text-blue-300",
+    fieldBackground: "#FFFFFF",
+    fieldForeground: "#000000",
   },
   INVITATION: {
     id: "INVITATION",
@@ -90,6 +102,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#78350F", "#D4AF37"],
     accent: "#B8860B",
     badgeClass: "bg-amber-500/15 text-amber-300",
+    fieldBackground: "#FBF6EC",
+    fieldForeground: "#3B2A12",
   },
   TICKET: {
     id: "TICKET",
@@ -99,6 +113,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#7C2D12", "#FB923C"],
     accent: "#FB923C",
     badgeClass: "bg-orange-500/15 text-orange-300",
+    fieldBackground: "#1E1A17",
+    fieldForeground: "#F5F5F5",
   },
   LANDING: {
     id: "LANDING",
@@ -108,6 +124,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#701A75", "#E879F9"],
     accent: "#E879F9",
     badgeClass: "bg-fuchsia-500/15 text-fuchsia-300",
+    fieldBackground: "#12071A",
+    fieldForeground: "#FFFFFF",
   },
   CLASSIC: {
     id: "CLASSIC",
@@ -117,6 +135,8 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     accentGradient: ["#312E81", "#6366F1"],
     accent: "#6366F1",
     badgeClass: "bg-indigo-500/15 text-indigo-300",
+    fieldBackground: "rgba(255, 255, 255, 0.1)",
+    fieldForeground: "#F5F5FF",
   },
 };
 

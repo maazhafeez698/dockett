@@ -76,6 +76,8 @@ export function EducationShell(props: FormTemplateShellProps) {
                   onChange={(v) => onChange(f.id, v)}
                   isMissing={missingFieldIds.has(f.id)}
                   accent={design.accent}
+                  fieldBackground={design.fieldBackground}
+                  fieldForeground={design.fieldForeground}
                 />
               </div>
             ))}
@@ -103,7 +105,7 @@ export function EducationShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-full bg-[#1B4332] px-6 hover:bg-[#153a29]"
+                  className="text-white rounded-full bg-[#1B4332] px-6 hover:bg-[#153a29]"
                 >
                   {submitting ? "Submitting..." : "Turn In"}
                 </Button>

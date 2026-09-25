@@ -73,6 +73,8 @@ export function InvitationShell(props: FormTemplateShellProps) {
                   onChange={(v) => onChange(f.id, v)}
                   isMissing={missingFieldIds.has(f.id)}
                   accent={design.accent}
+                  fieldBackground={design.fieldBackground}
+                  fieldForeground={design.fieldForeground}
                 />
               </div>
             ))}

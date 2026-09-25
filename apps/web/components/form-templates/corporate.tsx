@@ -88,6 +88,8 @@ export function CorporateShell(props: FormTemplateShellProps) {
                   onChange={(v) => onChange(f.id, v)}
                   isMissing={missingFieldIds.has(f.id)}
                   accent={design.accent}
+                  fieldBackground={design.fieldBackground}
+                  fieldForeground={design.fieldForeground}
                 />
               </div>
             ))}
@@ -115,7 +117,7 @@ export function CorporateShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-none bg-slate-900 px-8 hover:bg-slate-800"
+                  className="text-white rounded-full bg-slate-900 px-8 hover:bg-slate-800"
                 >
                   {submitting ? "Submitting..." : "Submit Application"}
                 </Button>
