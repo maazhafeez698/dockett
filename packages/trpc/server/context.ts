@@ -15,8 +15,12 @@ export interface TRPCContext {
   setCookie: (name: string, value: string, opts: CookieOptions) => void;
   getCookie: (name: string) => string | undefined;
   clearCookie: (name: string) => void;
+  /** Raw User-Agent header, for the lightweight device classification used
+   * by view tracking. Nothing else in the app should need more of `req`
+   * than this, so we don't expose the whole request object on ctx. */
+  userAgent: string | undefined;
 
-  user: TRPCCtxUser | undefined;
+  user?: TRPCCtxUser;
 }
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
@@ -30,6 +34,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
     clearCookie: (name: string) => {
       return clearCookieUtil(res, name);
     },
+    userAgent: req.headers["user-agent"],
 
     user: undefined,
   };

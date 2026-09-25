@@ -7,6 +7,7 @@
     "./form": "./form/index.ts",
     "./form-field": "./form-field/index.ts",
     "./form-submission": "./form-submission/index.ts",
+    "./form-analytics": "./form-analytics/index.ts",
     "./user": "./user/index.ts"
   },
   "devDependencies": {

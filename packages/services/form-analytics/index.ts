@@ -1,0 +1,242 @@
+// packages/services/form-analytics/index.ts
+
+import { db, eq } from "@repo/database";
+import { formFieldsTable } from "@repo/database/models/form-field";
+import { formSubmissionsTable } from "@repo/database/models/form-submission";
+import { formViewsTable } from "@repo/database/models/form-view";
+import { assertFormOwnership } from "@repo/services/form";
+
+import {
+  recordViewInput,
+  type RecordViewInputType,
+  getFormAnalyticsInput,
+  type GetFormAnalyticsInputType,
+  getSubmissionDetailInput,
+  type GetSubmissionDetailInputType,
+} from "./model";
+
+const TIMELINE_DAYS = 14;
+
+/** Small, deliberately unsophisticated UA sniff — no dependency, just
+ * enough signal for a device-mix chart, not a precise analytics product. */
+function classifyDevice(
+  userAgent: string | undefined,
+): "DESKTOP" | "MOBILE" | "TABLET" | "UNKNOWN" {
+  if (!userAgent) return "UNKNOWN";
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("ipad") || (ua.includes("tablet") && !ua.includes("mobile"))) return "TABLET";
+  if (ua.includes("mobi") || ua.includes("iphone") || ua.includes("android")) return "MOBILE";
+  return "DESKTOP";
+}
+
+function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export default class FormAnalyticsService {
+  /** Fire-and-forget from the caller's point of view — errors are
+   * swallowed so a tracking hiccup never breaks the actual page load. */
+  public async recordView(payload: RecordViewInputType) {
+    try {
+      const { formId, userAgent } = await recordViewInput.parseAsync(payload);
+      await db.insert(formViewsTable).values({ formId, device: classifyDevice(userAgent) });
+    } catch {
+      // best-effort only
+    }
+  }
+
+  public async getFormAnalytics(payload: GetFormAnalyticsInputType) {
+    const { formId, userId } = await getFormAnalyticsInput.parseAsync(payload);
+    await assertFormOwnership(formId, userId);
+
+    const fields = await db
+      .select({ id: formFieldsTable.id })
+      .from(formFieldsTable)
+      .where(eq(formFieldsTable.formId, formId));
+    const totalFieldCount = fields.length;
+
+    const submissions = await db
+      .select({
+        id: formSubmissionsTable.id,
+        values: formSubmissionsTable.values,
+        submittedBy: formSubmissionsTable.submittedBy,
+        createdAt: formSubmissionsTable.createdAt,
+      })
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.formId, formId))
+      .orderBy(formSubmissionsTable.createdAt);
+
+    const totalResponses = submissions.length;
+
+    // "Complete" = every field (not just required ones) has a non-empty
+    // answer — a real, computable definition rather than a guess, since
+    // every stored submission already satisfied required-field validation
+    // at submit time.
+    const fullyAnsweredCount = submissions.filter((s) => {
+      const values = s.values ?? [];
+      if (totalFieldCount === 0) return true;
+      const answered = values.filter((v) => v.value.trim().length > 0).length;
+      return answered >= totalFieldCount;
+    }).length;
+    const completionRate =
+      totalResponses === 0 ? 0 : Math.round((fullyAnsweredCount / totalResponses) * 100);
+
+    const views = await db
+      .select({ device: formViewsTable.device })
+      .from(formViewsTable)
+      .where(eq(formViewsTable.formId, formId));
+
+    const deviceBreakdown = { DESKTOP: 0, MOBILE: 0, TABLET: 0, UNKNOWN: 0 };
+    for (const v of views) deviceBreakdown[v.device] += 1;
+    const totalViews = views.length;
+
+    // Response timeline — last TIMELINE_DAYS days, zero-filled.
+    const since = new Date();
+    since.setDate(since.getDate() - (TIMELINE_DAYS - 1));
+    since.setHours(0, 0, 0, 0);
+
+    const timelineMap = new Map<string, number>();
+    for (let i = 0; i < TIMELINE_DAYS; i++) {
+      const d = new Date(since);
+      d.setDate(d.getDate() + i);
+      timelineMap.set(dayKey(d), 0);
+    }
+    for (const s of submissions) {
+      if (!s.createdAt || s.createdAt < since) continue;
+      const key = dayKey(s.createdAt);
+      if (timelineMap.has(key)) timelineMap.set(key, (timelineMap.get(key) ?? 0) + 1);
+    }
+    const timeline = Array.from(timelineMap.entries()).map(([date, count]) => ({ date, count }));
+
+    return {
+      totalResponses,
+      totalViews,
+      completionRate,
+      deviceBreakdown,
+      timeline,
+    };
+  }
+
+  /** Every submission, oldest first, with a display label — powers both the
+   * "Latest Responses" cards (client takes the tail) and prev/next paging
+   * inside the submission-detail view, so both stay in the same order. */
+  public async listSubmissions(payload: GetFormAnalyticsInputType) {
+    const { formId, userId } = await getFormAnalyticsInput.parseAsync(payload);
+    await assertFormOwnership(formId, userId);
+
+    const fields = await db
+      .select({ id: formFieldsTable.id })
+      .from(formFieldsTable)
+      .where(eq(formFieldsTable.formId, formId));
+    const totalFieldCount = fields.length;
+
+    const submissions = await db
+      .select({
+        id: formSubmissionsTable.id,
+        values: formSubmissionsTable.values,
+        submittedBy: formSubmissionsTable.submittedBy,
+        createdAt: formSubmissionsTable.createdAt,
+      })
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.formId, formId))
+      .orderBy(formSubmissionsTable.createdAt);
+
+    return submissions.map((s) => {
+      const values = s.values ?? [];
+      const emailLike = values.find((v) => /\S+@\S+\.\S+/.test(v.value));
+      const firstAnswer = values.find((v) => v.value.trim().length > 0);
+      const label = emailLike?.value ?? firstAnswer?.value ?? "Anonymous response";
+      const answeredCount = values.filter((v) => v.value.trim().length > 0).length;
+
+      return {
+        id: s.id,
+        label,
+        isComplete: totalFieldCount > 0 && answeredCount >= totalFieldCount,
+        isAuthenticated: !!s.submittedBy,
+        createdAt: s.createdAt ? s.createdAt.toISOString() : null,
+      };
+    });
+  }
+
+  /** Full per-field data for CSV export — field labels as columns, one row
+   * per submission, in the same order as listSubmissions. */
+  public async getExportData(payload: GetFormAnalyticsInputType) {
+    const { formId, userId } = await getFormAnalyticsInput.parseAsync(payload);
+    await assertFormOwnership(formId, userId);
+
+    const fields = await db
+      .select({ id: formFieldsTable.id, label: formFieldsTable.label })
+      .from(formFieldsTable)
+      .where(eq(formFieldsTable.formId, formId))
+      .orderBy(formFieldsTable.index);
+
+    const submissions = await db
+      .select({
+        id: formSubmissionsTable.id,
+        values: formSubmissionsTable.values,
+        submittedBy: formSubmissionsTable.submittedBy,
+        createdAt: formSubmissionsTable.createdAt,
+      })
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.formId, formId))
+      .orderBy(formSubmissionsTable.createdAt);
+
+    return {
+      fields: fields.map((f) => ({ id: f.id, label: f.label })),
+      submissions: submissions.map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt ? s.createdAt.toISOString() : null,
+        isAuthenticated: !!s.submittedBy,
+        values: s.values ?? [],
+      })),
+    };
+  }
+
+  public async getSubmissionDetail(payload: GetSubmissionDetailInputType) {
+    const { submissionId, userId } = await getSubmissionDetailInput.parseAsync(payload);
+
+    const rows = await db
+      .select({
+        id: formSubmissionsTable.id,
+        formId: formSubmissionsTable.formId,
+        values: formSubmissionsTable.values,
+        submittedBy: formSubmissionsTable.submittedBy,
+        createdAt: formSubmissionsTable.createdAt,
+      })
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.id, submissionId));
+
+    const submission = rows[0];
+    if (!submission || !submission.formId) throw new Error("Submission not found");
+
+    await assertFormOwnership(submission.formId, userId);
+
+    const fields = await db
+      .select({
+        id: formFieldsTable.id,
+        label: formFieldsTable.label,
+        type: formFieldsTable.type,
+        index: formFieldsTable.index,
+      })
+      .from(formFieldsTable)
+      .where(eq(formFieldsTable.formId, submission.formId))
+      .orderBy(formFieldsTable.index);
+
+    const valueByFieldId = new Map((submission.values ?? []).map((v) => [v.fieldId, v.value]));
+
+    const answers = fields.map((f) => ({
+      fieldId: f.id,
+      label: f.label,
+      type: f.type,
+      value: valueByFieldId.get(f.id) ?? "",
+    }));
+
+    return {
+      id: submission.id,
+      formId: submission.formId,
+      isAuthenticated: !!submission.submittedBy,
+      createdAt: submission.createdAt ? submission.createdAt.toISOString() : null,
+      answers,
+    };
+  }
+}
