@@ -1,5 +1,5 @@
 {
-  "id": "d5c3bc8e-5400-44af-afca-6fbb18c782a7",
+  "id": "b5d92942-acc4-4a4e-b539-af6cdb2cc13b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -569,6 +569,61 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.form_views": {
+      "name": "form_views",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "form_id": {
+          "name": "form_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "device": {
+          "name": "device",
+          "type": "form_view_device_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UNKNOWN'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "form_views_form_id_forms_id_fk": {
+          "name": "form_views_form_id_forms_id_fk",
+          "tableFrom": "form_views",
+          "tableTo": "forms",
+          "columnsFrom": [
+            "form_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -643,6 +698,16 @@
       "schema": "public",
       "values": [
         "google"
+      ]
+    },
+    "public.form_view_device_enum": {
+      "name": "form_view_device_enum",
+      "schema": "public",
+      "values": [
+        "DESKTOP",
+        "MOBILE",
+        "TABLET",
+        "UNKNOWN"
       ]
     }
   },
