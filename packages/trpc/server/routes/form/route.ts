@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 
 import { authenticatedProcedure, optionalAuthProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
-import { formService } from "../../services";
+import { formService, formAnalyticsService } from "../../services";
 
 import {
   createFormInputModel,
@@ -120,9 +120,13 @@ export const formRouter = router({
     })
     .input(getFormAccessInfoInputModel)
     .output(getFormAccessInfoOutputModel)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
-        return await formService.getFormAccessInfo(input.formId);
+        const info = await formService.getFormAccessInfo(input.formId);
+        // Best-effort view tracking — never blocks or fails the actual
+        // page load; see FormAnalyticsService.recordView.
+        void formAnalyticsService.recordView({ formId: input.formId, userAgent: ctx.userAgent });
+        return info;
       } catch (error) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
       }
@@ -178,7 +182,10 @@ export const formRouter = router({
     .output(regenerateAccessCodeOutputModel)
     .mutation(async ({ input, ctx }) => {
       try {
-        return await formService.regenerateAccessCode({ formId: input.formId, userId: ctx.user.id });
+        return await formService.regenerateAccessCode({
+          formId: input.formId,
+          userId: ctx.user.id,
+        });
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",
