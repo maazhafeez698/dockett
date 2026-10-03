@@ -8,7 +8,8 @@
     "./form-field": "./form-field/index.ts",
     "./form-submission": "./form-submission/index.ts",
     "./form-analytics": "./form-analytics/index.ts",
-    "./user": "./user/index.ts"
+    "./user": "./user/index.ts",
+    "./ai": "./ai/index.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
