@@ -4,18 +4,27 @@
 
 import { useState } from "react";
 import { Sparkles, ArrowUp } from "lucide-react";
-import { toast } from "sonner";
 
-const SUGGESTIONS = ["Event RSVP form", "Customer feedback survey", "Job application", "Course enrollment"];
+import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
+
+const SUGGESTIONS = [
+  "Event RSVP form",
+  "Customer feedback survey",
+  "Job application",
+  "Course enrollment",
+];
 
 export function AiGenerateBar() {
   const [prompt, setPrompt] = useState("");
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | undefined>();
 
   const handleGenerate = () => {
-    // AI generation is intentionally not wired up yet — it lands in its
-    // own guarded phase (rate limits, scoped prompt, review-before-save).
-    // This bar exists now so the workspace has its intended focal point.
-    toast.info("AI form generation is coming soon — this is a preview of where it'll live.");
+    const text = prompt.trim();
+    if (!text) return;
+    setPending(text); // the dialog sends it once, as soon as it opens
+    setPrompt("");
+    setOpen(true);
   };
 
   return (
@@ -32,14 +41,15 @@ export function AiGenerateBar() {
         <input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+          onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleGenerate()}
           placeholder='Try "Create a customer satisfaction survey"'
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
         <button
           type="button"
           onClick={handleGenerate}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95"
+          disabled={!prompt.trim()}
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
           aria-label="Generate form"
         >
           <ArrowUp className="size-4" />
@@ -58,6 +68,14 @@ export function AiGenerateBar() {
           </button>
         ))}
       </div>
+
+      <AiFormBuilderPanel
+        open={open}
+        onOpenChange={setOpen}
+        mode="NEW_FORM"
+        initialPrompt={pending}
+        onInitialPromptConsumed={() => setPending(undefined)}
+      />
     </div>
   );
 }

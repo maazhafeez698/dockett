@@ -45,6 +45,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { ShareFormDialog } from "~/components/share-form-dialog";
 import { PublishFormDialog } from "~/components/publish-form-dialog";
+import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
 import { FormTemplateRenderer } from "~/components/form-templates";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
 import {
@@ -95,6 +96,7 @@ interface FieldConfig {
 export default function FormBuilder() {
   const params = useParams();
   const router = useRouter();
+  const [aiOpen, setAiOpen] = useState(false);
   const formId = params?.id as string | undefined;
 
   const { form } = useGetFormWithFields(formId ?? "");
@@ -293,11 +295,7 @@ export default function FormBuilder() {
 
         <div className="flex-1" />
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => toast.info("AI-assisted editing is coming soon.")}
-        >
+        <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
           <Sparkles className="mr-1.5 size-3.5" />
           AI Generate
         </Button>
@@ -351,6 +349,16 @@ export default function FormBuilder() {
 
         <ThemeToggle />
       </header>
+
+      {formId ? (
+        <AiFormBuilderPanel
+          open={aiOpen}
+          onOpenChange={setAiOpen}
+          mode="ADD_FIELDS"
+          formId={formId}
+          existingFieldCount={fields?.length ?? 0}
+        />
+      ) : null}
 
       {/* --- three panes --- */}
       <div className="grid flex-1 grid-cols-[72px_1fr] overflow-hidden lg:grid-cols-[220px_1fr_320px]">
