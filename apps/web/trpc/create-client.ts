@@ -5,7 +5,7 @@ interface CreateTRPCHttpBatchClientClientOpts {
   enableStreaming?: boolean;
 }
 
-function getApiBaseUrl() {
+export function getApiBaseUrl() {
   const trpcUrl = env.NEXT_PUBLIC_API_URL ?? "/trpc";
   return trpcUrl.replace(/\/trpc\/?$/, "");
 }
@@ -14,7 +14,7 @@ function getApiBaseUrl() {
 // when the access token expires, and they should all wait on one refresh.
 let refreshInFlight: Promise<boolean> | null = null;
 
-async function refreshSession(): Promise<boolean> {
+export async function refreshSession(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = fetch(`${getApiBaseUrl()}/api/authentication/refreshAccessToken`, {
       method: "POST",
