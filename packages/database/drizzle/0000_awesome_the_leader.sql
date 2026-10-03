@@ -6,6 +6,7 @@ CREATE TYPE "public"."form_visibility_enum" AS ENUM('PUBLIC', 'UNLISTED');--> st
 CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_NO', 'PASSWORD', 'LONG_TEXT', 'DROPDOWN', 'MULTI_SELECT', 'CHECKBOX_GROUP', 'DATE', 'RATING');--> statement-breakpoint
 CREATE TYPE "public"."oauth_provider" AS ENUM('google');--> statement-breakpoint
 CREATE TYPE "public"."form_view_device_enum" AS ENUM('DESKTOP', 'MOBILE', 'TABLET', 'UNKNOWN');--> statement-breakpoint
+CREATE TYPE "public"."ai_request_status_enum" AS ENUM('IN_PROGRESS', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'ABANDONED');--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"full_name" varchar(100) NOT NULL,
@@ -91,6 +92,54 @@ CREATE TABLE "form_views" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
+CREATE TABLE "ai_requests" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"request_id" uuid NOT NULL,
+	"feature" varchar(40) DEFAULT 'FORM_BUILDER' NOT NULL,
+	"plan_key" varchar(40) DEFAULT 'free' NOT NULL,
+	"form_id" uuid,
+	"status" "ai_request_status_enum" DEFAULT 'IN_PROGRESS' NOT NULL,
+	"provider" varchar(40),
+	"model" varchar(100),
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"fallback_used" boolean DEFAULT false NOT NULL,
+	"intent" varchar(20),
+	"prompt_chars" integer DEFAULT 0 NOT NULL,
+	"input_tokens" integer DEFAULT 0 NOT NULL,
+	"output_tokens" integer DEFAULT 0 NOT NULL,
+	"estimated_tokens" integer DEFAULT 0 NOT NULL,
+	"estimated_cost_micros" bigint DEFAULT 0 NOT NULL,
+	"cost_micros" bigint DEFAULT 0 NOT NULL,
+	"latency_ms" integer,
+	"first_token_ms" integer,
+	"error_code" varchar(40),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "ai_spend_counters" (
+	"key" varchar(120) PRIMARY KEY NOT NULL,
+	"tokens" bigint DEFAULT 0 NOT NULL,
+	"cost_micros" bigint DEFAULT 0 NOT NULL,
+	"requests" integer DEFAULT 0 NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "ai_usage_windows" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"feature" varchar(40) DEFAULT 'FORM_BUILDER' NOT NULL,
+	"window_start" timestamp with time zone DEFAULT now() NOT NULL,
+	"window_end" timestamp with time zone,
+	"requests_used" integer DEFAULT 0 NOT NULL,
+	"credits_used" integer DEFAULT 0 NOT NULL,
+	"input_tokens_used" bigint DEFAULT 0 NOT NULL,
+	"output_tokens_used" bigint DEFAULT 0 NOT NULL,
+	"cost_micros_used" bigint DEFAULT 0 NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "forms" ADD CONSTRAINT "forms_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_fields" ADD CONSTRAINT "form_fields_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -98,4 +147,11 @@ ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_submitted_by_use
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "form_views" ADD CONSTRAINT "form_views_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "form_views" ADD CONSTRAINT "form_views_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_requests" ADD CONSTRAINT "ai_requests_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_usage_windows" ADD CONSTRAINT "ai_usage_windows_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "ai_requests_user_request_uq" ON "ai_requests" USING btree ("user_id","request_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "ai_requests_one_in_flight_per_user_uq" ON "ai_requests" USING btree ("user_id") WHERE status = 'IN_PROGRESS';--> statement-breakpoint
+CREATE INDEX "ai_requests_user_created_idx" ON "ai_requests" USING btree ("user_id","created_at");--> statement-breakpoint
+CREATE INDEX "ai_requests_created_idx" ON "ai_requests" USING btree ("created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "ai_usage_windows_user_feature_uq" ON "ai_usage_windows" USING btree ("user_id","feature");

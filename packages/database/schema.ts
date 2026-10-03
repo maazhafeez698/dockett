@@ -6,3 +6,4 @@ export * from "./models/refresh-token";
 export * from "./models/password-reset-token";
 export * from "./models/oauth-account";
 export * from "./models/form-view";
+export * from "./models/ai-usage";
