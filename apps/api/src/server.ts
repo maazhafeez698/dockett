@@ -6,12 +6,14 @@ import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
 import { apiReference } from "@scalar/express-api-reference";
 
-import { serverRouter, createContext } from "@repo/trpc/server";
+import { serverRouter, createContext, aiStreamHandler } from "@repo/trpc/server";
 
 import { env } from "./env";
 import cookieParser from "cookie-parser";
 
 export const app = express();
+app.set("trust proxy", env.TRUST_PROXY);
+app.disable("x-powered-by");
 const openApiDocument = generateOpenApiDocument(serverRouter, {
   title: "Formless OpenAPI",
   version: "1.0.0",
@@ -26,6 +28,33 @@ app.use(
 );
 
 app.use(cookieParser());
+
+// Phase 6 — AI form generation streams over SSE, so it is not a tRPC procedure.
+// Mounted before the global JSON parser so it can carry its own, tighter body cap.
+app.post("/ai/form/stream", express.json({ limit: "128kb" }), aiStreamHandler);
+
+// Malformed / oversized bodies on the AI route get the same JSON error shape as every other AI rejection.
+app.use(
+  "/ai/form/stream",
+  (
+    err: { status?: number; type?: string },
+    _req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (res.headersSent) return next(err);
+    const tooBig = err?.status === 413 || err?.type === "entity.too.large";
+    return res.status(tooBig ? 413 : 400).json({
+      error: {
+        code: tooBig ? "PAYLOAD_TOO_LARGE" : "INVALID_REQUEST",
+        message: tooBig
+          ? "That request is too large."
+          : "That request didn't look right. Please try again.",
+      },
+    });
+  },
+);
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
