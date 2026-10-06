@@ -37,6 +37,8 @@ import {
   useUpdateField,
 } from "~/hooks/api/form-field";
 import { useDeleteForm, useGetFormWithFields, useUpdateForm } from "~/hooks/api/form";
+import { useBillingOverview } from "~/hooks/api/billing";
+import { toastError } from "~/lib/plan-limit";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -96,6 +98,8 @@ interface FieldConfig {
 export default function FormBuilder() {
   const params = useParams();
   const router = useRouter();
+  const { overview: billing } = useBillingOverview();
+  const premiumUnlocked = billing?.plan.premiumTemplates ?? true;
   const [aiOpen, setAiOpen] = useState(false);
   const formId = params?.id as string | undefined;
 
@@ -249,7 +253,7 @@ export default function FormBuilder() {
     try {
       await updateFormAsync({ formId, template: templateId as FormTemplateId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update template");
+      toastError(err, "Failed to update template", () => router.push("/dashboard/billing"));
     }
   };
 
@@ -604,11 +608,16 @@ export default function FormBuilder() {
                   className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
                 >
                   <option value="CLASSIC">Classic (default)</option>
-                  {GALLERY_TEMPLATE_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {getTemplateDesign(id).name}
-                    </option>
-                  ))}
+                  {GALLERY_TEMPLATE_IDS.map((id) => {
+                    const locked =
+                      !premiumUnlocked && ["DEVELOPER", "RETRO", "TICKET"].includes(id);
+                    return (
+                      <option key={id} value={id} disabled={locked}>
+                        {getTemplateDesign(id).name}
+                        {locked ? " (Premium)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
                 <p className="text-xs text-muted-foreground">
                   Changes the structure and design of the public submission page.

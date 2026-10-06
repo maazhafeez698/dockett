@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, FileStack, Plus } from "lucide-react";
+import { Eye, FileStack, Lock, Plus } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -18,12 +18,17 @@ import { FORM_TEMPLATES, type FormTemplate } from "~/lib/templates-data";
 import { getTemplateDesign } from "~/lib/template-designs";
 import { useCreateFormFromTemplate, useCreateForm } from "~/hooks/api/form";
 import { AppShell } from "~/components/app-shell";
+import { useBillingOverview } from "~/hooks/api/billing";
+import { toastError } from "~/lib/plan-limit";
 
 export default function TemplatesPage() {
   const router = useRouter();
   const { createFormFromTemplateAsync, isPending: creatingFromTemplate } =
     useCreateFormFromTemplate();
   const { createFormAsync, isPending: creatingBlank } = useCreateForm();
+
+  const { overview } = useBillingOverview();
+  const premiumUnlocked = overview?.plan.premiumTemplates ?? true; // unknown yet → let the server decide
 
   const [previewing, setPreviewing] = useState<FormTemplate | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -39,6 +44,8 @@ export default function TemplatesPage() {
         fields: template.fields,
       });
       router.push(`/dashboard/forms/${id}`);
+    } catch (err) {
+      toastError(err, "Couldn't create the form", () => router.push("/dashboard/billing"));
     } finally {
       setPendingId(null);
     }
@@ -76,6 +83,8 @@ export default function TemplatesPage() {
             const visibleTags = template.fields.slice(0, 4);
             const overflow = template.fields.length - visibleTags.length;
             const busy = pendingId === template.id;
+            const locked =
+              !premiumUnlocked && ["DEVELOPER", "RETRO", "TICKET"].includes(template.template);
 
             return (
               <div
@@ -89,9 +98,16 @@ export default function TemplatesPage() {
                   >
                     <FileStack className="size-5" />
                   </div>
-                  <Badge variant="secondary" className={design.badgeClass}>
-                    {design.category}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    {["DEVELOPER", "RETRO", "TICKET"].includes(template.template) ? (
+                      <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-500">
+                        <Lock className="size-3" /> Premium
+                      </Badge>
+                    ) : null}
+                    <Badge variant="secondary" className={design.badgeClass}>
+                      {design.category}
+                    </Badge>
+                  </div>
                 </div>
 
                 <h3 className="mt-4 text-base font-semibold">{template.name}</h3>
@@ -126,9 +142,11 @@ export default function TemplatesPage() {
                     <Button
                       size="sm"
                       disabled={busy || creatingFromTemplate}
-                      onClick={() => handleUseTemplate(template)}
+                      onClick={() =>
+                        locked ? router.push("/dashboard/billing") : handleUseTemplate(template)
+                      }
                     >
-                      {busy ? "Creating..." : "Use Template"}
+                      {busy ? "Creating..." : locked ? "Upgrade to use" : "Use Template"}
                     </Button>
                   </div>
                 </div>

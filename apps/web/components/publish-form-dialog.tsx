@@ -9,6 +9,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, Copy, KeyRound, RotateCw } from "lucide-react";
 
@@ -23,6 +24,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { useRegenerateAccessCode, useUpdateForm } from "~/hooks/api/form";
+import { toastError } from "~/lib/plan-limit";
 
 type Status = "DRAFT" | "PUBLISHED" | "CLOSED";
 type Visibility = "PUBLIC" | "UNLISTED";
@@ -74,6 +76,7 @@ export function PublishFormDialog({
   currentAccessCode,
   children,
 }: PublishFormDialogProps) {
+  const router = useRouter();
   const { updateFormAsync, isPending } = useUpdateForm();
   const { regenerateAccessCodeAsync, isPending: regenerating } = useRegenerateAccessCode();
 
@@ -91,7 +94,7 @@ export function PublishFormDialog({
       toast.success(status === "PUBLISHED" ? "Form published" : "Settings saved");
       setOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update form");
+      toastError(err, "Failed to update form", () => router.push("/dashboard/billing"));
     }
   };
 

@@ -144,6 +144,27 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  // Plan states, shown up front (the API enforces both again when a response is submitted).
+  if (accessInfo.planUnavailable) {
+    return (
+      <CenteredMessage
+        icon={<Lock className="size-8 text-muted-foreground" />}
+        title="Temporarily unavailable"
+        body="This form is paused right now. Please check back later or contact the person who shared it."
+      />
+    );
+  }
+
+  if (accessInfo.responseLimitReached) {
+    return (
+      <CenteredMessage
+        icon={<Lock className="size-8 text-muted-foreground" />}
+        title="Response limit reached"
+        body="This form has received the maximum number of responses for this month. Please try again later."
+      />
+    );
+  }
+
   if (needsLogin) {
     return (
       <CenteredMessage

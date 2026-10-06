@@ -80,6 +80,14 @@ export default function DashboardForms() {
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                         {form.status}
                       </span>
+                      {form.planSuspended ? (
+                        <span
+                          className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-500"
+                          title="Your plan's active-form limit no longer covers this form. Upgrade to bring it back."
+                        >
+                          Suspended
+                        </span>
+                      ) : null}
                       <span className="text-xs text-muted-foreground">
                         {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : ""}
                       </span>
