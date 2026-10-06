@@ -5,7 +5,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FilePlus2, BarChart3, LayoutTemplate, Settings, LogOut } from "lucide-react";
+import { FilePlus2, BarChart3, LayoutTemplate, Settings, LogOut, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 import { Logo } from "~/components/logo";
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/forms", label: "Forms", icon: FilePlus2, isCreate: true },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, isCreate: false },
   { href: "/dashboard/templates", label: "Form Templates", icon: LayoutTemplate, isCreate: false },
+  { href: "/dashboard/billing", label: "Plans & Billing", icon: CreditCard, isCreate: false },
   { href: "/dashboard/settings", label: "Profile & Settings", icon: Settings, isCreate: false },
 ] as const;
 

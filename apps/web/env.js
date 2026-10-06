@@ -16,6 +16,10 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_API_URL: z.string().optional(),
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
+    // Contact Sales popup (Business plan). Placeholders are shown until you set these.
+    NEXT_PUBLIC_SALES_EMAIL: z.string().optional(),
+    NEXT_PUBLIC_SALES_WHATSAPP: z.string().optional(),
+    NEXT_PUBLIC_SALES_PHONE: z.string().optional(),
   },
 
   /**
@@ -25,6 +29,9 @@ export const env = createEnv({
   runtimeEnv: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    NEXT_PUBLIC_SALES_EMAIL: process.env.NEXT_PUBLIC_SALES_EMAIL,
+    NEXT_PUBLIC_SALES_WHATSAPP: process.env.NEXT_PUBLIC_SALES_WHATSAPP,
+    NEXT_PUBLIC_SALES_PHONE: process.env.NEXT_PUBLIC_SALES_PHONE,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
