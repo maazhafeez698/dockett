@@ -2,6 +2,7 @@ import { db, eq, max } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { assertFormOwnership } from "@repo/services/form";
+import { effectiveTemplate, getUserPlan } from "@repo/services/billing";
 
 import { AiError } from "./errors";
 import {
@@ -41,7 +42,12 @@ export async function saveDraftAsForm(userId: string, rawDraft: unknown): Promis
   if (!parsed.success) {
     throw new AiError("INVALID_REQUEST", "Invalid draft", { userMessage: parsed.error.issues[0]?.message });
   }
-  const draft: FormDraft = parsed.data;
+  // Plan gate: a premium template the user's plan doesn't include is replaced by the plain default.
+  const plan = await getUserPlan(userId);
+  const draft: FormDraft = {
+    ...parsed.data,
+    template: effectiveTemplate(plan.features, parsed.data.template) as FormDraft["template"],
+  };
   try {
     assertDraftConsistent(draft, HARD_MAX_FIELDS);
   } catch (e) {
@@ -84,7 +90,11 @@ export async function applyDraftToForm(
   if (!parsed.success) {
     throw new AiError("INVALID_REQUEST", "Invalid draft", { userMessage: parsed.error.issues[0]?.message });
   }
-  const draft = parsed.data;
+  const plan = await getUserPlan(userId);
+  const draft: FormDraft = {
+    ...parsed.data,
+    template: effectiveTemplate(plan.features, parsed.data.template) as FormDraft["template"],
+  };
   try {
     assertDraftConsistent(draft, HARD_MAX_FIELDS);
     await assertFormOwnership(formId, userId);

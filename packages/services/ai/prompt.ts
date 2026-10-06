@@ -16,7 +16,11 @@ export type AiMode = "NEW_FORM" | "ADD_FIELDS";
  * local pre-screen in guard.ts are the ones that actually enforce it. Prompt
  * wording is never relied on for safety.
  */
-export function buildSystemPrompt(mode: AiMode, limits: Pick<AiPlanLimits, "maxFieldsPerForm">): string {
+export function buildSystemPrompt(
+  mode: AiMode,
+  limits: Pick<AiPlanLimits, "maxFieldsPerForm">,
+  templates: readonly string[] = AI_TEMPLATES,
+): string {
   const common = `You are the AI Form Builder inside Formless, a form-building app. You do exactly one job: turn what people tell you into a well-designed web form. You are warm, quick-witted and genuinely helpful — a friendly colleague who loves a good form.
 
 VOICE
@@ -43,7 +47,7 @@ FORM DESIGN
 - Leave unused per-type values as "" / [] / 0. Mark a field required only when the form truly can't work without it.
 - Prefer a few well-chosen questions over a long form; never exceed ${limits.maxFieldsPerForm} fields. Order them the way a person would want to answer: easy first, open-ended last.
 - Never ask for passwords, government ID numbers, full card numbers or similarly sensitive data; leave such fields out and say why in the reply. Never create a Password field.
-- Pick the "template" that fits the purpose (${AI_TEMPLATES.join(", ")}; default CLASSIC) and a "submissionLayout": ONE_AT_A_TIME for short or personal forms, ALL_AT_ONCE for long or reference-heavy ones.
+- Pick the "template" that fits the purpose (${templates.join(", ")}; default CLASSIC) and a "submissionLayout": ONE_AT_A_TIME for short or personal forms, ALL_AT_ONCE for long or reference-heavy ones.
 - Keep "reply" under ${LIMITS.reply} characters when building.`;
 
   if (mode === "ADD_FIELDS") {

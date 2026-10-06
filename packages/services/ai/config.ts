@@ -214,7 +214,7 @@ export function defaultPlans(windowMs: number, free: Partial<AiPlanLimits>): Rec
   const freePlan: AiPlanLimits = {
     windowMs,
     maxRequestsPerWindow: 20, // hidden guard: ~15 normal messages fit comfortably
-    maxTokensPerWindow: 60_000, // ≈ 20 typical messages; secondary guard behind the user-facing message credits
+    maxTokensPerWindow: 60_000, // ≈ 20 typical messages; this is what users see as "credits"
     maxTokensPerDay: 150_000,
     maxPromptChars: 2000,
     maxHistoryMessages: 8,
@@ -225,8 +225,8 @@ export function defaultPlans(windowMs: number, free: Partial<AiPlanLimits>): Rec
   };
   return {
     free: freePlan,
-    // Illustrative tier for Phase 7 — nobody resolves to it yet
-    // (see resolvePlanKey in usage.ts). Editing it is safe.
+    // Plan keys here are the AI engine's own: free ↔ Basic, pro ↔ Premium, business ↔ Business.
+    // Which user gets which is decided by their subscription (packages/services/billing/plans.ts).
     pro: {
       ...freePlan,
       maxRequestsPerWindow: 100,
@@ -236,6 +236,18 @@ export function defaultPlans(windowMs: number, free: Partial<AiPlanLimits>): Rec
       maxHistoryMessages: 12,
       maxFieldsPerForm: 60,
       burstPerMinute: 12,
+    },
+    // Business ("Unlimited everything"): the same engine, with ceilings high enough that no normal
+    // team meets them. Still finite on purpose — the AI runs on a shared Gemini quota.
+    business: {
+      ...freePlan,
+      maxRequestsPerWindow: 300,
+      maxTokensPerWindow: 1_200_000,
+      maxTokensPerDay: 3_000_000,
+      maxPromptChars: 6000,
+      maxHistoryMessages: 16,
+      maxFieldsPerForm: 100,
+      burstPerMinute: 20,
     },
   };
 }

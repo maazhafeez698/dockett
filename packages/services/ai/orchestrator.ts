@@ -51,6 +51,8 @@ export interface GenerationParams {
   /** Conservative input-token estimate, used only if a provider never reports usage. */
   estimatedInputTokens: number;
   clientSignal: AbortSignal;
+  /** Templates the user's plan includes (premium ones are coerced to CLASSIC otherwise). */
+  allowedTemplates?: readonly string[];
 }
 
 export interface UsageTotals {
@@ -417,7 +419,10 @@ export class Orchestrator {
 
       let normalized;
       try {
-        normalized = normalizeModelOutput(parseModelJson(parser.text), { maxFields: params.maxFields });
+        normalized = normalizeModelOutput(parseModelJson(parser.text), {
+          maxFields: params.maxFields,
+          allowedTemplates: params.allowedTemplates,
+        });
       } catch (e) {
         throw new ProviderError("invalid_response", `Unusable model output: ${describeError(e).message}`, { outputStarted: true, cause: e });
       }

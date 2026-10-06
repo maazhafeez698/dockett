@@ -328,7 +328,10 @@ function toIntent(raw: string, hasFields: boolean): AiIntent {
  * orchestrator and treated as an invalid response) only when the output is
  * structurally unusable.
  */
-export function normalizeModelOutput(json: unknown, opts: { maxFields: number }): NormalizedOutput {
+export function normalizeModelOutput(
+  json: unknown,
+  opts: { maxFields: number; allowedTemplates?: readonly string[] },
+): NormalizedOutput {
   const parsed = rawOutputSchema.safeParse(json);
   if (!parsed.success) throw new Error("Model output did not match the expected structure");
 
@@ -364,7 +367,11 @@ export function normalizeModelOutput(json: unknown, opts: { maxFields: number })
 
   const draft: FormDraft = {
     title: clip(cleanText(form.title), LIMITS.title) || "Untitled Form",
-    template: (AI_TEMPLATES as readonly string[]).includes(template) ? (template as AiTemplate) : "CLASSIC",
+    // Only templates the user's plan includes; anything else (or unknown) becomes the plain default.
+    template:
+      (AI_TEMPLATES as readonly string[]).includes(template) && (opts.allowedTemplates ?? AI_TEMPLATES).includes(template)
+        ? (template as AiTemplate)
+        : "CLASSIC",
     submissionLayout: (AI_LAYOUTS as readonly string[]).includes(layout) ? (layout as AiLayout) : "ONE_AT_A_TIME",
     fields: dedupeLabels(cleaned),
   };

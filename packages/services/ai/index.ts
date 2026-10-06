@@ -3,6 +3,7 @@ import { db, and, asc, eq } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 
+import { getUserPlan } from "@repo/services/billing";
 import { getAiConfig } from "./config";
 import { AiError } from "./errors";
 import { SlidingWindowLimiter } from "./resilience";
@@ -77,7 +78,17 @@ export default class AiService {
   get engine(): AiFormEngine {
     if (!this._engine) {
       const config = getAiConfig();
-      this._engine = new AiFormEngine({ config, store: new PostgresUsageStore(), logger: aiLogger, loadForm });
+      this._engine = new AiFormEngine({
+        config,
+        store: new PostgresUsageStore(),
+        logger: aiLogger,
+        loadForm,
+        // The user's subscription decides their AI limits and whether premium templates are on the table.
+        resolveAccount: async (userId) => {
+          const plan = await getUserPlan(userId);
+          return { planKey: plan.aiPlanKey, premiumTemplates: plan.features.premiumTemplates };
+        },
+      });
       logger.info("ai.engine_ready", {
         enabled: config.enabled,
         chain: config.chain.map((c) => `${c.provider}:${c.model}`),

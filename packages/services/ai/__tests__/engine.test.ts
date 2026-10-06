@@ -5,14 +5,19 @@ import { MemoryUsageStore } from "../usage-store";
 import { AiError } from "../errors";
 import { ScriptedProvider, FakeClock, testConfig, ok, fail, goodJson, chunkText, rid, USER, USER2, type Step } from "./helpers";
 
-function build(scripts: Record<string, Step[]>, env: Record<string, string> = {}, forms: Record<string, any> = {}) {
+function build(
+  scripts: Record<string, Step[]>,
+  env: Record<string, string> = {},
+  forms: Record<string, any> = {},
+  resolveAccount?: (userId: string) => Promise<{ planKey: string; premiumTemplates: boolean }>,
+) {
   const config = testConfig(env);
   const store = new MemoryUsageStore();
   const clock = new FakeClock();
   const provider = new ScriptedProvider(scripts);
   const logs: any[] = [];
   const logger = { debug() {}, info: (m: string, x: any) => logs.push(["info", m, x]), warn: (m: string, x: any) => logs.push(["warn", m, x]), error: (m: string, x: any) => logs.push(["error", m, x]) };
-  const engine = new AiFormEngine({ config, store, clock, logger, providers: { gemini: provider }, loadForm: async (u, id) => forms[`${u}:${id}`] ?? null });
+  const engine = new AiFormEngine({ config, store, clock, logger, providers: { gemini: provider }, resolveAccount, loadForm: async (u, id) => forms[`${u}:${id}`] ?? null });
   const send = async (body: Record<string, unknown>, user = USER, signal = new AbortController().signal) => {
     const events: AiStreamEvent[] = [];
     const session = await engine.start(user, { requestId: rid(), mode: "NEW_FORM", prompt: "a feedback form for my talk", ...body }, signal);
@@ -52,38 +57,9 @@ test("CREDITS are tokens: percent consumed grows with real usage and is reported
   assert.equal(s.tokensUsed, 900);
   assert.equal(s.tokensLimit, 1000);
   assert.equal(s.limitReached, false);
-  assert.equal(s.resetsAt, null, "the reset timer starts only after the limit is reached");
+  assert.ok(s.resetsAt);
   assert.equal(s.windowMs, 5 * 3600_000);
 });
-
-test(
-  "twenty messages have prompt-dependent credit costs that total exactly 100%",
-  async () => {
-    const t = build(
-      { primary: Array.from({ length: 20 }, () => ok()) },
-      { AI_FREE_MAX_REQUESTS: "20", AI_FREE_MAX_TOKENS: "1000000", AI_FREE_MAX_DAILY_TOKENS: "10000000" },
-    );
-    const percentages: number[] = [];
-    for (let i = 0; i < 20; i++) {
-      t.clock.advance(11_000);
-      const credits = last(await t.send({ prompt: `form request with variation ${i}` }), "done")!.data.credits;
-      percentages.push(credits.percentUsed);
-      if (i < 19) {
-        assert.equal(credits.limitReached, false);
-        assert.equal(credits.resetsAt, null);
-      }
-    }
-    const increments = percentages.map((pct, i) => pct - (percentages[i - 1] ?? 0));
-    assert.ok(increments.slice(0, 19).every((increment) => increment >= 3 && increment <= 7), increments.join(", "));
-    assert.ok(new Set(increments.slice(0, 19)).size > 1, "different prompts should produce different credit costs");
-    assert.equal(percentages.at(-1), 100);
-    const summary = await t.engine.getUsageSummary(USER);
-    assert.equal(summary.limitReached, true);
-    assert.equal(summary.resetsAt, new Date(t.clock.now() + 5 * 3600_000).toISOString());
-    t.clock.advance(61_000);
-    await rejectsWith(t.send({ prompt: "one more" }), "QUOTA_EXCEEDED");
-  },
-);
 
 test("LIMIT REACHED: the request that crosses 100% completes; the next one is refused with 'Limit reached' and never hits the model", async () => {
   const t = build({ primary: [ok()] }, SMALL);
@@ -114,9 +90,7 @@ test("LIMIT REACHED also blocks greetings and off-topic chatter (no free chattin
 test("credits RESET after the 5-hour window and the user can talk again", async () => {
   const t = build({ primary: [ok()] }, SMALL);
   for (let i = 0; i < 4; i++) { t.clock.advance(11_000); await t.send({}); }
-  const exhausted = await t.engine.getUsageSummary(USER);
-  assert.equal(exhausted.limitReached, true);
-  assert.equal(exhausted.resetsAt, new Date(t.clock.now() + 5 * 3600_000).toISOString());
+  assert.equal((await t.engine.getUsageSummary(USER)).limitReached, true);
   t.clock.advance(5 * 3600_000);
   const s = await t.engine.getUsageSummary(USER);
   assert.equal(s.percentUsed, 0);
@@ -423,4 +397,55 @@ test("a throwing event sink (client vanished) cannot break accounting", async ()
   assert.equal((await t.engine.getUsageSummary(USER)).tokensUsed, 300);
   t.clock.advance(11_000);
   assert.equal((await t.send({})).at(-1)!.event, "done", "lock was released");
+});
+
+// ------------------------------------------------------------ plan sync (Basic / Premium / Business)
+
+const accounts: Record<string, { planKey: string; premiumTemplates: boolean }> = {
+  [USER]: { planKey: "free", premiumTemplates: false },
+  [USER2]: { planKey: "pro", premiumTemplates: true },
+};
+const byUser = async (id: string) => accounts[id] ?? { planKey: "free", premiumTemplates: false };
+
+test("PLAN SYNC: each user's AI credits come from THEIR plan — Premium gets the larger window, Basic keeps the small one", async () => {
+  const t = build({ primary: [ok()] }, {}, {}, byUser);
+  const basic = last(await t.send({}, USER), "done")!.data.credits;
+  t.clock.advance(11_000);
+  const premium = last(await t.send({}, USER2), "done")!.data.credits;
+  assert.equal(basic.tokensLimit, t.config.plans.free!.maxTokensPerWindow);
+  assert.equal(premium.tokensLimit, t.config.plans.pro!.maxTokensPerWindow);
+  assert.ok(premium.tokensLimit > basic.tokensLimit * 3);
+  assert.ok(premium.percentUsed < basic.percentUsed, "the same message uses a smaller share of Premium credits");
+});
+
+test("PLAN SYNC: upgrading takes effect on the very next request (no restart, no stale plan)", async () => {
+  let plan = "free";
+  const t = build({ primary: [ok()] }, SMALL, {}, async () => ({ planKey: plan, premiumTemplates: plan !== "free" }));
+  for (let i = 0; i < 4; i++) { t.clock.advance(11_000); await t.send({}); }
+  t.clock.advance(11_000);
+  await rejectsWith(t.send({}), "QUOTA_EXCEEDED"); // Basic window used up
+  plan = "pro"; // webhook flipped the subscription
+  t.clock.advance(11_000);
+  const summary = await t.engine.getUsageSummary(USER);
+  assert.equal(summary.tokensLimit, t.config.plans.pro!.maxTokensPerWindow);
+  assert.equal(summary.limitReached, false, "same tokens used, much bigger allowance");
+  assert.equal((await t.send({})).at(-1)!.event, "done");
+});
+
+test("PLAN SYNC: the Business plan exists in the AI engine and is the largest", () => {
+  const { free, pro, business } = testConfig().plans;
+  assert.ok(business && business.maxTokensPerWindow > pro!.maxTokensPerWindow && pro!.maxTokensPerWindow > free!.maxTokensPerWindow);
+});
+
+test("TEMPLATES: Basic users are never offered, and never receive, a premium template from the AI", async () => {
+  const premiumJson = goodJson().replace('"template":"SURVEY"', '"template":"RETRO"');
+  const basic = build({ primary: [ok(premiumJson)] }, {}, {}, byUser);
+  const done = last(await basic.send({}, USER), "done")!;
+  assert.equal(done.data.draft!.template, "CLASSIC", "premium template coerced for Basic");
+  assert.doesNotMatch(basic.provider.calls[0]!.system, /DEVELOPER|RETRO|TICKET/);
+
+  const premium = build({ primary: [ok(premiumJson)] }, {}, {}, byUser);
+  const done2 = last(await premium.send({}, USER2), "done")!;
+  assert.equal(done2.data.draft!.template, "RETRO");
+  assert.match(premium.provider.calls[0]!.system, /RETRO/);
 });

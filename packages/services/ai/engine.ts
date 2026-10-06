@@ -2,14 +2,15 @@ import { z } from "zod";
 
 import { AiError, describeError } from "./errors";
 import type { AiConfig, ProviderId } from "./config";
-import { MODEL_OUTPUT_JSON_SCHEMA, formDraftSchema, type AiIntent, type DraftField, type FormDraft } from "./draft";
+import { AI_TEMPLATES, MODEL_OUTPUT_JSON_SCHEMA, formDraftSchema, type AiIntent, type DraftField, type FormDraft } from "./draft";
+import { isPremiumTemplate } from "../billing/plans";
 import { preScreen } from "./guard";
 import { GenerationError, Orchestrator } from "./orchestrator";
 import { buildMessages, buildSystemPrompt, estimateTokens, renderForm, type AiMode } from "./prompt";
 import { CircuitBreaker, ModelQuota, systemClock, type Clock } from "./resilience";
 import { createProviders, type FetchLike, type ModelProvider } from "./providers";
 import { noopLogger, type AiLogger } from "./logging";
-import { UsageService, planLimits, resolvePlanKey, type Admission, type Credits, type UsageSummary } from "./usage";
+import { UsageService, planLimits, type Admission, type Credits, type UsageSummary } from "./usage";
 import { quotaError, type UsageStore } from "./usage-store";
 
 /**
@@ -67,6 +68,11 @@ export interface EngineDeps {
   clock?: Clock;
   /** Loads an existing form the user owns; return null if it doesn't exist / isn't theirs. */
   loadForm(userId: string, formId: string): Promise<ExistingFormContext | null>;
+  /**
+   * The user's account as far as AI cares: which AI plan they're on and whether premium templates are
+   * theirs to use. Production wires this to the user's subscription; the default is "free, no premium".
+   */
+  resolveAccount?(userId: string): Promise<{ planKey: string; premiumTemplates: boolean }>;
   /** Test seam: replace real provider adapters. */
   providers?: Partial<Record<ProviderId, ModelProvider>>;
   fetchImpl?: FetchLike;
@@ -93,7 +99,17 @@ export class AiFormEngine {
       logger: this.logger,
       clock: this.clock,
     });
-    this.usage = new UsageService(deps.config, deps.store, this.logger, this.clock);
+    this.usage = new UsageService(
+      deps.config,
+      deps.store,
+      this.logger,
+      this.clock,
+      async (userId) => (await this.account(userId)).planKey,
+    );
+  }
+
+  private account(userId: string) {
+    return this.deps.resolveAccount?.(userId) ?? Promise.resolve({ planKey: "free", premiumTemplates: false });
   }
 
   get enabled(): boolean {
@@ -121,8 +137,9 @@ export class AiFormEngine {
     }
     const input = parsed.data;
 
-    const planKey = await resolvePlanKey(userId);
-    const limits = planLimits(config, planKey);
+    const account = await this.account(userId);
+    const limits = planLimits(config, account.planKey);
+    const allowedTemplates = AI_TEMPLATES.filter((t) => account.premiumTemplates || !isPremiumTemplate(t));
 
     if (input.prompt.length > limits.maxPromptChars) {
       throw new AiError("PAYLOAD_TOO_LARGE", "Prompt exceeds plan limit", {
@@ -192,7 +209,7 @@ export class AiFormEngine {
       contextParts.push(renderForm("current_form", input.currentDraft, maxCtx));
     }
 
-    const system = buildSystemPrompt(mode, limits);
+    const system = buildSystemPrompt(mode, limits, allowedTemplates);
     const messages = buildMessages({
       history: input.history,
       prompt: input.prompt,
@@ -216,7 +233,8 @@ export class AiFormEngine {
 
     return {
       requestId: input.requestId,
-      run: (sink) => this.execute({ admission, system, messages, mode, estimatedInputTokens, clientSignal, sink }),
+      run: (sink) =>
+        this.execute({ admission, system, messages, mode, estimatedInputTokens, clientSignal, sink, allowedTemplates }),
     };
   }
 
@@ -228,6 +246,7 @@ export class AiFormEngine {
     estimatedInputTokens: number;
     clientSignal: AbortSignal;
     sink: EventSink;
+    allowedTemplates: readonly string[];
   }): Promise<void> {
     const { admission, sink } = ctx;
     const { limits } = admission;
@@ -253,6 +272,7 @@ export class AiFormEngine {
           maxFields: limits.maxFieldsPerForm,
           estimatedInputTokens: ctx.estimatedInputTokens,
           clientSignal: ctx.clientSignal,
+          allowedTemplates: ctx.allowedTemplates,
         },
         {
           onStatus: (phase, message) => send({ event: "status", data: { phase, message } }),
