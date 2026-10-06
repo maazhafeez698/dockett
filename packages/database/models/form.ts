@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { usersTable } from "./user";
 
 export const formStatusEnum = pgEnum("form_status_enum", ["DRAFT", "PUBLISHED", "CLOSED"]);
@@ -41,29 +41,34 @@ export const formSubmissionLayoutEnum = pgEnum("form_submission_layout_enum", [
   "ALL_AT_ONCE",
 ]);
 
-export const formsTable = pgTable("forms", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const formsTable = pgTable(
+  "forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
 
-  title: varchar("title", { length: 50 }).notNull(),
-  description: varchar("decription", { length: 300 }),
+    title: varchar("title", { length: 50 }).notNull(),
+    description: varchar("decription", { length: 300 }),
 
-  status: formStatusEnum("status").default("DRAFT").notNull(),
-  visibility: formVisibilityEnum("visibility").default("PUBLIC").notNull(),
-  submissionAccess: formSubmissionAccessEnum("submission_access").default("ANYONE").notNull(),
+    status: formStatusEnum("status").default("DRAFT").notNull(),
+    visibility: formVisibilityEnum("visibility").default("PUBLIC").notNull(),
+    submissionAccess: formSubmissionAccessEnum("submission_access").default("ANYONE").notNull(),
 
-  template: formTemplateEnum("template").default("CLASSIC").notNull(),
-  submissionLayout: formSubmissionLayoutEnum("submission_layout")
-    .default("ONE_AT_A_TIME")
-    .notNull(),
+    template: formTemplateEnum("template").default("CLASSIC").notNull(),
+    submissionLayout: formSubmissionLayoutEnum("submission_layout")
+      .default("ONE_AT_A_TIME")
+      .notNull(),
 
-  // Set only when submissionAccess = ACCESS_CODE. Short, shareable,
-  // human-typeable — this gates *response access*, not a security secret on
-  // the level of a password, so it's stored as plain text (same trust model
-  // as a meeting-invite code or a game room code).
-  accessCode: varchar("access_code", { length: 12 }),
+    // Set only when submissionAccess = ACCESS_CODE. Short, shareable,
+    // human-typeable — this gates *response access*, not a security secret on
+    // the level of a password, so it's stored as plain text (same trust model
+    // as a meeting-invite code or a game room code).
+    accessCode: varchar("access_code", { length: 12 }),
 
-  createdBy: uuid("created_by").references(() => usersTable.id),
+    createdBy: uuid("created_by").references(() => usersTable.id),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").$onUpdate(() => new Date()),
-});
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").$onUpdate(() => new Date()),
+  },
+  // Plan enforcement counts a user's published forms on every publish and every public view.
+  (t) => [index("forms_created_by_status_idx").on(t.createdBy, t.status)],
+);

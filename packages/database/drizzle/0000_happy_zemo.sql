@@ -7,6 +7,8 @@ CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_N
 CREATE TYPE "public"."oauth_provider" AS ENUM('google');--> statement-breakpoint
 CREATE TYPE "public"."form_view_device_enum" AS ENUM('DESKTOP', 'MOBILE', 'TABLET', 'UNKNOWN');--> statement-breakpoint
 CREATE TYPE "public"."ai_request_status_enum" AS ENUM('IN_PROGRESS', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'ABANDONED');--> statement-breakpoint
+CREATE TYPE "public"."subscription_source_enum" AS ENUM('PADDLE', 'MANUAL');--> statement-breakpoint
+CREATE TYPE "public"."subscription_status_enum" AS ENUM('ACTIVE', 'TRIALING', 'PAST_DUE', 'PAUSED', 'CANCELED');--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"full_name" varchar(100) NOT NULL,
@@ -140,6 +142,34 @@ CREATE TABLE "ai_usage_windows" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "billing_events" (
+	"event_id" varchar(64) PRIMARY KEY NOT NULL,
+	"event_type" varchar(64) NOT NULL,
+	"occurred_at" timestamp with time zone NOT NULL,
+	"received_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"outcome" varchar(20) DEFAULT 'APPLIED' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"plan_key" varchar(20) NOT NULL,
+	"status" "subscription_status_enum" DEFAULT 'ACTIVE' NOT NULL,
+	"source" "subscription_source_enum" DEFAULT 'PADDLE' NOT NULL,
+	"paddle_subscription_id" varchar(64),
+	"paddle_customer_id" varchar(64),
+	"paddle_price_id" varchar(64),
+	"billing_cycle" varchar(10),
+	"current_period_start" timestamp with time zone,
+	"current_period_end" timestamp with time zone,
+	"cancel_at_period_end" boolean DEFAULT false NOT NULL,
+	"canceled_at" timestamp with time zone,
+	"grace_until" timestamp with time zone,
+	"last_event_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "forms" ADD CONSTRAINT "forms_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_fields" ADD CONSTRAINT "form_fields_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -150,8 +180,14 @@ ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_users_id_fk"
 ALTER TABLE "form_views" ADD CONSTRAINT "form_views_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_requests" ADD CONSTRAINT "ai_requests_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage_windows" ADD CONSTRAINT "ai_usage_windows_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "forms_created_by_status_idx" ON "forms" USING btree ("created_by","status");--> statement-breakpoint
+CREATE INDEX "form_submissions_form_created_idx" ON "form_submissions" USING btree ("form_id","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "ai_requests_user_request_uq" ON "ai_requests" USING btree ("user_id","request_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "ai_requests_one_in_flight_per_user_uq" ON "ai_requests" USING btree ("user_id") WHERE status = 'IN_PROGRESS';--> statement-breakpoint
 CREATE INDEX "ai_requests_user_created_idx" ON "ai_requests" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "ai_requests_created_idx" ON "ai_requests" USING btree ("created_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "ai_usage_windows_user_feature_uq" ON "ai_usage_windows" USING btree ("user_id","feature");
+CREATE UNIQUE INDEX "ai_usage_windows_user_feature_uq" ON "ai_usage_windows" USING btree ("user_id","feature");--> statement-breakpoint
+CREATE UNIQUE INDEX "subscriptions_user_uq" ON "subscriptions" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "subscriptions_paddle_sub_uq" ON "subscriptions" USING btree ("paddle_subscription_id");--> statement-breakpoint
+CREATE INDEX "subscriptions_customer_idx" ON "subscriptions" USING btree ("paddle_customer_id");
