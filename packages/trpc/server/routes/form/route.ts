@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { authenticatedProcedure, optionalAuthProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { formService, formAnalyticsService } from "../../services";
+import { toPlanLimitTrpcError } from "../../utils/plan-error";
 
 import {
   createFormInputModel,
@@ -36,6 +37,9 @@ function toReadableMessage(error: unknown, fallback: string) {
  * message the client can key off of to render a gate screen instead of a
  * generic error toast. */
 function toGatedError(error: unknown) {
+  const planError = toPlanLimitTrpcError(error);
+  if (planError) return planError;
+
   const message = error instanceof Error ? error.message : "";
 
   if (message === "ACCESS_CODE_REQUIRED") {
@@ -63,15 +67,22 @@ export const formRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { title, description, template, submissionLayout } = input;
 
-      const { id } = await formService.createForm({
-        title,
-        description,
-        template,
-        submissionLayout,
-        createdBy: ctx.user.id,
-      });
+      try {
+        const { id } = await formService.createForm({
+          title,
+          description,
+          template,
+          submissionLayout,
+          createdBy: ctx.user.id,
+        });
 
-      return { id };
+        return { id };
+      } catch (error) {
+        throw (
+          toPlanLimitTrpcError(error) ??
+          new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Failed to create form") })
+        );
+      }
     }),
 
   createFormFromTemplate: authenticatedProcedure
@@ -93,10 +104,13 @@ export const formRouter = router({
         });
         return result;
       } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: toReadableMessage(error, "Failed to create form from template"),
-        });
+        throw (
+          toPlanLimitTrpcError(error) ??
+          new TRPCError({
+            code: "BAD_REQUEST",
+            message: toReadableMessage(error, "Failed to create form from template"),
+          })
+        );
       }
     }),
 
@@ -162,10 +176,10 @@ export const formRouter = router({
         const result = await formService.updateForm({ ...input, userId: ctx.user.id });
         return result;
       } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: toReadableMessage(error, "Failed to update form"),
-        });
+        throw (
+          toPlanLimitTrpcError(error) ??
+          new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Failed to update form") })
+        );
       }
     }),
 

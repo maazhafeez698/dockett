@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { authenticatedProcedure, optionalAuthProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { formSubmissionService } from "../../services";
+import { toPlanLimitTrpcError } from "../../utils/plan-error";
 import { assertFormOwnership } from "@repo/services/form";
 
 import {
@@ -30,10 +31,13 @@ export const formSubmissionRouter = router({
         });
         return result;
       } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: error instanceof Error ? error.message : "Failed to submit form",
-        });
+        throw (
+          toPlanLimitTrpcError(error) ??
+          new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Failed to submit form",
+          })
+        );
       }
     }),
   getSubmissionsByFormId: authenticatedProcedure

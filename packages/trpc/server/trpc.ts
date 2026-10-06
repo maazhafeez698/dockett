@@ -5,7 +5,16 @@ import { createContext } from "./context";
 import { userService } from "./services";
 import { ACCESS_TOKEN_COOKIE } from "./utils/cookie";
 
-export const tRPCContext = initTRPC.meta<OpenApiMeta>().context<typeof createContext>().create({});
+export const tRPCContext = initTRPC
+  .meta<OpenApiMeta>()
+  .context<typeof createContext>()
+  .create({
+    // Lets the web app tell "you hit a plan limit" (offer an upgrade) apart from any other FORBIDDEN error.
+    errorFormatter({ shape, error }) {
+      const planLimit = (error.cause as { planLimit?: string } | undefined)?.planLimit ?? null;
+      return { ...shape, data: { ...shape.data, planLimit } };
+    },
+  });
 
 export const router = tRPCContext.router;
 

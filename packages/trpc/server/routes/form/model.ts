@@ -80,6 +80,10 @@ export const listFormsOutputModel = z.array(
     template: formTemplateEnum,
     submissionLayout: formSubmissionLayoutEnum,
     accessCode: z.string().nullable().optional(),
+    planSuspended: z
+      .boolean()
+      .optional()
+      .describe("True when the plan's active-form limit no longer covers this published form"),
 
     createdAt: z.date().nullable().describe("Creation timestamp"),
     updatedAt: z.date().nullable().describe("Last updated timestamp"),
@@ -117,6 +121,14 @@ export const getFormAccessInfoOutputModel = z.object({
   status: formStatusEnum,
   submissionAccess: formSubmissionAccessEnum,
   template: formTemplateEnum,
+  planUnavailable: z
+    .boolean()
+    .optional()
+    .describe("True when the owner's plan no longer covers this form (it is suspended)"),
+  responseLimitReached: z
+    .boolean()
+    .optional()
+    .describe("True when the form has used up its monthly response quota"),
 });
 
 export const updateFormInputModel = z.object({
