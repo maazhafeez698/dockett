@@ -6,7 +6,12 @@ import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
 import { apiReference } from "@scalar/express-api-reference";
 
-import { serverRouter, createContext, aiStreamHandler } from "@repo/trpc/server";
+import {
+  serverRouter,
+  createContext,
+  aiStreamHandler,
+  paddleWebhookHandler,
+} from "@repo/trpc/server";
 
 import { env } from "./env";
 import cookieParser from "cookie-parser";
@@ -32,6 +37,14 @@ app.use(cookieParser());
 // Phase 6 — AI form generation streams over SSE, so it is not a tRPC procedure.
 // Mounted before the global JSON parser so it can carry its own, tighter body cap.
 app.post("/ai/form/stream", express.json({ limit: "128kb" }), aiStreamHandler);
+
+// Phase 7 — Paddle webhooks. The signature is computed over the exact bytes Paddle sends, so this
+// route needs the RAW body (not parsed JSON). It must stay above the global express.json() below.
+app.post(
+  "/billing/paddle/webhook",
+  express.raw({ type: "application/json", limit: "1mb" }),
+  paddleWebhookHandler,
+);
 
 // Malformed / oversized bodies on the AI route get the same JSON error shape as every other AI rejection.
 app.use(

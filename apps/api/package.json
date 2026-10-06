@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node dist/index.js",
-    "test:ai": "tsx --test ../../packages/services/ai/__tests__/stream-parser.test.ts ../../packages/services/ai/__tests__/draft.test.ts ../../packages/services/ai/__tests__/guard.test.ts ../../packages/services/ai/__tests__/config.test.ts ../../packages/services/ai/__tests__/resilience.test.ts ../../packages/services/ai/__tests__/abuse.test.ts ../../packages/services/ai/__tests__/providers.test.ts ../../packages/services/ai/__tests__/orchestrator.test.ts ../../packages/services/ai/__tests__/engine.test.ts",
+    "test:ai": "tsx --test ../../packages/services/ai/__tests__/stream-parser.test.ts ../../packages/services/ai/__tests__/draft.test.ts ../../packages/services/ai/__tests__/guard.test.ts ../../packages/services/ai/__tests__/config.test.ts ../../packages/services/ai/__tests__/resilience.test.ts ../../packages/services/ai/__tests__/abuse.test.ts ../../packages/services/ai/__tests__/providers.test.ts ../../packages/services/ai/__tests__/orchestrator.test.ts ../../packages/services/ai/__tests__/engine.test.ts ../../packages/services/billing/__tests__/billing.test.ts",
+    "test:billing:integration": "dotenv -- tsx --test ../../packages/services/billing/__tests__/billing.integration.test.ts",
     "test:ai:integration": "dotenv -- tsx --test ../../packages/services/ai/__tests__/usage-store.postgres.integration.test.ts",
     "dev": "dotenv -- tsx watch ./src/index.ts",
     "build": "tsup",
