@@ -1,4 +1,13 @@
 import { db, eq } from "@repo/database";
+import {
+  PlanLimitError,
+  assertTemplateAllowed,
+  getUserPlan,
+  isFormSuspended,
+  isResponseLimitReached,
+  templateForOwner,
+  withPublishLimit,
+} from "@repo/services/billing";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 
@@ -78,6 +87,9 @@ export default class FormService {
     const { title, description, createdBy, template, submissionLayout } =
       await createFormInput.parseAsync(payload);
 
+    // Plan gate: premium templates (Developer, Retro, Ticket) need a plan that includes them.
+    await assertTemplateAllowed(createdBy, template);
+
     const result = await db
       .insert(formsTable)
       .values({
@@ -103,6 +115,8 @@ export default class FormService {
   public async createFormFromTemplate(payload: CreateFormFromTemplateInputType) {
     const { title, description, createdBy, template, submissionLayout, fields } =
       await createFormFromTemplateInput.parseAsync(payload);
+
+    await assertTemplateAllowed(createdBy, template);
 
     const result = await db
       .insert(formsTable)
@@ -139,8 +153,20 @@ export default class FormService {
       .from(formsTable)
       .where(eq(formsTable.createdBy, userId));
 
+    // After a downgrade the OLDEST published forms (up to the plan limit) stay live; the rest are
+    // suspended. The same rule is enforced on the public endpoints (see isFormSuspended).
+    const plan = await getUserPlan(userId);
+    const limit = plan.limits.maxActiveForms;
+    const suspended = new Set<string>();
+    if (limit !== null) {
+      const published = forms
+        .filter((f) => f.status === "PUBLISHED")
+        .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0) || (a.id < b.id ? -1 : 1));
+      published.slice(limit).forEach((f) => suspended.add(f.id));
+    }
+
     // accessCode isn't secret from the owner (it's their own form's list).
-    return forms;
+    return forms.map((f) => ({ ...f, planSuspended: suspended.has(f.id) }));
   }
 
   /** Cheap, always-public metadata — used by the fill page to decide what
@@ -153,13 +179,18 @@ export default class FormService {
     const form = rows[0];
     if (!form) throw new Error("Form not found");
 
+    const published = form.status === "PUBLISHED";
     return {
       id: form.id,
       title: form.title,
       description: form.description ?? null,
       status: form.status,
       submissionAccess: form.submissionAccess,
-      template: form.template,
+      // A premium template is only served while its owner's plan includes it.
+      template: await templateForOwner(form.createdBy, form.template),
+      // Plan state, so the fill page can say so up front instead of failing at submit time.
+      planUnavailable: published ? await isFormSuspended(form.id, form.createdBy) : false,
+      responseLimitReached: published ? await isResponseLimitReached(form.id, form.createdBy) : false,
     };
   }
 
@@ -198,6 +229,9 @@ export default class FormService {
         // distinguishable from a nonexistent one to a non-owner.
         throw new Error("Form not found");
       }
+      if (await isFormSuspended(first.id, first.createdBy)) {
+        throw new PlanLimitError("FORM_UNAVAILABLE", "This form is temporarily unavailable.");
+      }
       if (first.submissionAccess === "ACCESS_CODE") {
         if (!accessCode || accessCode.toUpperCase() !== (first.accessCode ?? "").toUpperCase()) {
           throw new Error("ACCESS_CODE_REQUIRED");
@@ -215,7 +249,7 @@ export default class FormService {
       status: first.status,
       visibility: first.visibility,
       submissionAccess: first.submissionAccess,
-      template: first.template,
+      template: await templateForOwner(first.createdBy, first.template),
       submissionLayout: first.submissionLayout,
       // Only the owner ever sees the code itself — everyone else already
       // had to know it to get this far.
@@ -262,6 +296,18 @@ export default class FormService {
 
     const existing = await assertFormOwnership(formId, userId);
 
+    const currentRows = await db
+      .select({ status: formsTable.status, template: formsTable.template })
+      .from(formsTable)
+      .where(eq(formsTable.id, formId));
+    const current = currentRows[0];
+
+    // Plan gate: only a CHANGE to a premium template is checked, so a downgraded user can still edit
+    // a form that already has one (it is simply served as Classic until they upgrade again).
+    if (template !== undefined && template !== current?.template) {
+      await assertTemplateAllowed(userId, template);
+    }
+
     const updates: Partial<typeof formsTable.$inferInsert> = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
@@ -290,7 +336,14 @@ export default class FormService {
 
     if (Object.keys(updates).length === 0) return { id: formId };
 
-    await db.update(formsTable).set(updates).where(eq(formsTable.id, formId));
+    if (status === "PUBLISHED" && current?.status !== "PUBLISHED") {
+      // Going live counts against the plan's active-form limit — checked under a per-user lock.
+      await withPublishLimit(userId, formId, async (tx) => {
+        await tx.update(formsTable).set(updates).where(eq(formsTable.id, formId));
+      });
+    } else {
+      await db.update(formsTable).set(updates).where(eq(formsTable.id, formId));
+    }
 
     void existing;
     return { id: formId };

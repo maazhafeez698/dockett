@@ -4,6 +4,7 @@ import { db, eq, and } from "@repo/database";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formsTable } from "@repo/database/models/form";
+import { PlanLimitError, isFormSuspended, withResponseQuota } from "@repo/services/billing";
 import { createSubmissionInput, CreateSubmissionInputType } from "./model";
 
 export default class FormSubmissionService {
@@ -42,6 +43,13 @@ export default class FormSubmissionService {
       throw new Error("Sign in to submit this form");
     }
 
+    // Plan gates for live forms: a suspended form (owner downgraded past their active-form limit)
+    // takes no responses, and the monthly response quota is enforced atomically at insert time.
+    const isLive = form.status === "PUBLISHED";
+    if (isLive && (await isFormSuspended(form.id, form.createdBy))) {
+      throw new PlanLimitError("FORM_UNAVAILABLE", "This form is temporarily unavailable.");
+    }
+
     const requiredFields = await db
       .select({ id: formFieldsTable.id, label: formFieldsTable.label })
       .from(formFieldsTable)
@@ -61,10 +69,15 @@ export default class FormSubmissionService {
       );
     }
 
-    const result = await db
-      .insert(formSubmissionsTable)
-      .values({ formId, values, submittedBy: requesterId ?? null })
-      .returning({ id: formSubmissionsTable.id, createdAt: formSubmissionsTable.createdAt });
+    const insertRow = async (exec: Pick<typeof db, "insert">) =>
+      await exec
+        .insert(formSubmissionsTable)
+        .values({ formId, values, submittedBy: requesterId ?? null })
+        .returning({ id: formSubmissionsTable.id, createdAt: formSubmissionsTable.createdAt });
+
+    const result = isLive
+      ? await withResponseQuota(form.id, form.createdBy, (tx) => insertRow(tx))
+      : await insertRow(db);
 
     if (!result || result.length === 0 || !result[0]?.id)
       throw new Error("Something went wrong while creating the submission");
