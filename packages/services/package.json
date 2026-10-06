@@ -9,7 +9,8 @@
     "./form-submission": "./form-submission/index.ts",
     "./form-analytics": "./form-analytics/index.ts",
     "./user": "./user/index.ts",
-    "./ai": "./ai/index.ts"
+    "./ai": "./ai/index.ts",
+    "./billing": "./billing/index.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
