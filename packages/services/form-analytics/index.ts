@@ -14,8 +14,7 @@ import {
   getSubmissionDetailInput,
   type GetSubmissionDetailInputType,
 } from "./model";
-
-const TIMELINE_DAYS = 14;
+import { buildResponseTimeline } from "./timeline";
 
 /** Small, deliberately unsophisticated UA sniff — no dependency, just
  * enough signal for a device-mix chart, not a precise analytics product. */
@@ -27,10 +26,6 @@ function classifyDevice(
   if (ua.includes("ipad") || (ua.includes("tablet") && !ua.includes("mobile"))) return "TABLET";
   if (ua.includes("mobi") || ua.includes("iphone") || ua.includes("android")) return "MOBILE";
   return "DESKTOP";
-}
-
-function dayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 export default class FormAnalyticsService {
@@ -46,7 +41,7 @@ export default class FormAnalyticsService {
   }
 
   public async getFormAnalytics(payload: GetFormAnalyticsInputType) {
-    const { formId, userId } = await getFormAnalyticsInput.parseAsync(payload);
+    const { formId, userId, timeZone = "UTC" } = await getFormAnalyticsInput.parseAsync(payload);
     await assertFormOwnership(formId, userId);
 
     const fields = await db
@@ -90,23 +85,7 @@ export default class FormAnalyticsService {
     for (const v of views) deviceBreakdown[v.device] += 1;
     const totalViews = views.length;
 
-    // Response timeline — last TIMELINE_DAYS days, zero-filled.
-    const since = new Date();
-    since.setDate(since.getDate() - (TIMELINE_DAYS - 1));
-    since.setHours(0, 0, 0, 0);
-
-    const timelineMap = new Map<string, number>();
-    for (let i = 0; i < TIMELINE_DAYS; i++) {
-      const d = new Date(since);
-      d.setDate(d.getDate() + i);
-      timelineMap.set(dayKey(d), 0);
-    }
-    for (const s of submissions) {
-      if (!s.createdAt || s.createdAt < since) continue;
-      const key = dayKey(s.createdAt);
-      if (timelineMap.has(key)) timelineMap.set(key, (timelineMap.get(key) ?? 0) + 1);
-    }
-    const timeline = Array.from(timelineMap.entries()).map(([date, count]) => ({ date, count }));
+    const timeline = buildResponseTimeline(submissions, timeZone);
 
     return {
       totalResponses,

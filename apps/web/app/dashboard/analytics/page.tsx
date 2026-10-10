@@ -48,6 +48,11 @@ const TOOLTIP_STYLE = {
   fontFamily: "var(--font-mono)",
 } as const;
 
+function formatTimelineDate(date: string, options?: Intl.DateTimeFormatOptions): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year!, month! - 1, day!).toLocaleDateString(undefined, options);
+}
+
 function StatCard({
   label,
   value,
@@ -268,7 +273,11 @@ export default function AnalyticsPage() {
                 <>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <StatCard label="Total responses" value={analytics.totalResponses} />
-                    <StatCard label="Completion rate" value={`${analytics.completionRate}%`} accent />
+                    <StatCard
+                      label="Completion rate"
+                      value={`${analytics.completionRate}%`}
+                      accent
+                    />
                     <StatCard label="Total views" value={analytics.totalViews} />
                   </div>
 
@@ -286,26 +295,34 @@ export default function AnalyticsPage() {
                             <XAxis
                               dataKey="date"
                               tickFormatter={(d: string) =>
-                                new Date(d).toLocaleDateString(undefined, {
+                                formatTimelineDate(d, {
                                   day: "2-digit",
                                   month: "short",
                                 })
                               }
-                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
+                              tick={{
+                                fontSize: 10,
+                                fill: "var(--muted-foreground)",
+                                fontFamily: "var(--font-mono)",
+                              }}
                               axisLine={false}
                               tickLine={false}
                               interval="preserveStartEnd"
                             />
                             <YAxis
                               allowDecimals={false}
-                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
+                              tick={{
+                                fontSize: 10,
+                                fill: "var(--muted-foreground)",
+                                fontFamily: "var(--font-mono)",
+                              }}
                               axisLine={false}
                               tickLine={false}
                               width={24}
                             />
                             <Tooltip
                               cursor={{ fill: "var(--accent)" }}
-                              labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
+                              labelFormatter={(d: string) => formatTimelineDate(d)}
                               contentStyle={TOOLTIP_STYLE}
                             />
                             <Bar dataKey="count" fill="var(--primary)" radius={0} />
@@ -374,7 +391,10 @@ export default function AnalyticsPage() {
                     {submissionsLoading ? (
                       <div className="mt-3 space-y-2">
                         {[0, 1, 2].map((i) => (
-                          <div key={i} className="h-12 animate-pulse border border-border bg-muted" />
+                          <div
+                            key={i}
+                            className="h-12 animate-pulse border border-border bg-muted"
+                          />
                         ))}
                       </div>
                     ) : latest.length === 0 ? (

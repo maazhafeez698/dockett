@@ -11,6 +11,18 @@ export type RecordViewInputType = z.infer<typeof recordViewInput>;
 export const getFormAnalyticsInput = z.object({
   formId: z.uuid(),
   userId: z.uuid(),
+  timeZone: z
+    .string()
+    .max(100)
+    .refine((timeZone) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Invalid time zone")
+    .optional(),
 });
 export type GetFormAnalyticsInputType = z.infer<typeof getFormAnalyticsInput>;
 

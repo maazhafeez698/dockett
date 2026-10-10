@@ -2,6 +2,18 @@ import { z } from "zod";
 
 export const getFormAnalyticsInputModel = z.object({
   formId: z.uuid(),
+  timeZone: z
+    .string()
+    .max(100)
+    .refine((timeZone) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Invalid time zone")
+    .optional(),
 });
 
 export const getFormAnalyticsOutputModel = z.object({

@@ -32,6 +32,7 @@ export const analyticsRouter = router({
         return await formAnalyticsService.getFormAnalytics({
           formId: input.formId,
           userId: ctx.user.id,
+          timeZone: input.timeZone,
         });
       } catch (error) {
         throw new TRPCError({
