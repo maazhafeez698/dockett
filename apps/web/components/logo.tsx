@@ -1,43 +1,80 @@
 // apps/web/components/logo.tsx
+//
+// Dockett brand mark. A D-shaped ticket body with:
+//   01 an edge notch (where the stub tears)
+//   02 a perforation line
+//   03 a punch hole — the counter of the "D" and the "o" of docket
+//   04 a wordmark dot — the same hole, punched
+// Small sizes drop the notch and perforation (only the D and its hole remain).
+
+import { useId } from "react";
 
 interface LogoProps {
   className?: string;
+  /** Render only the symbol. */
   markOnly?: boolean;
+  /** Symbol height in px (wordmark scales with it). */
   size?: number;
+  /** "color": ember symbol + themed wordmark. "mono": everything follows currentColor. */
+  tone?: "color" | "mono";
 }
 
-export function Logo({ className, markOnly = false, size = 28 }: LogoProps) {
+export function LogoMark({
+  size = 28,
+  className,
+  simplified,
+}: {
+  size?: number;
+  className?: string;
+  simplified?: boolean;
+}) {
+  const id = useId().replace(/:/g, "");
+  const small = simplified ?? size < 20;
   return (
-    <span className={`inline-flex items-center gap-2 ${className ?? ""}`}>
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="shrink-0"
-      >
-        <defs>
-          <linearGradient
-            id="formless-logo-g"
-            x1="4"
-            y1="4"
-            x2="28"
-            y2="28"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop offset="0" stopColor="var(--primary)" stopOpacity="0.75" />
-            <stop offset="1" stopColor="var(--primary)" />
-          </linearGradient>
-        </defs>
-        <rect width="32" height="32" rx="9" className="fill-foreground/5 dark:fill-white/5" />
-        <path
-          d="M9 22 L9 12.5 L16 8 L23 12.5 L23 15.5 L16 11 L12.5 13 L12.5 22 Z"
-          fill="url(#formless-logo-g)"
-        />
-        <path d="M16 15 L23 19.5 L23 22 L16 22 Z" fill="url(#formless-logo-g)" fillOpacity="0.55" />
-      </svg>
-      {!markOnly && <span className="text-lg font-semibold tracking-tight">Formless</span>}
+    <svg
+      width={(size * 44) / 40}
+      height={size}
+      viewBox="0 0 44 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`shrink-0 ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <defs>
+        <mask id={`dk-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="44" height="40">
+          <path d="M0 0h22a20 20 0 0 1 0 40H0z" fill="#fff" />
+          {/* punch hole */}
+          <circle cx="29" cy="20" r="6.6" fill="#000" />
+          {small ? null : (
+            <>
+              {/* edge notch */}
+              <circle cx="0" cy="20" r="4.4" fill="#000" />
+              {/* perforation */}
+              <rect x="8.2" y="4.4" width="2.8" height="2.8" fill="#000" />
+              <rect x="8.2" y="10.6" width="2.8" height="2.8" fill="#000" />
+              <rect x="8.2" y="26.6" width="2.8" height="2.8" fill="#000" />
+              <rect x="8.2" y="32.8" width="2.8" height="2.8" fill="#000" />
+            </>
+          )}
+        </mask>
+      </defs>
+      <rect width="44" height="40" fill="currentColor" mask={`url(#dk-${id})`} />
+    </svg>
+  );
+}
+
+export function Logo({ className, markOnly = false, size = 28, tone = "color" }: LogoProps) {
+  return (
+    <span className={`inline-flex items-center gap-[0.32em] ${className ?? ""}`}>
+      <LogoMark size={size} className={tone === "color" ? "text-primary" : ""} />
+      {!markOnly && (
+        <span
+          className="font-display leading-none font-extrabold"
+          style={{ fontSize: size * 0.98, letterSpacing: "-0.055em" }}
+        >
+          dockett<span className={tone === "color" ? "text-primary" : ""}>.</span>
+        </span>
+      )}
     </span>
   );
 }

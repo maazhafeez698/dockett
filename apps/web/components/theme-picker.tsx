@@ -20,7 +20,7 @@ export function ThemePicker({ value, onChange }: ThemePickerProps) {
             key={t.key}
             type="button"
             onClick={() => onChange(t.key)}
-            className={`group relative aspect-[4/3] overflow-hidden rounded-xl border transition-all ${
+            className={`group relative aspect-[4/3] overflow-hidden rounded-[3px] border transition-all ${
               selected
                 ? "border-transparent ring-2 ring-offset-2 ring-offset-background"
                 : "border-border hover:scale-[1.02]"
@@ -38,7 +38,7 @@ export function ThemePicker({ value, onChange }: ThemePickerProps) {
               {t.label}
             </span>
             {selected && (
-              <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-white/90">
+              <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-[3px] bg-white/90">
                 <Check className="size-3" style={{ color: t.accent }} />
               </span>
             )}
