@@ -54,8 +54,8 @@ const FEATURES = [
 
 function Nav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-foreground/70 bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-5 sm:px-8">
+    <header className="sticky top-0 z-40 border-b border-foreground/70 bg-background/95 backdrop-blur-sm dark:bg-[#1C1B18]/95">
+      <div className="mx-auto flex h-14 max-w-310 items-center gap-6 px-5 sm:px-8">
         <Link href="/" aria-label="Dockett home">
           <Logo size={22} />
         </Link>
@@ -73,7 +73,7 @@ function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle className="!size-8" />
+          <ThemeToggle className="size-8!" />
           <Link
             href="/signin"
             className="mono-label flex h-8 items-center border border-foreground/70 px-3.5 transition-colors hover:bg-foreground hover:text-background"
@@ -95,7 +95,7 @@ function Nav() {
 function HeroTicket() {
   return (
     <div
-      className="relative -rotate-[3deg] border border-foreground/80 bg-card shadow-[6px_6px_0_0_var(--hard-shadow)] transition-transform duration-300 hover:-rotate-[1deg] motion-reduce:transition-none"
+      className="relative -rotate-3 border border-foreground/80 bg-card shadow-[6px_6px_0_0_#1C1B18] transition-transform duration-300 hover:-rotate-1 motion-reduce:transition-none"
       aria-label="Example form ticket: Job Application"
     >
       <div className="grid grid-cols-[1fr_34%]">
@@ -117,7 +117,7 @@ function HeroTicket() {
           <span className="absolute -top-2 -left-2 size-4 rounded-full border border-foreground/80 bg-background [clip-path:inset(50%_0_0_0)]" />
           <span className="absolute -bottom-2 -left-2 size-4 rounded-full border border-foreground/80 bg-background [clip-path:inset(0_0_50%_0)]" />
           <p className="mono-label-sm text-muted-foreground">Admit one</p>
-          <p className="numeral mt-1 text-[64px] sm:text-[80px]">07</p>
+          <p className="numeral mt-1 text-[64px] sm:text-[60px]">07</p>
         </div>
       </div>
     </div>
@@ -151,7 +151,7 @@ function MiniNode({
 function HeroBuilder() {
   return (
     <div
-      className="relative mt-8 border border-foreground/80 bg-card shadow-[6px_6px_0_0_var(--hard-shadow)]"
+      className="relative mt-8 border border-foreground/80 bg-card shadow-[6px_6px_0_0_#1C1B18]"
       aria-hidden="true"
     >
       <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
@@ -192,7 +192,7 @@ function HeroBuilder() {
           className="top-[62%] left-[72%] w-[26%]"
         />
       </div>
-      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-[3deg] bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_var(--hard-shadow)]">
+      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-3 bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_#1C1B18]">
         ✦ AI built this in seconds
       </span>
     </div>

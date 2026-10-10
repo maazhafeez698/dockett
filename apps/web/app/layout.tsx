@@ -1,27 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import "@fontsource/poppins/latin.css";
 
-// @ts-ignore TypeScript may not have declarations for side-effect CSS imports.
+
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
-
-// Brand type system: Space Grotesk (UI), Archivo (heavy display), JetBrains Mono (labels, data, IDs).
-const sans = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-});
-const display = Archivo({
-  subsets: ["latin"],
-  variable: "--font-archivo",
-  axes: ["wdth"], // variable weight + width — lets us run the display face slightly narrower
-  display: "swap",
-});
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -54,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${sans.variable} ${display.variable} ${mono.variable}`}>
+      <body>
         <GlobalProviders>{children}</GlobalProviders>
       </body>
     </html>

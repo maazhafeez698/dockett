@@ -11,15 +11,20 @@ interface DashboardLeftPanelProps {
   totalForms: number;
   publishedForms: number;
   replies: number;
+  closedForms?: number;
+  draftForms?: number;
   loading?: boolean;
 }
 
 export function DashboardLeftPanel({
   totalForms,
   publishedForms,
-  replies,
+  closedForms = 0,
+  draftForms,
   loading,
 }: DashboardLeftPanelProps) {
+  const drafts = draftForms ?? Math.max(0, totalForms - publishedForms - closedForms);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 border border-border bg-card px-3 py-2 text-xs font-medium">
@@ -28,19 +33,19 @@ export function DashboardLeftPanel({
       </div>
 
       <div className="px-1">
-        <div className="numeral text-[104px]" aria-label={`${publishedForms} published forms`}>
-          {loading ? "–" : publishedForms}
+        <div className="numeral text-[104px]" aria-label={`${totalForms} total forms`}>
+          {loading ? "–" : totalForms}
         </div>
-        <div className="mono-label-sm mt-1 text-muted-foreground">Published forms</div>
+        <div className="mono-label-sm mt-1 text-muted-foreground">Total forms</div>
       </div>
 
       <section className="bg-primary p-3.5 text-primary-foreground" aria-label="Overview">
         <h3 className="text-sm font-bold">Overview</h3>
         <dl className="mt-2 grid grid-cols-3 gap-2">
           {[
-            { v: totalForms, l: "Total" },
             { v: publishedForms, l: "Live" },
-            { v: replies, l: "Replies" },
+            { v: closedForms, l: "Closed" },
+            { v: drafts, l: "Draft" },
           ].map((s) => (
             <div key={s.l}>
               <dd className="font-display text-[34px] leading-none font-extrabold">

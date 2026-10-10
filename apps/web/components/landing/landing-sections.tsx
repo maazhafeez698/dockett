@@ -221,7 +221,7 @@ export function FeaturesSection() {
             <AnalyticsDemo />
           </FeatureCard>
 
-          <FeatureCard kicker="05 · Templates" title={`Start from ${FORM_TEMPLATES.length}.`}>
+          <FeatureCard kicker="05 · Templates" title={`Start from templates.`}>
             <p className="mt-2 text-sm text-muted-foreground">Job application, RSVP, bug report and more.</p>
           </FeatureCard>
           <FeatureCard kicker="06 · Share" title="One link.">
@@ -303,9 +303,10 @@ const PLANS = [
       "1,000 responses / form / month",
       "Pro themes",
       "Advanced analytics",
-      "Increased AI usage",
+      "Increased AI generations",
+      "Conditional rendering",
+      "Personal customization",
     ],
-    soon: ["Conditional rendering"],
     cta: "Go Pro",
     href: "/signup",
   },
@@ -548,7 +549,7 @@ export function LandingFooter() {
       </div>
       <div className="border-t border-dashed border-border">
         <div className={`${wrap} flex flex-wrap items-center justify-between gap-2 py-4`}>
-          <span className="mono-label-sm text-muted-foreground">© {new Date().getFullYear()} Dockett</span>
+          <span className="mono-label-sm text-muted-foreground">© {new Date().getFullYear()} dockett.</span>
           <span className="mono-label-sm text-muted-foreground">DK-4721 · STD · Zone 07</span>
         </div>
       </div>

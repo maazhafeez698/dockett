@@ -16,9 +16,15 @@
 */
 
 @theme inline {
-  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-archivo), var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --font-weight-medium: 400;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 500;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 700;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
@@ -260,8 +266,7 @@
   /* ---- type ---- */
   .font-display {
     font-family: var(--font-display);
-    font-stretch: 94%;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.035em;
     font-feature-settings: "kern", "liga";
   }
   .mono-label {
@@ -280,9 +285,8 @@
   }
   .numeral {
     font-family: var(--font-display);
-    font-stretch: 94%;
-    font-weight: 800;
-    letter-spacing: -0.06em;
+    font-weight: 700;
+    letter-spacing: -0.04em;
     line-height: 0.85;
     color: var(--primary);
   }

@@ -81,7 +81,7 @@ function SidebarBody({ liveForms, onNavigate }: { liveForms: number; onNavigate?
           dockett<span className="text-primary">.</span>
         </span>
         <div className="min-w-0 pb-1">
-          <div className="mono-label-sm flex items-center gap-2 text-muted-foreground">
+          <div className="mono-label-sm flex items-center gap-2 p-2 text-muted-foreground">
             <span className="inline-block size-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]" aria-hidden="true" />
             Forms live
           </div>
