@@ -11,9 +11,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowUp, Bot, RotateCcw, Square, X } from "lucide-react";
+import { ArrowUp, Bot, Mic, RotateCcw, Square, X } from "lucide-react";
 
 import { useAiChat } from "~/hooks/use-ai-chat";
+import { useVoiceInput } from "~/hooks/use-voice-input";
 import { useAiUsage, useApplyAiDraft, useSaveAiDraft } from "~/hooks/api/ai";
 import type { AiCredits, AiDraft } from "~/lib/ai-stream";
 import { CreditsBar } from "./credits-bar";
@@ -67,6 +68,13 @@ export function AiFormBuilderPanel({
   const { applyDraftAsync, isPending: applying } = useApplyAiDraft(formId ?? "");
 
   const chat = useAiChat({ mode, formId, onCredits: setLiveCredits });
+  const voice = useVoiceInput((transcript) => {
+    if (!open) return;
+    setInput((current) =>
+      `${current.trim() ? `${current.trim()} ` : ""}${transcript}`.slice(0, maxChars),
+    );
+  });
+  const { listening: voiceListening, stop: stopVoice } = voice;
 
   // The server is the source of truth; live events from the last message beat the cached query.
   const credits: AiCredits | null =
@@ -97,6 +105,10 @@ export function AiFormBuilderPanel({
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onOpenChange]);
+
+  useEffect(() => {
+    if (!open && voiceListening) stopVoice();
+  }, [open, voiceListening, stopVoice]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -165,14 +177,14 @@ export function AiFormBuilderPanel({
     <div
       role="dialog"
       aria-label="AI Form Builder"
-      className="fixed left-1/2 top-1/2 z-50 flex h-[min(88dvh,760px)] max-h-[88dvh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl sm:w-[440px]"
+      className="fixed left-1/2 top-1/2 z-50 flex h-[min(88dvh,760px)] max-h-[88dvh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-foreground/70 bg-card shadow-[6px_6px_0_0_var(--hard-shadow)] sm:w-[440px]"
     >
-      <header className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+      <header className="flex items-center gap-3 border-b border-dashed border-border px-4 py-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-[3px] bg-primary/15 text-primary">
           <Bot className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold leading-tight">AI Form Builder</h2>
+          <h2 className="font-display text-lg leading-tight font-extrabold">AI form builder</h2>
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {status}
           </p>
@@ -181,7 +193,7 @@ export function AiFormBuilderPanel({
           <button
             type="button"
             onClick={chat.reset}
-            className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded-[3px] p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Start over"
             title="Start over"
           >
@@ -191,7 +203,7 @@ export function AiFormBuilderPanel({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-[3px] p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Close"
         >
           <X className="size-4" />
@@ -206,13 +218,13 @@ export function AiFormBuilderPanel({
         aria-live="polite"
       >
         <div className="flex justify-start">
-          <div className="max-w-[88%] rounded-2xl bg-muted/60 px-3.5 py-2 text-sm">
+          <div className="max-w-[88%] rounded-md bg-muted/60 px-3.5 py-2 text-sm">
             {mode === "NEW_FORM" ? WELCOME_NEW : WELCOME_ADD}
           </div>
         </div>
 
         {aiOff ? (
-          <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <div className="rounded-[3px] border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
             The AI Form Builder is switched off right now. You can still build forms by hand.
           </div>
         ) : chat.bubbles.length === 0 ? (
@@ -222,7 +234,7 @@ export function AiFormBuilderPanel({
                 key={s}
                 type="button"
                 onClick={() => setInput(s)}
-                className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                className="rounded-[3px] border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
               >
                 {s}
               </button>
@@ -239,7 +251,7 @@ export function AiFormBuilderPanel({
             <div key={b.id} className="space-y-2">
               <div className={`flex ${b.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm ${
+                  className={`max-w-[88%] whitespace-pre-wrap break-words rounded-md px-3.5 py-2 text-sm ${
                     b.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : b.error
@@ -279,7 +291,7 @@ export function AiFormBuilderPanel({
       </div>
 
       <div className="border-t border-border/60 px-4 py-3">
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-background/60 p-1.5 pl-3.5 focus-within:border-primary/60">
+        <div className="flex items-end gap-2 rounded-md border border-border bg-background/60 p-1.5 pl-3.5 focus-within:border-primary/60">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value.slice(0, maxChars))}
@@ -301,11 +313,34 @@ export function AiFormBuilderPanel({
             }
             className="max-h-32 min-h-[28px] flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           />
+          <button
+            type="button"
+            onClick={voice.toggle}
+            disabled={aiOff || chat.isStreaming || !voice.supported}
+            aria-pressed={voice.listening}
+            aria-label={voice.listening ? "Stop voice input" : "Start voice input"}
+            title={
+              !voice.supported
+                ? "Voice input isn't supported in this browser"
+                : voice.listening
+                  ? "Stop voice input"
+                  : "Start voice input"
+            }
+            className={`flex size-9 shrink-0 items-center justify-center rounded-[3px] transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 ${
+              voice.listening ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+          >
+            {voice.listening ? (
+              <Square className="size-3.5 fill-current" />
+            ) : (
+              <Mic className="size-4" />
+            )}
+          </button>
           {chat.isStreaming ? (
             <button
               type="button"
               onClick={chat.cancel}
-              className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-transform hover:scale-105"
+              className="flex size-9 shrink-0 items-center justify-center rounded-[3px] bg-muted text-foreground transition-transform hover:scale-105"
               aria-label="Stop generating"
             >
               <Square className="size-3.5 fill-current" />
@@ -315,13 +350,21 @@ export function AiFormBuilderPanel({
               type="button"
               onClick={() => void submit(input)}
               disabled={!input.trim() || aiOff}
-              className={`flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 ${limitReached ? "opacity-50" : ""}`}
+              className={`flex size-9 shrink-0 items-center justify-center rounded-[3px] bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 ${limitReached ? "opacity-50" : ""}`}
               aria-label="Send"
             >
               <ArrowUp className="size-4" />
             </button>
           )}
         </div>
+        {voice.listening ? (
+          <p
+            className="mt-1.5 truncate font-mono text-[10px] text-muted-foreground"
+            aria-live="polite"
+          >
+            {voice.transcript || "Listening…"}
+          </p>
+        ) : null}
       </div>
     </div>
   );

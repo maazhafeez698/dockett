@@ -222,7 +222,7 @@ export function AiChatDialog({
           aria-live="polite"
         >
           {aiOff ? (
-            <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+            <div className="rounded-[3px] border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
               AI form building is switched off right now. You can still build forms by hand.
             </div>
           ) : chat.bubbles.length === 0 ? (
@@ -238,7 +238,7 @@ export function AiChatDialog({
                     key={s}
                     type="button"
                     onClick={() => setInput(s)}
-                    className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                    className="rounded-[3px] border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
                   >
                     {s}
                   </button>
@@ -252,7 +252,7 @@ export function AiChatDialog({
                 className={`flex ${b.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
+                  className={`max-w-[85%] whitespace-pre-wrap rounded-md px-3.5 py-2 text-sm ${
                     b.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : b.error
@@ -274,7 +274,7 @@ export function AiChatDialog({
           ) : null}
 
           {showPreview ? (
-            <div className="rounded-xl border border-border/70 bg-card/40 p-3">
+            <div className="rounded-[3px] border border-border/70 bg-card/40 p-3">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <p className="truncate text-sm font-semibold">
                   {mode === "NEW_FORM" ? (chat.draft?.title ?? "Drafting…") : "New fields"}
@@ -298,7 +298,7 @@ export function AiChatDialog({
 
         <div className="space-y-2 border-t border-border/60 px-5 py-3">
           {chat.draft && !chat.isStreaming ? (
-            <div className="flex items-center justify-between gap-2 rounded-xl bg-primary/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 rounded-[3px] bg-primary/10 px-3 py-2">
               <p className="text-xs text-foreground">
                 {mode === "NEW_FORM"
                   ? "Happy with it? Ask for changes, or create it."
@@ -317,7 +317,7 @@ export function AiChatDialog({
             </div>
           ) : null}
 
-          <div className="glass flex items-end gap-2 rounded-2xl p-2 pl-4">
+          <div className="glass flex items-end gap-2 rounded-md p-2 pl-4">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, maxChars))}
@@ -344,7 +344,7 @@ export function AiChatDialog({
               <button
                 type="button"
                 onClick={chat.cancel}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform hover:scale-105"
+                className="flex size-8 shrink-0 items-center justify-center rounded-[3px] bg-muted text-foreground transition-transform hover:scale-105"
                 aria-label="Stop generating"
               >
                 <Square className="size-3.5 fill-current" />
@@ -354,7 +354,7 @@ export function AiChatDialog({
                 type="button"
                 onClick={() => void submit(input)}
                 disabled={!input.trim() || aiOff || limitReached}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+                className="flex size-8 shrink-0 items-center justify-center rounded-[3px] bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
                 aria-label="Send"
               >
                 <ArrowUp className="size-4" />

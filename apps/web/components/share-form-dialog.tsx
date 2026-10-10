@@ -51,7 +51,7 @@ export function ShareFormDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="glass-strong sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Share this form</DialogTitle>
           <DialogDescription>
@@ -77,7 +77,7 @@ export function ShareFormDialog({
         </div>
 
         {submissionAccess === "ACCESS_CODE" && accessCode ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+          <div className="flex items-center gap-2 rounded-[3px] border border-border/60 bg-muted/30 p-3">
             <KeyRound className="size-4 text-muted-foreground" />
             <span className="flex-1 font-mono text-sm tracking-[0.3em]">{accessCode}</span>
             <Button
@@ -101,9 +101,9 @@ export function ShareFormDialog({
         ) : null}
 
         {submissionAccess === "AUTHENTICATED_ONLY" ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-[3px] border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
             <LogIn className="size-3.5 shrink-0" />
-            Only respondents signed in to a Formless account can submit.
+            Only respondents signed in to a Dockett account can submit.
           </div>
         ) : null}
 

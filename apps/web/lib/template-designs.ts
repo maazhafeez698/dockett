@@ -9,7 +9,7 @@
 // template called and what color is its badge."
 //
 // CLASSIC is deliberately excluded from GALLERY_TEMPLATE_IDS — it's the
-// plain Formless look used for forms built from scratch, not something
+// plain Dockett look used for forms built from scratch, not something
 // picked from the gallery.
 
 export type FormTemplateId =
@@ -131,7 +131,7 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
     id: "CLASSIC",
     name: "Classic",
     category: "Default",
-    tagline: "The plain Formless look — glass card on a soft gradient band.",
+    tagline: "The plain Dockett look — a punched-ticket card.",
     accentGradient: ["#312E81", "#6366F1"],
     accent: "#6366F1",
     badgeClass: "bg-indigo-500/15 text-indigo-300",

@@ -1,13 +1,20 @@
 // apps/web/components/field-canvas.tsx
+//
+// The Canvas (node) view. The form is a flow: START → each field → END,
+// laid out as a serpentine grid. Drag a node to a new slot to reorder; drag
+// from one node's handle to another to move it there; click the ADD NODE
+// toolbar (or drag from it) to add fields.
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   BackgroundVariant,
+  MarkerType,
+  MiniMap,
   Panel,
   useReactFlow,
   useViewport,
@@ -20,12 +27,24 @@ import {
 // React Flow ships this stylesheet without TypeScript declarations.
 import "@xyflow/react/dist/style.css";
 
-import { FieldNode, type FieldNodeData } from "~/components/field-node";
+import {
+  EndNode,
+  FieldNode,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  StartNode,
+  type EndpointNodeData,
+  type FieldNodeData,
+} from "~/components/field-node";
+import { PALETTE, TYPE_MIME, type FieldType } from "~/components/builder/field-types";
 
-const ROW_HEIGHT = 130;
-const COL_X = 40;
+const COLS = 4;
+const H_GAP = 252;
+const V_GAP = 138;
+const ORIGIN_X = 30;
+const ORIGIN_Y = 30;
 
-const nodeTypes = { field: FieldNode };
+const nodeTypes = { field: FieldNode, start: StartNode, end: EndNode };
 
 export interface CanvasField {
   id: string;
@@ -40,11 +59,22 @@ interface FieldCanvasProps {
   fields: CanvasField[];
   selectedFieldId: string | null;
   onSelectField: (id: string | null) => void;
-  onReorder: (orderedIds: string[]) => void;
+  /** Resolves true when the server accepted the new order. */
+  onReorder: (orderedIds: string[]) => Promise<boolean> | void;
   onDeleteField: (id: string) => void;
-  /** Called with the field type dragged in from the palette, and the id of
-   *  the field it should land after (undefined = at the very top). */
+  /** Field type dragged from the ADD NODE bar + the field it should land after. */
   onDropNewField: (type: string, afterFieldId: string | undefined) => void;
+  onAddField: (type: FieldType) => void;
+}
+
+type AnyNode = Node<FieldNodeData> | Node<EndpointNodeData>;
+
+/** Slot `i` of the serpentine: row 0 runs left→right, row 1 right→left, … */
+function slotPosition(i: number) {
+  const row = Math.floor(i / COLS);
+  const inRow = i % COLS;
+  const col = row % 2 === 0 ? inRow : COLS - 1 - inRow;
+  return { x: ORIGIN_X + col * H_GAP, y: ORIGIN_Y + row * V_GAP, row, col };
 }
 
 function CanvasInner({
@@ -54,10 +84,10 @@ function CanvasInner({
   onReorder,
   onDeleteField,
   onDropNewField,
+  onAddField,
 }: FieldCanvasProps) {
   const { screenToFlowPosition, zoomIn, zoomOut, fitView, setViewport } = useReactFlow();
   const { x, y, zoom } = useViewport();
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInput, setZoomInput] = useState(String(Math.round(zoom * 100)));
   const [zoomError, setZoomError] = useState(false);
@@ -72,7 +102,6 @@ function CanvasInner({
       setZoomError(true);
       return;
     }
-
     setZoomError(false);
     setIsEditingZoom(false);
     setZoomInput(String(Math.round(percentage)));
@@ -80,125 +109,176 @@ function CanvasInner({
   };
 
   const buildNodes = useCallback(
-    (list: CanvasField[]): Node<FieldNodeData>[] =>
-      list.map((f, i) => ({
-        id: f.id,
-        type: "field",
-        position: { x: COL_X, y: i * ROW_HEIGHT },
-        data: {
-          label: f.label,
-          typeLabel: f.typeLabel,
-          isRequired: f.isRequired,
-          description: f.description,
-          selected: f.id === selectedFieldId,
-          onDelete: () => onDeleteField(f.id),
-        },
-      })),
+    (list: CanvasField[]): AnyNode[] => {
+      const start: Node<EndpointNodeData> = {
+        id: "__start",
+        type: "start",
+        draggable: false,
+        selectable: false,
+        deletable: false,
+        position: { x: slotPosition(0).x, y: slotPosition(0).y },
+        data: { kicker: "START", title: "Form opens" },
+      };
+      const body: Node<FieldNodeData>[] = list.map((f, i) => {
+        const p = slotPosition(i + 1);
+        return {
+          id: f.id,
+          type: "field",
+          position: { x: p.x, y: p.y },
+          data: {
+            label: f.label,
+            typeLabel: f.typeLabel,
+            isRequired: f.isRequired,
+            description: f.description,
+            selected: f.id === selectedFieldId,
+            onDelete: () => onDeleteField(f.id),
+          },
+        };
+      });
+      const endPos = slotPosition(list.length + 1);
+      const end: Node<EndpointNodeData> = {
+        id: "__end",
+        type: "end",
+        draggable: false,
+        selectable: false,
+        deletable: false,
+        position: { x: endPos.x, y: endPos.y },
+        data: { kicker: "END", title: "Submit" },
+      };
+      return [start, ...body, end];
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedFieldId],
   );
 
-  const [nodes, setNodes] = useState<Node<FieldNodeData>[]>(() => buildNodes(fields));
+  const [nodes, setNodes] = useState<AnyNode[]>(() => buildNodes(fields));
 
-  // Re-sync node list + selection highlight whenever the server-side field
-  // list changes (add/delete/reorder confirmed) — the canonical order and
-  // content always comes from the server, local drag state is transient.
+  // The canonical order and content always come from the server; local drag
+  // state is transient and re-synced after every change.
   useEffect(() => {
     setNodes(buildNodes(fields));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, selectedFieldId]);
 
-  const edges: Edge[] = useMemo(
-    () =>
-      fields.slice(0, -1).map((f, i) => ({
-        id: `${f.id}-${fields[i + 1]!.id}`,
-        source: f.id,
-        target: fields[i + 1]!.id,
-        animated: true,
-        style: { strokeDasharray: "4 4", stroke: "var(--primary)" },
-      })),
-    [fields],
-  );
+  const edges: Edge[] = useMemo(() => {
+    const ids = ["__start", ...fields.map((f) => f.id), "__end"];
+    const out: Edge[] = [];
+    for (let i = 0; i < ids.length - 1; i++) {
+      const a = slotPosition(i);
+      const b = slotPosition(i + 1);
+      let sourceHandle = "b-out";
+      let targetHandle = "t-in";
+      if (a.row === b.row) {
+        const ltr = a.row % 2 === 0;
+        sourceHandle = ltr ? "r-out" : "l-out";
+        targetHandle = ltr ? "l-in" : "r-in";
+      }
+      out.push({
+        id: `${ids[i]}->${ids[i + 1]}`,
+        source: ids[i]!,
+        target: ids[i + 1]!,
+        sourceHandle,
+        targetHandle,
+        type: "smoothstep",
+        style: { stroke: "var(--primary)", strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "var(--primary)", width: 14, height: 14 },
+      });
+    }
+    return out;
+  }, [fields]);
 
-  const handleNodeClick: NodeMouseHandler = (_e, node) => onSelectField(node.id);
-  const handlePaneClick = () => onSelectField(null);
+  const handleNodeClick: NodeMouseHandler = (_e, node) => {
+    if (node.id === "__start" || node.id === "__end") onSelectField(null);
+    else onSelectField(node.id);
+  };
 
   const handleConnect = useCallback(
     ({ source, target }: Connection) => {
       if (!source || !target || source === target) return;
+      const order = fields.map((f) => f.id);
+      const from = order.indexOf(source);
+      const to = order.indexOf(target);
+      if (from === -1 || to === -1) return;
 
-      const currentOrder = fields.map((field) => field.id);
-      const sourceIndex = currentOrder.indexOf(source);
-      const targetIndex = currentOrder.indexOf(target);
-      if (sourceIndex === -1 || targetIndex === -1) return;
-
-      const reordered = [...currentOrder];
-      reordered.splice(sourceIndex, 1);
-      reordered.splice(reordered.indexOf(target), 0, source);
-
-      if (reordered.join(",") !== currentOrder.join(",")) {
-        onReorder(reordered);
-      }
+      const next = [...order];
+      next.splice(from, 1);
+      next.splice(next.indexOf(target), 0, source);
+      if (next.join(",") !== order.join(",")) void onReorder(next);
     },
     [fields, onReorder],
   );
 
-  const handleNodeDragStop: OnNodeDrag<Node<FieldNodeData>> = (_e, draggedNode) => {
-    // Reorder by the dragged node's new vertical position relative to the
-    // others — simplest reliable mapping from "drag it somewhere" to a
-    // linear order, without needing manual edge-endpoint rewiring.
-    const reordered = [...nodes]
-      .map((n) => (n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n))
-      .sort((a, b) => a.position.y - b.position.y)
-      .map((n) => n.id);
-
-    const currentOrder = fields.map((f) => f.id);
-    if (reordered.join(",") !== currentOrder.join(",")) {
-      onReorder(reordered);
-    } else {
-      // Snap back to the canonical grid even when the order didn't change,
-      // so a small drag doesn't leave a node visually offset.
-      setNodes(buildNodes(fields));
+  /** Index (0..n-1) of the field slot nearest to a point in flow space. */
+  const nearestFieldIndex = (px: number, py: number) => {
+    let best = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < fields.length; i++) {
+      const p = slotPosition(i + 1);
+      const d = (p.x + NODE_WIDTH / 2 - px) ** 2 + (p.y + NODE_HEIGHT / 2 - py) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
     }
+    return best;
+  };
+
+  const handleNodeDragStop: OnNodeDrag<AnyNode> = (_e, dragged) => {
+    const order = fields.map((f) => f.id);
+    const from = order.indexOf(dragged.id);
+    if (from === -1) return;
+
+    const target = nearestFieldIndex(
+      dragged.position.x + NODE_WIDTH / 2,
+      dragged.position.y + NODE_HEIGHT / 2,
+    );
+    if (target === from) {
+      // snap back to the grid so a small drag doesn't leave the node offset
+      setNodes(buildNodes(fields));
+      return;
+    }
+    const next = [...order];
+    next.splice(from, 1);
+    next.splice(target, 0, dragged.id);
+    void onReorder(next);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(TYPE_MIME)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const type = e.dataTransfer.getData("application/formless-field-type");
+    const type = e.dataTransfer.getData(TYPE_MIME);
     if (!type) return;
-
-    const dropPoint = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    // Which existing field is this dropped above? Everything with a
-    // smaller y than the drop point counts as "before" the new field.
-    const before = nodes.filter((n) => n.position.y < dropPoint.y - ROW_HEIGHT / 2);
-    const afterFieldId = before.length > 0 ? before[before.length - 1]!.id : undefined;
-
-    onDropNewField(type, afterFieldId);
+    e.preventDefault();
+    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    if (fields.length === 0) return onDropNewField(type, undefined);
+    // land after the nearest slot's field, unless dropped before its centre in flow order
+    const idx = nearestFieldIndex(p.x, p.y);
+    const slot = slotPosition(idx + 1);
+    const before = p.y < slot.y || (p.y < slot.y + NODE_HEIGHT && p.x < slot.x);
+    const after = before ? fields[idx - 1]?.id : fields[idx]!.id;
+    onDropNewField(type, after);
   };
 
   return (
-    <div ref={wrapperRef} className="h-full w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div className="dotgrid h-full w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick}
+        onPaneClick={() => onSelectField(null)}
         onConnect={handleConnect}
         onNodeDragStop={handleNodeDragStop}
         onNodesChange={(changes) => {
-          // Allow live dragging to feel smooth; canonical position is
-          // re-asserted from `fields` after every server round-trip above.
+          // live dragging stays smooth; the canonical position is re-asserted
+          // from `fields` after every server round-trip above.
           setNodes((nds) =>
             nds.map((n) => {
-              const change = changes.find(
-                (c) => "id" in c && c.id === n.id && c.type === "position",
-              );
+              const change = changes.find((c) => "id" in c && c.id === n.id && c.type === "position");
               return change && "position" in change && change.position
                 ? { ...n, position: change.position }
                 : n;
@@ -206,21 +286,31 @@ function CanvasInner({
           );
         }}
         fitView
+        fitViewOptions={{ padding: 0.14, maxZoom: 1 }}
+        minZoom={0.25}
+        maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1.2}
+          color="color-mix(in srgb, var(--foreground) 24%, transparent)"
+        />
+
+        {/* zoom */}
         <Panel
           position="bottom-left"
-          className="glass-flat flex items-center rounded-md border border-white/10 bg-card/90 p-1 shadow-xl backdrop-blur-md"
+          className="flex items-center border border-border bg-card p-0.5 shadow-[2px_2px_0_0_var(--hard-shadow)]"
         >
           <button
             type="button"
             onClick={() => void zoomOut()}
-            className="flex size-8 items-center justify-center rounded-sm text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-7 items-center justify-center font-mono text-sm text-muted-foreground hover:text-foreground"
             aria-label="Zoom out"
             title="Zoom out"
           >
-            -
+            –
           </button>
           <input
             type="number"
@@ -242,37 +332,78 @@ function CanvasInner({
                 event.currentTarget.blur();
               }
             }}
-            className={`h-8 w-14 border-0 bg-transparent p-0 text-center text-xs font-medium tabular-nums text-muted-foreground outline-none focus:text-foreground ${zoomError ? "text-destructive" : ""}`}
+            className={`h-7 w-10 [appearance:textfield] border-0 bg-transparent p-0 text-center font-mono text-[10px] tabular-nums outline-none [&::-webkit-inner-spin-button]:appearance-none ${
+              zoomError ? "text-destructive" : "text-foreground"
+            }`}
             aria-label="Canvas zoom percentage"
             aria-invalid={zoomError}
-            title={
-              zoomError ? "Enter a zoom percentage from 25 to 200" : "Zoom percentage (25-200)"
-            }
+            title={zoomError ? "Enter a zoom percentage from 25 to 200" : "Zoom percentage (25-200)"}
           />
+          <span className="pr-1 font-mono text-[10px] text-muted-foreground">%</span>
           <button
             type="button"
             onClick={() => void zoomIn()}
-            className="flex size-8 items-center justify-center rounded-sm text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-7 items-center justify-center font-mono text-sm text-muted-foreground hover:text-foreground"
             aria-label="Zoom in"
             title="Zoom in"
           >
             +
           </button>
-          <div className="mx-1 h-5 w-px bg-border/70" />
+          <span className="mx-1 h-4 w-px bg-border" />
           <button
             type="button"
-            onClick={() => void fitView({ padding: 0.2 })}
-            className="flex h-8 items-center justify-center rounded-sm px-2 text-[11px] font-medium tracking-wide text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={() => void fitView({ padding: 0.14, maxZoom: 1, duration: 200 })}
+            className="mono-label-sm px-2 py-2 text-muted-foreground hover:text-foreground"
             aria-label="Fit canvas to view"
             title="Fit canvas to view"
           >
-            FIT
+            Fit
           </button>
         </Panel>
+
+        {/* add node */}
+        <Panel position="bottom-center" className="!mb-3 max-w-[calc(100%-1rem)]">
+          <div className="scrollbar-none flex items-center gap-0.5 overflow-x-auto bg-solid p-1 text-solid-foreground rounded-md">
+            <span className="mono-label-sm shrink-0 px-2 opacity-70">Add node</span>
+            {PALETTE.map(({ type, short, icon: Icon }) => (
+              <button
+                key={type}
+                type="button"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(TYPE_MIME, type);
+                  e.dataTransfer.setData("text/plain", type);
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                onClick={() => onAddField(type)}
+                title={`Add ${short}`}
+                aria-label={`Add ${short} node`}
+                className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-[2px] transition-colors hover:bg-primary hover:text-primary-foreground active:cursor-grabbing"
+              >
+                <Icon className="size-3.5" />
+              </button>
+            ))}
+          </div>
+        </Panel>
+
+        <MiniMap
+          position="bottom-right"
+          pannable
+          zoomable
+          nodeColor="var(--primary)"
+          nodeStrokeWidth={0}
+          maskColor="color-mix(in srgb, var(--foreground) 8%, transparent)"
+          className="!hidden !h-[70px] !w-[110px] md:!block"
+          ariaLabel="Canvas map"
+        />
+
         {fields.length === 0 ? (
-          <Panel position="top-center" className="pointer-events-none !top-1/2 !-translate-y-1/2">
-            <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-              Drag a field type from the left, or click one to add your first field.
+          <Panel position="top-center" className="pointer-events-none !top-[42%]">
+            <div className="border border-dashed border-foreground/40 bg-card p-6 text-center">
+              <p className="font-display text-lg font-extrabold">No nodes yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Click a field type in the ADD NODE bar below to add your first question.
+              </p>
             </div>
           </Panel>
         ) : null}

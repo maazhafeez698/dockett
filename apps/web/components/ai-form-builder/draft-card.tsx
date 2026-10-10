@@ -32,7 +32,7 @@ export function FieldRow({ field, dim }: { field: AiDraftField; dim?: boolean })
 export function LiveDraftPreview({ fields }: { fields: AiDraftField[] }) {
   if (!fields.length) return null;
   return (
-    <div className="rounded-2xl border border-border/70 bg-card/40 p-3">
+    <div className="rounded-md border border-border/70 bg-card/40 p-3">
       <p className="mb-2 text-xs text-muted-foreground">
         Drafting your form… {fields.length} field{fields.length === 1 ? "" : "s"} so far
       </p>
@@ -64,7 +64,7 @@ export function DraftCard({ draft, additionsOnly, maxFields, approved, interacti
   const n = draft.fields.length;
 
   return (
-    <div className={`rounded-2xl border bg-card/50 p-3 ${approved ? "border-emerald-500/40" : "border-border/70"}`}>
+    <div className={`rounded-md border bg-card/50 p-3 ${approved ? "border-success/50" : "border-border/70"}`}>
       {editing ? (
         <DraftEditor
           draft={draft}
@@ -83,9 +83,9 @@ export function DraftCard({ draft, additionsOnly, maxFields, approved, interacti
             {!additionsOnly && draft.description ? <p className="mt-0.5 text-xs text-muted-foreground">{draft.description}</p> : null}
             {!additionsOnly ? (
               <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-                <span className="rounded-full bg-muted px-2 py-0.5">{TEMPLATE_LABEL[draft.template] ?? draft.template}</span>
-                <span className="rounded-full bg-muted px-2 py-0.5">{LAYOUT_LABEL[draft.submissionLayout]}</span>
-                <span className="rounded-full bg-muted px-2 py-0.5">
+                <span className="rounded-[3px] bg-muted px-2 py-0.5">{TEMPLATE_LABEL[draft.template] ?? draft.template}</span>
+                <span className="rounded-[3px] bg-muted px-2 py-0.5">{LAYOUT_LABEL[draft.submissionLayout]}</span>
+                <span className="rounded-[3px] bg-muted px-2 py-0.5">
                   {n} field{n === 1 ? "" : "s"}
                 </span>
               </div>
@@ -99,7 +99,7 @@ export function DraftCard({ draft, additionsOnly, maxFields, approved, interacti
           </ul>
 
           {approved ? (
-            <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+            <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-success">
               <Check className="size-3.5" /> Added to your canvas
             </p>
           ) : interactive ? (

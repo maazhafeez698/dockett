@@ -37,9 +37,9 @@ function CenteredMessage({
 }) {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
-      <div className="glass-strong flex max-w-sm flex-col items-center gap-3 rounded-2xl p-8 text-center">
+      <div className="flex max-w-sm flex-col items-center gap-3 border border-foreground/70 bg-card p-8 text-center shadow-[5px_5px_0_0_var(--hard-shadow)]">
         {icon}
-        <p className="text-lg font-semibold">{title}</p>
+        <p className="font-display text-2xl leading-tight font-extrabold">{title}</p>
         <p className="text-sm text-muted-foreground">{body}</p>
         {action}
       </div>
@@ -65,10 +65,10 @@ function AccessCodeGate({
           e.preventDefault();
           onSubmit(code.trim());
         }}
-        className="glass-strong flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl p-8 text-center"
+        className="flex w-full max-w-sm flex-col items-center gap-4 border border-foreground/70 bg-card p-8 text-center shadow-[5px_5px_0_0_var(--hard-shadow)]"
       >
         <KeyRound className="size-8 text-muted-foreground" />
-        <p className="text-lg font-semibold">This form needs an access code</p>
+        <p className="font-display text-2xl leading-tight font-extrabold">This form needs an access code</p>
         <p className="text-sm text-muted-foreground">
           Ask whoever shared this form's link for the code.
         </p>
@@ -170,7 +170,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
       <CenteredMessage
         icon={<LogIn className="size-8 text-muted-foreground" />}
         title="Sign in to continue"
-        body={`"${accessInfo.title}" only accepts responses from signed-in Formless accounts.`}
+        body={`"${accessInfo.title}" only accepts responses from signed-in Dockett accounts.`}
         action={
           <Button asChild className="w-full">
             <Link href={`/signin?next=/form/${id}`}>Sign in</Link>
@@ -232,8 +232,16 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  const classic = !form.template || form.template === "CLASSIC";
+
   return (
-    <div className="min-h-screen bg-background px-4 py-10 sm:py-16">
+    <div
+      className={
+        classic
+          ? "ticket-page-background flex min-h-dvh items-center justify-center px-4 py-10"
+          : "ticket-page-background min-h-screen px-4 py-10 sm:py-16"
+      }
+    >
       <FormTemplateRenderer
         template={form.template}
         title={form.title}

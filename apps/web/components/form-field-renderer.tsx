@@ -10,6 +10,7 @@
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
+import { cn } from "~/lib/utils";
 
 export interface FieldConfig {
   options?: string[];
@@ -36,6 +37,15 @@ interface FormFieldRendererProps {
   accent?: string;
   fieldBackground?: string;
   fieldForeground?: string;
+  /**
+   * "template" (default): sans-serif inputs for the bespoke template shells.
+   * "ticket": Dockett's large one-question-at-a-time input (mono, big).
+   * "ticket-form": Dockett's all-at-once input (mono, standard height).
+   */
+  variant?: "template" | "ticket" | "ticket-form";
+  /** The shell already shows the label (and description) as a heading. */
+  hideLabel?: boolean;
+  autoFocus?: boolean;
 }
 
 export function FormFieldRenderer({
@@ -46,9 +56,25 @@ export function FormFieldRenderer({
   accent = "var(--primary)",
   fieldBackground = "var(--background)",
   fieldForeground = "var(--foreground)",
+  variant = "template",
+  hideLabel = false,
+  autoFocus = false,
 }: FormFieldRendererProps) {
   const config = (f.config ?? {}) as FieldConfig;
-  const inputClass = isMissing ? "border-destructive" : undefined;
+  const big = variant === "ticket";
+  const ticket = variant !== "template";
+  const inputClass = cn(
+    ticket ? "font-mono" : "font-sans text-sm",
+    big && "h-14 border-foreground/70 px-4 text-base sm:text-lg",
+    ticket && !big && "border-foreground/50",
+    isMissing && "border-destructive",
+  );
+  const selectClass = cn(
+    "w-full rounded-sm border bg-transparent px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-ring",
+    ticket ? "font-mono" : "font-sans py-2",
+    big ? "h-14 border-foreground/70 text-base sm:text-lg" : ticket ? "h-10 border-foreground/50" : "",
+    isMissing ? "border-destructive" : "border-input",
+  );
   const fieldStyle = { backgroundColor: fieldBackground, color: fieldForeground };
 
   const toggleMultiValue = (option: string) => {
@@ -61,16 +87,19 @@ export function FormFieldRenderer({
 
   return (
     <div className="space-y-1.5">
-      <label
-        className="block text-sm font-medium"
-        style={{ color: fieldForeground }}
-      >
-        {f.label}
-        {f.isRequired ? <span className="ml-1 text-destructive">*</span> : null}
-      </label>
+      {hideLabel ? null : (
+        <label
+          className={cn("block", ticket ? "text-sm font-bold" : "text-sm font-medium")}
+          style={{ color: fieldForeground }}
+        >
+          {f.label}
+          {f.isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+        </label>
+      )}
 
       {f.type === "TEXT" && (
         <Input
+          autoFocus={autoFocus}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={f.placeholder ?? ""}
@@ -83,6 +112,8 @@ export function FormFieldRenderer({
 
       {f.type === "LONG_TEXT" && (
         <Textarea
+          autoFocus={autoFocus}
+          rows={big ? 4 : undefined}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={f.placeholder ?? ""}
@@ -96,6 +127,7 @@ export function FormFieldRenderer({
 
       {f.type === "NUMBER" && (
         <Input
+          autoFocus={autoFocus}
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -109,6 +141,7 @@ export function FormFieldRenderer({
 
       {f.type === "EMAIL" && (
         <Input
+          autoFocus={autoFocus}
           type="email"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -122,6 +155,7 @@ export function FormFieldRenderer({
 
       {f.type === "PASSWORD" && (
         <Input
+          autoFocus={autoFocus}
           type="password"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -135,6 +169,7 @@ export function FormFieldRenderer({
 
       {f.type === "DATE" && (
         <Input
+          autoFocus={autoFocus}
           type="date"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -157,9 +192,12 @@ export function FormFieldRenderer({
                 style={
                   selected ? { background: accent, borderColor: accent, color: "#fff" } : undefined
                 }
-                className={`size-9 rounded-lg border text-sm font-medium transition-colors ${
-                  selected ? "" : "border-border bg-muted/40 text-foreground/70 hover:bg-muted"
-                }`}
+                className={cn(
+                  "rounded-sm border text-sm font-medium transition-colors",
+                  ticket && "font-mono",
+                  big ? "size-12 text-base" : "size-9",
+                  selected ? "" : "border-foreground/40 bg-transparent text-foreground/70 hover:border-primary hover:text-foreground",
+                )}
               >
                 {n}
               </button>
@@ -174,9 +212,8 @@ export function FormFieldRenderer({
           onChange={(e) => onChange(e.target.value)}
           required={f.isRequired}
           aria-invalid={isMissing}
-          className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm ${
-            isMissing ? "border-destructive" : "border-input"
-          }`}
+          className={selectClass}
+          autoFocus={autoFocus}
           style={fieldStyle}
         >
           <option value="" style={fieldStyle}>Select...</option>
@@ -191,9 +228,8 @@ export function FormFieldRenderer({
           onChange={(e) => onChange(e.target.value)}
           required={f.isRequired}
           aria-invalid={isMissing}
-          className={`w-full rounded-lg border bg-transparent px-3 py-2 text-sm ${
-            isMissing ? "border-destructive" : "border-input"
-          }`}
+          className={selectClass}
+          autoFocus={autoFocus}
           style={fieldStyle}
         >
           <option value="" style={fieldStyle}>Select...</option>
@@ -212,7 +248,7 @@ export function FormFieldRenderer({
             return (
               <label
                 key={opt}
-                className="flex items-center gap-2 text-sm"
+                className={cn("flex items-center gap-2 text-sm", ticket && "font-mono")}
                 style={{ color: fieldForeground }}
               >
                 <Checkbox checked={selected} onCheckedChange={() => toggleMultiValue(opt)} />
@@ -223,8 +259,8 @@ export function FormFieldRenderer({
         </div>
       )}
 
-      {f.description ? (
-        <div className="text-sm" style={{ color: fieldForeground, opacity: 0.72 }}>
+      {f.description && !hideLabel ? (
+        <div className={cn("text-sm", ticket && "text-xs")} style={{ color: fieldForeground, opacity: 0.72 }}>
           {f.description}
         </div>
       ) : null}

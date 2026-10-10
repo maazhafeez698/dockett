@@ -49,7 +49,7 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
   return (
     <div className="space-y-3">
       {showFormMeta ? (
-        <div className="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
+        <div className="space-y-2 rounded-[3px] border border-border/60 bg-background/30 p-3">
           <label className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Form title
             <input
@@ -77,7 +77,7 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
         {work.fields.map((f, i) => {
           const fe = errors.perField[i];
           return (
-            <li key={i} className="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
+            <li key={i} className="space-y-2 rounded-[3px] border border-border/60 bg-background/30 p-3">
               <div className="flex items-start gap-1.5">
                 <div className="min-w-0 flex-1">
                   <input

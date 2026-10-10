@@ -1,4 +1,10 @@
 // apps/web/app/dashboard/forms/[id]/page.tsx
+//
+// The form builder. Two views over the same form data:
+//   - List  (default): palette + drag-and-drop list of field cards
+//   - Nodes: the canvas flow (START → fields → END)
+// Selection, edits, preview and every action are shared, so switching views
+// never loses state.
 
 "use client";
 
@@ -6,29 +12,20 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Trash2,
-  Eye,
-  Pencil,
-  Type,
-  AlignLeft,
-  Hash,
-  Mail,
-  ToggleLeft,
-  KeyRound,
-  ChevronDown,
-  CheckSquare,
-  ListChecks,
-  Calendar,
-  Star,
-  Share2,
-  Rocket,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, Eye, Rocket, Share2, Sparkles, Trash2 } from "lucide-react";
 
+import { AppShell } from "~/components/app-shell";
 import { FieldCanvas, type CanvasField } from "~/components/field-canvas";
-
+import { FieldInspector, type FieldPatch } from "~/components/builder/field-inspector";
+import { ListView } from "~/components/builder/list-view";
+import {
+  FIELD_TYPE_LABELS,
+  OPTION_TYPES,
+  getOptions,
+  typeLabel,
+  type BuilderField,
+  type FieldType,
+} from "~/components/builder/field-types";
 import {
   useCreateField,
   useDeleteField,
@@ -38,66 +35,26 @@ import {
 } from "~/hooks/api/form-field";
 import { useDeleteForm, useGetFormWithFields, useUpdateForm } from "~/hooks/api/form";
 import { useBillingOverview } from "~/hooks/api/billing";
+import { useAuthGuard } from "~/hooks/use-auth-guard";
+import { useMediaQuery } from "~/hooks/use-media-query";
 import { toastError } from "~/lib/plan-limit";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
-import { Checkbox } from "~/components/ui/checkbox";
-import { ThemeToggle } from "~/components/theme-toggle";
+import { Badge } from "~/components/ui/badge";
+import { Sheet, SheetContent, SheetTitle } from "~/components/ui/sheet";
 import { ShareFormDialog } from "~/components/share-form-dialog";
 import { PublishFormDialog } from "~/components/publish-form-dialog";
 import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
 import { FormTemplateRenderer } from "~/components/form-templates";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
-import {
-  GALLERY_TEMPLATE_IDS,
-  getTemplateDesign,
-  type FormTemplateId,
-} from "~/lib/template-designs";
+import type { FormTemplateId } from "~/lib/template-designs";
 
-type FieldType =
-  | "TEXT"
-  | "LONG_TEXT"
-  | "NUMBER"
-  | "EMAIL"
-  | "YES_NO"
-  | "PASSWORD"
-  | "DROPDOWN"
-  | "MULTI_SELECT"
-  | "CHECKBOX_GROUP"
-  | "DATE"
-  | "RATING";
-
-const PALETTE: { type: FieldType; label: string; icon: typeof Type }[] = [
-  { type: "TEXT", label: "Short Text", icon: Type },
-  { type: "LONG_TEXT", label: "Long Text", icon: AlignLeft },
-  { type: "EMAIL", label: "Email", icon: Mail },
-  { type: "NUMBER", label: "Number", icon: Hash },
-  { type: "YES_NO", label: "Yes / No", icon: ToggleLeft },
-  { type: "PASSWORD", label: "Password", icon: KeyRound },
-  { type: "DROPDOWN", label: "Dropdown", icon: ChevronDown },
-  { type: "MULTI_SELECT", label: "Multi-select", icon: ListChecks },
-  { type: "CHECKBOX_GROUP", label: "Checkbox group", icon: CheckSquare },
-  { type: "DATE", label: "Date", icon: Calendar },
-  { type: "RATING", label: "Rating", icon: Star },
-];
-
-const FIELD_TYPE_LABELS: Record<FieldType, string> = Object.fromEntries(
-  PALETTE.map((p) => [p.type, p.label]),
-) as Record<FieldType, string>;
-
-const OPTION_TYPES = new Set<FieldType>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
-
-interface FieldConfig {
-  options?: string[];
-  maxLength?: number;
-  max?: number;
-}
+type BuilderView = "list" | "nodes";
 
 export default function FormBuilder() {
   const params = useParams();
   const router = useRouter();
+  const { ready } = useAuthGuard();
   const { overview: billing } = useBillingOverview();
   const premiumUnlocked = billing?.plan.premiumTemplates ?? true;
   const [aiOpen, setAiOpen] = useState(false);
@@ -113,33 +70,31 @@ export default function FormBuilder() {
   const { updateFormAsync, isPending: isSavingForm } = useUpdateForm();
   const { deleteFormAsync } = useDeleteForm();
 
+  // List is the default view.
+  const [view, setView] = useState<BuilderView>("list");
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const isWide = useMediaQuery("(min-width: 1280px)");
 
   const previewFlow = useSubmissionFlow(fields ?? [], form?.submissionLayout ?? "ONE_AT_A_TIME");
 
   const selectedField = fields?.find((f) => f.id === selectedFieldId) ?? null;
+  const selectedIndex = selectedField ? (fields ?? []).findIndex((f) => f.id === selectedField.id) : -1;
 
-  // --- inspector draft state, synced whenever the selection changes ---
-  const [draftLabel, setDraftLabel] = useState("");
-  const [draftDescription, setDraftDescription] = useState("");
-  const [draftPlaceholder, setDraftPlaceholder] = useState("");
-  const [draftRequired, setDraftRequired] = useState(false);
-  const [draftOptions, setDraftOptions] = useState<string[]>([""]);
-  const [draftMaxLength, setDraftMaxLength] = useState("");
-  const [draftRatingMax, setDraftRatingMax] = useState("5");
-
+  // a deleted/missing field can't stay selected
   useEffect(() => {
-    if (!selectedField) return;
-    setDraftLabel(selectedField.label);
-    setDraftDescription(selectedField.description ?? "");
-    setDraftPlaceholder(selectedField.placeholder ?? "");
-    setDraftRequired(selectedField.isRequired);
-    const cfg = (selectedField.config ?? {}) as FieldConfig;
-    setDraftOptions(cfg.options && cfg.options.length > 0 ? cfg.options : [""]);
-    setDraftMaxLength(cfg.maxLength ? String(cfg.maxLength) : "");
-    setDraftRatingMax(cfg.max ? String(cfg.max) : "5");
-  }, [selectedField?.id]);
+    if (selectedFieldId && fields && !fields.some((f) => f.id === selectedFieldId)) {
+      setSelectedFieldId(null);
+    }
+  }, [fields, selectedFieldId]);
+
+  const [titleDraft, setTitleDraft] = useState("");
+  useEffect(() => {
+    if (form) setTitleDraft(form.title);
+  }, [form?.title]);
+
+  /* ----------------------------- actions ----------------------------- */
 
   const handleAddField = async (type: FieldType) => {
     if (!formId) return;
@@ -156,9 +111,8 @@ export default function FormBuilder() {
     }
   };
 
-  // Dropped from the palette onto the canvas at a specific position —
-  // create it, then reorder if it didn't land at the end (createField
-  // always appends; the drop position may have meant "insert here").
+  // Dropped onto the list/canvas at a specific position — create it, then
+  // reorder if it didn't land at the end (createField always appends).
   const handleDropNewField = async (type: string, afterFieldId: string | undefined) => {
     if (!formId || !fields) return;
     const fieldType = type as FieldType;
@@ -181,7 +135,6 @@ export default function FormBuilder() {
         ...withoutNew.slice(insertAt),
       ];
 
-      // Only reorder if it wasn't already appended at the end.
       if (insertAt < withoutNew.length) {
         await reorderFieldsAsync({ formId, orderedFieldIds: reordered });
       }
@@ -190,28 +143,23 @@ export default function FormBuilder() {
     }
   };
 
-  const buildConfig = (type: FieldType): FieldConfig | undefined => {
-    if (OPTION_TYPES.has(type))
-      return { options: draftOptions.map((o) => o.trim()).filter(Boolean) };
-    if (type === "LONG_TEXT" && draftMaxLength.trim()) return { maxLength: Number(draftMaxLength) };
-    if (type === "RATING") return { max: draftRatingMax.trim() ? Number(draftRatingMax) : 5 };
-    return undefined;
-  };
-
-  const handleSaveField = async () => {
-    if (!selectedField) return;
+  const handleSaveField = async (fieldId: string, patch: FieldPatch) => {
     try {
-      await updateFieldAsync({
-        fieldId: selectedField.id,
-        label: draftLabel.trim(),
-        description: draftDescription.trim() ? draftDescription.trim() : null,
-        placeholder: draftPlaceholder.trim() ? draftPlaceholder.trim() : null,
-        isRequired: draftRequired,
-        config: buildConfig(selectedField.type as FieldType),
-      });
-      toast.success("Field updated");
+      await updateFieldAsync({ fieldId, ...patch });
+      toast.success(view === "nodes" ? "Node updated" : "Field updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update field");
+    }
+  };
+
+  const handleRemoveOption = async (fieldId: string, index: number) => {
+    const field = fields?.find((f) => f.id === fieldId);
+    if (!field) return;
+    const options = getOptions(field as BuilderField).filter((_, i) => i !== index);
+    try {
+      await updateFieldAsync({ fieldId, config: { options } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove option");
     }
   };
 
@@ -225,19 +173,16 @@ export default function FormBuilder() {
     }
   };
 
-  const handleReorder = async (orderedIds: string[]) => {
-    if (!formId) return;
+  const handleReorder = async (orderedIds: string[]): Promise<boolean> => {
+    if (!formId) return false;
     try {
       await reorderFieldsAsync({ formId, orderedFieldIds: orderedIds });
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reorder fields");
+      return false;
     }
   };
-
-  const [titleDraft, setTitleDraft] = useState("");
-  useEffect(() => {
-    if (form) setTitleDraft(form.title);
-  }, [form?.title]);
 
   const handleTitleBlur = async () => {
     if (!formId || !form || titleDraft.trim() === form.title) return;
@@ -246,6 +191,13 @@ export default function FormBuilder() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to rename form");
     }
+  };
+
+  const handleDescriptionBlur = (value: string) => {
+    if (!formId || value === (form?.description ?? "")) return;
+    updateFormAsync({ formId, description: value.trim() ? value.trim() : null }).catch(() =>
+      toast.error("Failed to update description"),
+    );
   };
 
   const handleTemplateChange = async (templateId: string) => {
@@ -278,122 +230,152 @@ export default function FormBuilder() {
     }
   };
 
+  const builderFields = (fields ?? []) as BuilderField[];
+
+  const inspector = (
+    <FieldInspector
+      mode={view}
+      field={selectedField as BuilderField | null}
+      position={selectedIndex >= 0 ? selectedIndex + 1 : undefined}
+      form={form}
+      premiumUnlocked={premiumUnlocked}
+      saving={isSavingField}
+      savingForm={isSavingForm}
+      onSave={handleSaveField}
+      onDelete={handleDeleteField}
+      onDescriptionBlur={handleDescriptionBlur}
+      onTemplateChange={handleTemplateChange}
+      onLayoutChange={handleLayoutChange}
+    />
+  );
+
+  if (!ready) return null;
+
+  /* ------------------------------ render ------------------------------ */
+
+  const statusVariant = form?.status === "PUBLISHED" ? "secondary" : "ember";
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* --- top toolbar --- */}
-      <header className="glass-flat flex h-14 shrink-0 items-center gap-3 border-b border-border/60 px-4">
-        <Link href="/dashboard/forms" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" />
-        </Link>
-
-        <input
-          value={titleDraft}
-          onChange={(e) => setTitleDraft(e.target.value)}
-          onBlur={handleTitleBlur}
-          className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none sm:flex-none sm:w-64"
-        />
-
-        <span className="hidden rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">
-          {form?.status ?? "..."}
-        </span>
-
-        <div className="flex-1" />
-
-        <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
-          <Sparkles className="mr-1.5 size-3.5" />
-          AI Generate
-        </Button>
-
-        <Button
-          variant={previewMode ? "default" : "outline"}
-          size="sm"
-          onClick={() => setPreviewMode((v) => !v)}
-        >
-          <Eye className="mr-1.5 size-3.5" />
-          Preview
-        </Button>
-
-        {formId && form ? (
-          <ShareFormDialog
-            formId={formId}
-            submissionAccess={form.submissionAccess}
-            accessCode={form.accessCode}
+    <AppShell docLabel="Create form" scroll={false}>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
+        {/* --- toolbar --- */}
+        <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
+          <Link
+            href="/dashboard/forms"
+            aria-label="Back to forms"
+            className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
           >
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-1.5 size-3.5" />
-              Share
-            </Button>
-          </ShareFormDialog>
-        ) : null}
+            <ArrowLeft className="size-4" />
+          </Link>
 
-        {formId && form ? (
-          <PublishFormDialog
-            formId={formId}
-            currentStatus={form.status}
-            currentVisibility={form.visibility}
-            currentSubmissionAccess={form.submissionAccess}
-            currentAccessCode={form.accessCode}
+          <input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            aria-label="Form title"
+            className="font-display min-w-0 max-w-[16rem] flex-1 bg-transparent text-lg font-extrabold tracking-[-0.03em] outline-none focus-visible:underline decoration-primary underline-offset-4 sm:flex-none sm:text-xl"
+          />
+
+          {form ? <Badge variant={statusVariant}>{form.status}</Badge> : null}
+
+          {/* view switch */}
+          <div
+            className="flex border border-foreground/70 p-0.5"
+            role="group"
+            aria-label="Builder view"
           >
-            <Button size="sm">
-              <Rocket className="mr-1.5 size-3.5" />
-              Publish
-            </Button>
-          </PublishFormDialog>
-        ) : null}
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDeleteForm}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="mr-1.5 size-3.5" />
-          Delete
-        </Button>
-
-        <ThemeToggle />
-      </header>
-
-      {formId ? (
-        <AiFormBuilderPanel
-          open={aiOpen}
-          onOpenChange={setAiOpen}
-          mode="ADD_FIELDS"
-          formId={formId}
-          existingFieldCount={fields?.length ?? 0}
-        />
-      ) : null}
-
-      {/* --- three panes --- */}
-      <div className="grid flex-1 grid-cols-[72px_1fr] overflow-hidden lg:grid-cols-[220px_1fr_320px]">
-        {/* Field palette — draggable onto the canvas, or click to append */}
-        <aside className="glass-flat overflow-y-auto border-r border-border/60 p-3">
-          <p className="mb-2 hidden px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase lg:block">
-            Fields
-          </p>
-          <div className="space-y-1">
-            {PALETTE.map(({ type, label, icon: Icon }) => (
+            {(
+              [
+                ["list", "List"],
+                ["nodes", "Nodes"],
+              ] as const
+            ).map(([v, text]) => (
               <button
-                key={type}
+                key={v}
                 type="button"
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("application/formless-field-type", type)}
-                onClick={() => handleAddField(type)}
-                className="flex w-full cursor-grab items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing lg:px-3"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={`mono-label-sm rounded-[2px] px-3 py-2 transition-colors ${
+                  view === v
+                    ? "bg-solid text-solid-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <Icon className="size-4 shrink-0" />
-                <span className="hidden truncate lg:inline">{label}</span>
+                {text}
               </button>
             ))}
           </div>
-        </aside>
 
-        {/* Canvas */}
-        <main className={previewMode ? "overflow-y-auto p-6" : "relative overflow-hidden"}>
-          {previewMode ? (
+          <div className="hidden flex-1 md:block" />
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5 md:ml-0">
+            <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
+              <Sparkles /> AI Generate
+            </Button>
+
+            <Button
+              variant={previewMode ? "default" : "outline"}
+              size="sm"
+              aria-pressed={previewMode}
+              onClick={() => setPreviewMode((v) => !v)}
+            >
+              <Eye /> Preview
+            </Button>
+
+            {formId && form ? (
+              <ShareFormDialog
+                formId={formId}
+                submissionAccess={form.submissionAccess}
+                accessCode={form.accessCode}
+              >
+                <Button variant="outline" size="sm">
+                  <Share2 /> Share
+                </Button>
+              </ShareFormDialog>
+            ) : null}
+
+            {formId && form ? (
+              <PublishFormDialog
+                formId={formId}
+                currentStatus={form.status}
+                currentVisibility={form.visibility}
+                currentSubmissionAccess={form.submissionAccess}
+                currentAccessCode={form.accessCode}
+              >
+                <Button size="sm">
+                  <Rocket /> Publish
+                </Button>
+              </PublishFormDialog>
+            ) : null}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteForm}
+              className="border-destructive/60 text-destructive hover:bg-destructive hover:text-white"
+            >
+              <Trash2 /> Delete
+            </Button>
+          </div>
+        </div>
+
+        {formId ? (
+          <AiFormBuilderPanel
+            open={aiOpen}
+            onOpenChange={setAiOpen}
+            mode="ADD_FIELDS"
+            formId={formId}
+            existingFieldCount={fields?.length ?? 0}
+          />
+        ) : null}
+
+        {/* --- body --- */}
+        {previewMode ? (
+          <div className="dotgrid-strong min-h-0 flex-1 overflow-y-auto border border-border bg-card/40 p-4 sm:p-6">
             <div className="mx-auto max-w-2xl">
               {fieldsLoading ? (
-                <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">
                   Loading fields...
                 </div>
               ) : fields && fields.length > 0 ? (
@@ -422,237 +404,98 @@ export default function FormBuilder() {
                   isPreview
                 />
               ) : (
-                <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+                <div className="border border-dashed border-foreground/40 bg-card p-10 text-center text-sm text-muted-foreground">
                   No fields yet.
                 </div>
               )}
             </div>
-          ) : fieldsLoading ? (
-            <div className="p-6 text-sm text-muted-foreground">Loading fields...</div>
-          ) : fields ? (
-            <FieldCanvas
-              fields={fields.map(
-                (f): CanvasField => ({
-                  id: f.id,
-                  label: f.label,
-                  description: f.description,
-                  isRequired: f.isRequired,
-                  type: f.type,
-                  typeLabel: FIELD_TYPE_LABELS[f.type as FieldType],
-                }),
-              )}
+          </div>
+        ) : view === "list" ? (
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[212px_minmax(0,1fr)] xl:grid-cols-[212px_minmax(0,1fr)_300px]">
+            <ListView
+              fields={builderFields}
+              loading={fieldsLoading}
               selectedFieldId={selectedFieldId}
-              onSelectField={setSelectedFieldId}
+              onSelect={setSelectedFieldId}
+              onAddField={handleAddField}
+              onDropNewField={handleDropNewField}
               onReorder={handleReorder}
               onDeleteField={handleDeleteField}
-              onDropNewField={handleDropNewField}
+              onRemoveOption={handleRemoveOption}
+              onOpenAi={() => setAiOpen(true)}
+              onEdit={() => setInspectorOpen(true)}
+              formTitle={titleDraft}
+              onTitleChange={setTitleDraft}
+              onTitleCommit={handleTitleBlur}
+              formDescription={form?.description}
+              layout={form?.submissionLayout === "ALL_AT_ONCE" ? "ALL_AT_ONCE" : "ONE_AT_A_TIME"}
             />
-          ) : null}
-        </main>
-
-        {/* Inspector */}
-        <aside className="glass-flat hidden overflow-y-auto border-l border-border/60 p-5 xl:block">
-          {selectedField ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">
-                  {FIELD_TYPE_LABELS[selectedField.type as FieldType]}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteField(selectedField.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Delete field"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Label</label>
-                <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Description</label>
-                <Textarea
-                  value={draftDescription}
-                  onChange={(e) => setDraftDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-
-              {!OPTION_TYPES.has(selectedField.type as FieldType) &&
-              selectedField.type !== "YES_NO" &&
-              selectedField.type !== "RATING" ? (
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Placeholder</label>
-                  <Input
-                    value={draftPlaceholder}
-                    onChange={(e) => setDraftPlaceholder(e.target.value)}
-                  />
-                </div>
-              ) : null}
-
-              {OPTION_TYPES.has(selectedField.type as FieldType) ? (
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Options</label>
-                  <div className="space-y-2">
-                    {draftOptions.map((opt, i) => (
-                      <div key={i} className="flex gap-1.5">
-                        <Input
-                          value={opt}
-                          onChange={(e) => {
-                            const next = [...draftOptions];
-                            next[i] = e.target.value;
-                            setDraftOptions(next);
-                          }}
-                          placeholder={`Option ${i + 1}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() =>
-                            setDraftOptions(draftOptions.filter((_, idx) => idx !== i))
-                          }
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDraftOptions([...draftOptions, ""])}
-                    >
-                      Add option
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              {selectedField.type === "LONG_TEXT" ? (
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Max length (optional)</label>
-                  <Input
-                    type="number"
-                    value={draftMaxLength}
-                    onChange={(e) => setDraftMaxLength(e.target.value)}
-                  />
-                </div>
-              ) : null}
-
-              {selectedField.type === "RATING" ? (
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Scale (2-10)</label>
-                  <Input
-                    type="number"
-                    min={2}
-                    max={10}
-                    value={draftRatingMax}
-                    onChange={(e) => setDraftRatingMax(e.target.value)}
-                  />
-                </div>
-              ) : null}
-
-              <div className="flex items-center gap-2 pt-1">
-                <Checkbox
-                  checked={draftRequired}
-                  onCheckedChange={(v) => setDraftRequired(Boolean(v))}
-                />
-                <span className="text-sm text-muted-foreground">Required</span>
-              </div>
-
-              <Button
-                className="w-full"
-                onClick={handleSaveField}
-                disabled={isSavingField || !draftLabel.trim()}
-              >
-                {isSavingField ? "Saving..." : "Save changes"}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div>
-                <h3 className="mb-1 flex items-center gap-1.5 text-sm font-medium">
-                  <Pencil className="size-3.5" />
-                  Form details
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  No field selected — editing the form itself.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Description</label>
-                <Textarea
-                  defaultValue={form?.description ?? ""}
-                  rows={3}
-                  onBlur={(e) => {
-                    if (!formId || e.target.value === (form?.description ?? "")) return;
-                    updateFormAsync({
-                      formId,
-                      description: e.target.value.trim() ? e.target.value.trim() : null,
-                    }).catch(() => toast.error("Failed to update description"));
+            {isWide ? (
+              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
+            ) : null}
+          </div>
+        ) : (
+          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <section
+              className="relative min-h-[360px] overflow-hidden border border-border bg-card/40"
+              aria-label="Form canvas"
+            >
+              {fieldsLoading ? (
+                <div className="p-6 text-sm text-muted-foreground">Loading fields...</div>
+              ) : fields ? (
+                <FieldCanvas
+                  fields={fields.map(
+                    (f): CanvasField => ({
+                      id: f.id,
+                      label: f.label,
+                      description: f.description,
+                      isRequired: f.isRequired,
+                      type: f.type,
+                      typeLabel: typeLabel(f.type).toUpperCase(),
+                    }),
+                  )}
+                  selectedFieldId={selectedFieldId}
+                  onSelectField={(id) => {
+                    setSelectedFieldId(id);
+                    if (id && !isWide) setInspectorOpen(true);
                   }}
+                  onReorder={handleReorder}
+                  onDeleteField={handleDeleteField}
+                  onDropNewField={handleDropNewField}
+                  onAddField={handleAddField}
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Template</label>
-                <select
-                  value={form?.template ?? "CLASSIC"}
-                  onChange={(e) => handleTemplateChange(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
-                >
-                  <option value="CLASSIC">Classic (default)</option>
-                  {GALLERY_TEMPLATE_IDS.map((id) => {
-                    const locked =
-                      !premiumUnlocked && ["DEVELOPER", "RETRO", "TICKET"].includes(id);
-                    return (
-                      <option key={id} value={id} disabled={locked}>
-                        {getTemplateDesign(id).name}
-                        {locked ? " (Premium)" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Changes the structure and design of the public submission page.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Field pacing</label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={form?.submissionLayout === "ALL_AT_ONCE" ? "outline" : "default"}
-                    className="flex-1"
-                    onClick={() => handleLayoutChange("ONE_AT_A_TIME")}
-                  >
-                    One at a time
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={form?.submissionLayout === "ALL_AT_ONCE" ? "default" : "outline"}
-                    className="flex-1"
-                    onClick={() => handleLayoutChange("ALL_AT_ONCE")}
-                  >
-                    All at once
-                  </Button>
-                </div>
-              </div>
-
-              {isSavingForm ? <p className="text-xs text-muted-foreground">Saving...</p> : null}
-            </div>
-          )}
-        </aside>
+              ) : null}
+            </section>
+            {isWide ? (
+              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
+            ) : null}
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* inspector as a sheet below the xl breakpoint */}
+      {!isWide ? (
+        <Sheet open={inspectorOpen && !previewMode} onOpenChange={setInspectorOpen}>
+          <SheetContent
+            side="bottom"
+            className="flex max-h-[85dvh] flex-col gap-0 p-0 sm:mx-auto sm:max-w-lg"
+          >
+            <SheetTitle className="sr-only">Inspector</SheetTitle>
+            {inspector}
+          </SheetContent>
+        </Sheet>
+      ) : null}
+
+      {/* below xl the inspector is reachable from a floating button in both views */}
+      {!isWide && !previewMode ? (
+        <button
+          type="button"
+          onClick={() => setInspectorOpen(true)}
+          className="mono-label fixed right-4 bottom-4 z-30 md:bottom-24 flex h-10 items-center gap-2 rounded-[3px] bg-solid px-4 text-solid-foreground shadow-[3px_3px_0_0_var(--hard-shadow)]"
+        >
+          {selectedField ? "Edit field" : "Form settings"}
+        </button>
+      ) : null}
+    </AppShell>
   );
 }

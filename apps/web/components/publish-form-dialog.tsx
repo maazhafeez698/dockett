@@ -55,7 +55,7 @@ const ACCESS_OPTIONS: { value: SubmissionAccess; label: string; blurb: string }[
   {
     value: "AUTHENTICATED_ONLY",
     label: "Signed-in users only",
-    blurb: "Respondent needs a Formless account",
+    blurb: "Respondent needs a Dockett account",
   },
 ];
 
@@ -112,7 +112,7 @@ export function PublishFormDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="glass-strong sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Publish</DialogTitle>
           <DialogDescription>
@@ -131,7 +131,7 @@ export function PublishFormDialog({
                   key={o.value}
                   type="button"
                   onClick={() => setStatus(o.value)}
-                  className={`rounded-xl border p-2.5 text-left text-xs transition-colors ${
+                  className={`rounded-[3px] border p-2.5 text-left text-xs transition-colors ${
                     status === o.value
                       ? "border-primary bg-primary/10"
                       : "border-border hover:bg-muted/40"
@@ -157,7 +157,7 @@ export function PublishFormDialog({
           </button>
 
           {advancedOpen ? (
-            <div className="space-y-5 rounded-xl border border-border/60 p-3.5">
+            <div className="space-y-5 rounded-[3px] border border-border/60 p-3.5">
               <div>
                 <p className="mb-2 text-xs text-muted-foreground">Who can find this form</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -166,7 +166,7 @@ export function PublishFormDialog({
                       key={o.value}
                       type="button"
                       onClick={() => setVisibility(o.value)}
-                      className={`rounded-xl border p-2.5 text-left text-xs transition-colors ${
+                      className={`rounded-[3px] border p-2.5 text-left text-xs transition-colors ${
                         visibility === o.value
                           ? "border-primary bg-primary/10"
                           : "border-border hover:bg-muted/40"
@@ -189,7 +189,7 @@ export function PublishFormDialog({
                       key={o.value}
                       type="button"
                       onClick={() => setSubmissionAccess(o.value)}
-                      className={`block w-full rounded-xl border p-2.5 text-left text-xs transition-colors ${
+                      className={`block w-full rounded-[3px] border p-2.5 text-left text-xs transition-colors ${
                         submissionAccess === o.value
                           ? "border-primary bg-primary/10"
                           : "border-border hover:bg-muted/40"
@@ -202,7 +202,7 @@ export function PublishFormDialog({
                 </div>
 
                 {submissionAccess === "ACCESS_CODE" ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <div className="mt-3 flex items-center gap-2 rounded-[3px] border border-border/60 bg-muted/30 p-3">
                     <KeyRound className="size-4 text-muted-foreground" />
                     {accessCode ? (
                       <span className="flex-1 font-mono text-sm tracking-[0.3em]">

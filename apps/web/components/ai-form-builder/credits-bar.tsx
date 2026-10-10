@@ -26,8 +26,8 @@ export function CreditsBar({ credits, now }: { credits: AiCredits | null; now: n
         )}
         {reset ? <span className="text-muted-foreground">resets in {reset}</span> : null}
       </div>
-      <div className="h-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Credits consumed">
-        <div className={`h-full rounded-full transition-all duration-500 ${tone}`} style={{ width: `${Math.max(pct, pct > 0 ? 3 : 0)}%` }} />
+      <div className="h-1 overflow-hidden rounded-[3px] bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Credits consumed">
+        <div className={`h-full rounded-[3px] transition-all duration-500 ${tone}`} style={{ width: `${Math.max(pct, pct > 0 ? 3 : 0)}%` }} />
       </div>
     </div>
   );
