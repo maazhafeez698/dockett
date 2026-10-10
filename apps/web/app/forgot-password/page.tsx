@@ -6,8 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useForgotPassword } from "~/hooks/api/auth";
-import { Logo } from "~/components/logo";
-import { ThemeToggle } from "~/components/theme-toggle";
+import { AuthShell } from "~/components/auth-shell";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -24,54 +23,40 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center">
-          <Logo />
-        </div>
-
-        <form onSubmit={handleSubmit} className="glass-strong space-y-5 rounded-2xl p-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Forgot password</h1>
-            <p className="text-sm text-muted-foreground">
-              Enter your email and we&apos;ll send you a link to reset your password.
-            </p>
-          </div>
-
-          {isSuccess ? (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              If an account exists for that email, a reset link has been sent.
-            </p>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="jane@example.com"
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? "Sending..." : "Send reset link"}
-              </Button>
-            </>
-          )}
-
-          <p className="text-center text-sm text-muted-foreground">
-            <Link href="/signin" className="text-primary hover:underline">
-              Back to sign in
-            </Link>
+    <AuthShell
+      title="Forgot password"
+      subtitle="Enter your email and we'll send you a link to reset your password."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {isSuccess ? (
+          <p className="text-xs text-success" role="status">
+            If an account exists for that email, a reset link has been sent.
           </p>
-        </form>
-      </div>
-    </main>
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="jane@example.com"
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? "Sending..." : "Send reset link"}
+            </Button>
+          </>
+        )}
+
+        <p className="text-center text-xs text-muted-foreground">
+          <Link href="/signin" className="font-medium text-primary underline-offset-4 hover:underline">
+            Back to sign in
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

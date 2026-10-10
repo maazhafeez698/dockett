@@ -9,8 +9,7 @@ import { toast } from "sonner";
 
 import { useSignup, useGoogleSignIn } from "~/hooks/api/auth";
 import { GoogleSignInButton } from "~/components/google-sign-in-button";
-import { Logo } from "~/components/logo";
-import { ThemeToggle } from "~/components/theme-toggle";
+import { AuthShell, OrDivider, safeNext } from "~/components/auth-shell";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -33,7 +32,7 @@ export default function SignupPage() {
 
     try {
       await createUserWithEmailAndPasswordAsync({ fullName, email, password });
-      router.push("/dashboard/forms");
+      router.push(safeNext());
     } catch {
       // error is surfaced via the `error` state below
     }
@@ -42,40 +41,24 @@ export default function SignupPage() {
   const handleGoogleCredential = async (idToken: string) => {
     try {
       await signInWithGoogleAsync({ idToken });
-      router.push("/dashboard/forms");
+      router.push(safeNext());
     } catch {
       toast.error("Google sign-in failed. Please try again.");
     }
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-center">
-          <Logo />
-        </div>
-
-        <form onSubmit={handleSubmit} className="glass-strong space-y-5 rounded-2xl p-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
-            <p className="text-sm text-muted-foreground">
-              Register with your name, email, and password.
-            </p>
-          </div>
+    <AuthShell
+      title="Create account"
+      subtitle="Register with your name, email, and password."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
 
           <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isGooglePending} />
 
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase text-muted-foreground">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
+          <OrDivider />
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="fullName">Full name</Label>
             <Input
               id="fullName"
@@ -85,7 +68,7 @@ export default function SignupPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -96,7 +79,7 @@ export default function SignupPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
@@ -105,29 +88,28 @@ export default function SignupPage() {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="font-mono text-[10px] leading-snug text-muted-foreground">
               At least 8 characters, with uppercase, lowercase, a number, and a symbol.
             </p>
           </div>
 
-          {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
-          {googleError ? <p className="text-sm text-destructive">{googleError.message}</p> : null}
+          {error ? <p role="alert" className="text-xs text-destructive">{error.message}</p> : null}
+          {googleError ? <p role="alert" className="text-xs text-destructive">{googleError.message}</p> : null}
           {isSuccess ? (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">Account created.</p>
+            <p className="text-xs text-success">Account created.</p>
           ) : null}
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? "Registering..." : "Register"}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/signin" className="text-primary hover:underline">
+            <Link href="/signin" className="font-medium text-primary underline-offset-4 hover:underline">
               Sign in
             </Link>
           </p>
         </form>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

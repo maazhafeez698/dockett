@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import { env } from "~/env.js";
 
 declare global {
@@ -28,6 +29,8 @@ interface GoogleSignInButtonProps {
 
 export function GoogleSignInButton({ onCredential, disabled }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
 
   useEffect(() => {
     if (!env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || disabled) return;
@@ -44,9 +47,11 @@ export function GoogleSignInButton({ onCredential, disabled }: GoogleSignInButto
 
       window.google.accounts.id.renderButton(buttonRef.current, {
         type: "standard",
-        theme: "filled_black",
+        theme: dark ? "filled_black" : "outline",
         size: "large",
-        width: 320,
+        shape: "rectangular",
+        logo_alignment: "center",
+        width: Math.min(342, Math.max(200, buttonRef.current.parentElement?.clientWidth ?? 342)),
         text: "continue_with",
       });
     }
@@ -67,7 +72,7 @@ export function GoogleSignInButton({ onCredential, disabled }: GoogleSignInButto
     return () => {
       cancelled = true;
     };
-  }, [onCredential, disabled]);
+  }, [onCredential, disabled, dark]);
 
   if (!env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return null;
 
