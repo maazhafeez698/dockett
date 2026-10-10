@@ -86,11 +86,11 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     highlights: [
       { text: "Up to 50 active forms" },
       { text: "1,000 responses / form / month" },
-      { text: "Pro themes (Developer, Retro, Ticket)" },
+      { text: "Pro themes" },
       { text: "Advanced analytics" },
-      { text: "Increased AI usage" },
-      { text: "Conditional rendering", soon: true },
-      { text: "Personal customization options", soon: true },
+      { text: "Increased AI generations" },
+      { text: "Conditional rendering" },
+      { text: "Personal customization"},
     ],
   },
   business: {
