@@ -21,7 +21,7 @@ export interface BillingConfig {
   /** Public, safe to expose: Paddle.js client-side token. */
   clientToken?: string;
   prices: { premiumMonthly?: string; premiumYearly?: string };
-  /** Days of Premium access kept after a failed renewal before dropping to Basic. */
+  /** Days of Pro access kept after a failed renewal before dropping to Basic. */
   graceDays: number;
   /** Webhook timestamp tolerance, seconds (replay protection). */
   webhookToleranceSec: number;

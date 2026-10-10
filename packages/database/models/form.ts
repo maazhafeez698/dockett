@@ -6,7 +6,7 @@ export const formVisibilityEnum = pgEnum("form_visibility_enum", ["PUBLIC", "UNL
 
 // ANYONE — no gate. ACCESS_CODE — respondent must enter the form's shared
 // code before the fields are returned/accepted (owner is always exempt).
-// AUTHENTICATED_ONLY — respondent must be signed in to a Formless account
+// AUTHENTICATED_ONLY — respondent must be signed in to a Dockett account
 // (not necessarily the owner). Enforced end-to-end in Phase 4
 // (getFormWithFields + createSubmission), not just stored.
 export const formSubmissionAccessEnum = pgEnum("form_submission_access_enum", [
@@ -18,7 +18,7 @@ export const formSubmissionAccessEnum = pgEnum("form_submission_access_enum", [
 // Replaces the old 5-preset color `theme` enum (Phase 3). A template is no
 // longer just an accent/gradient — it's a full distinct structure, layout,
 // and interaction model, implemented client-side in
-// apps/web/components/form-templates/*. CLASSIC is the plain Formless
+// apps/web/components/form-templates/*. CLASSIC is the plain Dockett
 // look — the default for forms created from scratch ("Custom Form"), not
 // offered as a gallery pick.
 export const formTemplateEnum = pgEnum("form_template_enum", [

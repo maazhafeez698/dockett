@@ -13,7 +13,7 @@ export type PlanKey = "basic" | "premium" | "business";
 /** Key into the AI engine's plan table (packages/services/ai/config.ts). */
 export type AiPlanKey = "free" | "pro" | "business";
 
-/** The visual templates only Premium and above may use. */
+/** The visual templates only Pro and above may use. */
 export const PREMIUM_TEMPLATES = ["DEVELOPER", "RETRO", "TICKET"] as const;
 export type PremiumTemplate = (typeof PREMIUM_TEMPLATES)[number];
 
@@ -42,7 +42,7 @@ export interface PlanDefinition {
   /** USD. null = not sold by card (Basic is free, Business is contact-sales). */
   priceMonthlyUsd: number | null;
   priceYearlyUsd: number | null;
-  /** Self-serve checkout allowed? Only Premium. */
+  /** Self-serve checkout allowed? Only Pro. */
   purchasable: boolean;
   contactSales: boolean;
   limits: PlanLimits;
@@ -73,7 +73,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
   },
   premium: {
     key: "premium",
-    name: "Premium",
+    name: "Pro",
     tagline: "For creators who need more room and more polish.",
     priceMonthlyUsd: 1,
     // 10 months for 12 ("Save 16%"). Only offered if a yearly Paddle price id is configured.
@@ -86,7 +86,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     highlights: [
       { text: "Up to 50 active forms" },
       { text: "1,000 responses / form / month" },
-      { text: "Premium themes (Developer, Retro, Ticket)" },
+      { text: "Pro themes (Developer, Retro, Ticket)" },
       { text: "Advanced analytics" },
       { text: "Increased AI usage" },
       { text: "Conditional rendering", soon: true },
@@ -106,10 +106,8 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     aiPlanKey: "business",
     highlights: [
       { text: "Unlimited everything" },
-      { text: "SSO & advanced security", soon: true },
-      { text: "On-demand integrations", soon: true },
-      { text: "Conditional rendering", soon: true },
       { text: "Dedicated support" },
+      { text: "On-demand integrations"},
     ],
   },
 };

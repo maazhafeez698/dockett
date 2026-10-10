@@ -52,7 +52,7 @@ export async function assertTemplateAllowed(userId: string, template: string | u
   if (!plan.features.premiumTemplates) {
     throw new PlanLimitError(
       "PREMIUM_TEMPLATE",
-      "The Developer, Retro and Ticket templates are Premium features. Upgrade to Premium to use them.",
+      "The Developer, Retro and Ticket templates are Pro features. Upgrade to Pro to use them.",
     );
   }
 }
@@ -104,7 +104,7 @@ export async function withPublishLimit<T>(
           "ACTIVE_FORMS_LIMIT",
           `You've reached the ${formatLimit(limit)} active forms included in the ${plan.name} plan. ` +
             (plan.key === "basic"
-              ? "Upgrade to Premium to publish more, or close a form you no longer need."
+              ? "Upgrade to Pro to publish more, or close a form you no longer need."
               : "Close a form you no longer need, or contact sales for a higher limit."),
         );
       }

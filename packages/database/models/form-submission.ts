@@ -16,7 +16,7 @@ export const formSubmissionsTable = pgTable(
 
     formId: uuid("form_id").references(() => formsTable.id, { onDelete: "cascade" }),
 
-    // Set when the respondent was signed in to a Formless account at submit
+    // Set when the respondent was signed in to a Dockett account at submit
     // time (AUTHENTICATED_ONLY forms always have this; ANYONE/ACCESS_CODE
     // forms may or may not, depending on whether the visitor happened to be
     // logged in). Null means an anonymous submission.
