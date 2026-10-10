@@ -1,18 +1,17 @@
 // apps/web/app/dashboard/templates/page.tsx
 //
-// Gallery of 8 structurally distinct premium templates + a trailing
+// Gallery of 8 structurally distinct Pro templates + a trailing
 // "Custom Form" card. Preview opens the full form experience in a modal;
 // Use Template creates the form (with fields + design pre-populated) and
 // jumps straight into the builder canvas.
 
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, FileStack, Lock, Plus } from "lucide-react";
+import { FileStack, Plus } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
 import { TemplatePreviewDialog } from "~/components/template-preview-dialog";
 import { FORM_TEMPLATES, type FormTemplate } from "~/lib/templates-data";
 import { getTemplateDesign } from "~/lib/template-designs";
@@ -20,9 +19,12 @@ import { useCreateFormFromTemplate, useCreateForm } from "~/hooks/api/form";
 import { AppShell } from "~/components/app-shell";
 import { useBillingOverview } from "~/hooks/api/billing";
 import { toastError } from "~/lib/plan-limit";
+import { useAuthGuard } from "~/hooks/use-auth-guard";
 
 export default function TemplatesPage() {
   const router = useRouter();
+  const { ready } = useAuthGuard();
+  const [category, setCategory] = useState("All");
   const { createFormFromTemplateAsync, isPending: creatingFromTemplate } =
     useCreateFormFromTemplate();
   const { createFormAsync, isPending: creatingBlank } = useCreateForm();
@@ -61,83 +63,86 @@ export default function TemplatesPage() {
     }
   }
 
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(FORM_TEMPLATES.map((t) => getTemplateDesign(t.template).category)))],
+    [],
+  );
+  const visible = FORM_TEMPLATES.filter(
+    (t) => category === "All" || getTemplateDesign(t.template).category === category,
+  );
+
+  if (!ready) return null;
+
   return (
-    <AppShell>
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="flex items-start justify-between gap-4">
+    <AppShell docLabel="Templates">
+      <div className="mx-auto max-w-6xl space-y-5 p-3 sm:p-4 lg:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
+            <h1 className="font-display text-4xl font-extrabold text-primary">Templates</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start with a pre-built template. Fields, structure, and design are created instantly —
-              customize and publish.
+              Fields, structure and design are created instantly.
             </p>
           </div>
-          <span className="mt-1 text-sm whitespace-nowrap text-muted-foreground">
-            {FORM_TEMPLATES.length} templates available
-          </span>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter templates">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                aria-pressed={category === c}
+                className={`mono-label-sm border px-2.5 py-2 transition-colors ${
+                  category === c
+                    ? "border-solid bg-solid text-solid-foreground"
+                    : "border-foreground/50 bg-secondary hover:bg-accent"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FORM_TEMPLATES.map((template) => {
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {visible.map((template) => {
             const design = getTemplateDesign(template.template);
-            const visibleTags = template.fields.slice(0, 4);
-            const overflow = template.fields.length - visibleTags.length;
             const busy = pendingId === template.id;
-            const locked =
-              !premiumUnlocked && ["DEVELOPER", "RETRO", "TICKET"].includes(template.template);
+            const isPremiumTemplate = ["DEVELOPER", "RETRO", "TICKET"].includes(template.template);
+            const locked = !premiumUnlocked && isPremiumTemplate;
 
             return (
-              <div
+              <article
                 key={template.id}
-                className="glass flex flex-col rounded-2xl border border-border/60 p-5 transition hover:border-border"
+                className="flex flex-col border border-border bg-card p-4 transition-colors hover:border-foreground/60"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div
-                    className="flex size-10 items-center justify-center rounded-xl"
-                    style={{ background: `${design.accent}22`, color: design.accent }}
+                    className="flex size-9 items-center justify-center rounded-[3px] text-white"
+                    style={{ background: design.accent }}
                   >
-                    <FileStack className="size-5" />
+                    <FileStack className="size-4" aria-hidden="true" />
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {["DEVELOPER", "RETRO", "TICKET"].includes(template.template) ? (
-                      <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-500">
-                        <Lock className="size-3" /> Premium
-                      </Badge>
+                  <div className="flex items-center gap-1">
+                    {isPremiumTemplate ? (
+                      <span className="mono-label-sm border border-foreground/60 px-1.5 py-[3px]">▲ Pro</span>
                     ) : null}
-                    <Badge variant="secondary" className={design.badgeClass}>
+                    <span className="mono-label-sm border border-foreground/60 px-1.5 py-[3px]">
                       {design.category}
-                    </Badge>
+                    </span>
                   </div>
                 </div>
 
-                <h3 className="mt-4 text-base font-semibold">{template.name}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                <h3 className="font-display mt-3 text-xl leading-tight font-extrabold">{template.name}</h3>
+                <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
                   {template.description}
                 </p>
 
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {visibleTags.map((f) => (
-                    <span
-                      key={f.label}
-                      className="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
-                    >
-                      {f.type.toLowerCase().replace("_", " ")}
-                    </span>
-                  ))}
-                  {overflow > 0 ? (
-                    <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                      +{overflow}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="mt-5 flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">
+                <div className="mt-auto flex items-end justify-between gap-2 pt-4">
+                  <span className="mono-label-sm text-muted-foreground">
                     {template.fields.length} fields
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <Button size="sm" variant="outline" onClick={() => setPreviewing(template)}>
-                      <Eye className="size-3.5" /> Preview
+                      Preview
                     </Button>
                     <Button
                       size="sm"
@@ -146,11 +151,11 @@ export default function TemplatesPage() {
                         locked ? router.push("/dashboard/billing") : handleUseTemplate(template)
                       }
                     >
-                      {busy ? "Creating..." : locked ? "Upgrade to use" : "Use Template"}
+                      {busy ? "Creating..." : locked ? "Upgrade to use" : "Use template"}
                     </Button>
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })}
 
@@ -159,19 +164,19 @@ export default function TemplatesPage() {
             type="button"
             onClick={handleBlankForm}
             disabled={creatingBlank}
-            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/70 p-5 text-center transition hover:border-border hover:bg-muted/40"
+            className="flex min-h-[180px] flex-col items-center justify-center gap-3 border border-dashed border-foreground/40 p-5 text-center transition-colors hover:border-primary hover:bg-card"
           >
-            <div className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-              <Plus className="size-5" />
+            <div className="flex size-9 items-center justify-center rounded-[3px] border border-foreground/60">
+              <Plus className="size-4" />
             </div>
             <div>
-              <p className="text-base font-semibold">Custom Form</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Start from a blank canvas and build every field yourself.
+              <p className="font-display text-xl font-extrabold">Custom form</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Start from a blank page and build every field yourself.
               </p>
             </div>
-            <span className="mt-1 text-xs font-medium text-foreground">
-              {pendingId === "__blank__" ? "Creating..." : "Start Blank →"}
+            <span className="mono-label-sm text-primary">
+              {pendingId === "__blank__" ? "Creating..." : "Start blank →"}
             </span>
           </button>
         </div>

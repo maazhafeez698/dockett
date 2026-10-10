@@ -32,12 +32,12 @@ export function SubmissionDetail({
   const hasNext = index >= 0 && index < orderedIds.length - 1;
 
   return (
-    <div className="glass-strong rounded-2xl p-6">
-      <div className="flex items-center justify-between border-b border-border/60 pb-4">
+    <div className="border border-foreground/70 bg-card p-5 sm:p-6">
+      <div className="flex items-center justify-between border-b border-dashed border-border pb-4">
         <div>
-          <p className="text-sm font-semibold">Response Preview</p>
+          <p className="font-display text-xl font-extrabold">Response preview</p>
           {index >= 0 ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="mono-label-sm mt-0.5 text-muted-foreground">
               {index + 1} of {orderedIds.length}
             </p>
           ) : null}
@@ -45,8 +45,8 @@ export function SubmissionDetail({
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="icon"
-            className="size-8"
+            size="icon-sm"
+            aria-label="Previous response"
             disabled={!hasPrev}
             onClick={() => hasPrev && onSelect(orderedIds[index - 1]!)}
           >
@@ -54,15 +54,15 @@ export function SubmissionDetail({
           </Button>
           <Button
             variant="outline"
-            size="icon"
-            className="size-8"
+            size="icon-sm"
+            aria-label="Next response"
             disabled={!hasNext}
             onClick={() => hasNext && onSelect(orderedIds[index + 1]!)}
           >
             <ChevronRight className="size-4" />
           </Button>
           <Button variant="default" size="sm" onClick={onClose} className="ml-1">
-            <X className="mr-1 size-3.5" /> Close
+            <X /> Close
           </Button>
         </div>
       </div>
@@ -72,7 +72,7 @@ export function SubmissionDetail({
       ) : (
         <div className="pt-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+            <div className="flex size-10 items-center justify-center rounded-[3px] bg-primary/15 font-mono text-xs font-bold text-primary">
               {(detail.answers.find((a) => a.value)?.value ?? "?").slice(0, 2).toUpperCase()}
             </div>
             <div>
@@ -87,10 +87,10 @@ export function SubmissionDetail({
 
           <div className="mt-6 space-y-5">
             {detail.answers.map((a) => (
-              <div key={a.fieldId} className="flex gap-3 border-l-2 border-primary/40 pl-3.5">
+              <div key={a.fieldId} className="flex gap-3 border-l-2 border-primary pl-3.5">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">{a.label}</p>
-                  <p className="mt-0.5 text-sm break-words whitespace-pre-wrap">
+                  <p className="mono-label-sm text-muted-foreground">{a.label}</p>
+                  <p className="mt-1 text-sm break-words whitespace-pre-wrap">
                     {a.value.trim().length > 0 ? (
                       a.value
                     ) : (

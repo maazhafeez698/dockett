@@ -23,9 +23,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Download, Eye, ExternalLink, FileStack } from "lucide-react";
+import { Download, Eye, ExternalLink } from "lucide-react";
 
 import { AppShell } from "~/components/app-shell";
+import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { Button } from "~/components/ui/button";
 import { useListForms } from "~/hooks/api/form";
 import { useGetFormAnalytics, useListSubmissions, useExportData } from "~/hooks/api/analytics";
@@ -34,16 +35,36 @@ import { toast } from "sonner";
 
 const DEVICE_COLORS: Record<string, string> = {
   DESKTOP: "var(--primary)",
-  MOBILE: "#22C55E",
-  TABLET: "#F59E0B",
+  MOBILE: "var(--foreground)",
+  TABLET: "color-mix(in srgb, var(--foreground) 35%, var(--card))",
   UNKNOWN: "var(--muted-foreground)",
 };
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+const TOOLTIP_STYLE = {
+  background: "var(--popover)",
+  border: "1px solid var(--foreground)",
+  borderRadius: 0,
+  fontSize: 12,
+  fontFamily: "var(--font-mono)",
+} as const;
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+}) {
   return (
-    <div className="glass rounded-2xl p-5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-tight">{value}</p>
+    <div
+      className={`border p-4 ${
+        accent ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
+      }`}
+    >
+      <p className={`mono-label-sm ${accent ? "opacity-90" : "text-muted-foreground"}`}>{label}</p>
+      <p className="font-display mt-2 text-[44px] leading-none font-extrabold">{value}</p>
     </div>
   );
 }
@@ -105,14 +126,15 @@ function downloadSubmissionsCsv(
 
 function StatCardSkeleton() {
   return (
-    <div className="glass animate-pulse rounded-2xl p-5">
-      <div className="h-3 w-20 rounded bg-muted" />
-      <div className="mt-3 h-8 w-14 rounded bg-muted" />
+    <div className="animate-pulse border border-border bg-card p-4">
+      <div className="h-3 w-20 bg-muted" />
+      <div className="mt-3 h-10 w-16 bg-muted" />
     </div>
   );
 }
 
 export default function AnalyticsPage() {
+  const { ready } = useAuthGuard();
   const { forms, isLoading: formsLoading } = useListForms();
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
@@ -148,57 +170,54 @@ export default function AnalyticsPage() {
         .map((k) => ({ name: k, value: analytics.deviceBreakdown[k] }))
         .filter((d) => d.value > 0)
     : [];
+  const deviceTotal = deviceData.reduce((n, d) => n + d.value, 0);
+
+  if (!ready) return null;
 
   return (
-    <AppShell>
-      <div className="flex h-full">
-        {/* Forms sidebar */}
-        <aside className="w-64 shrink-0 border-r border-border/60 px-4 py-6">
-          <h1 className="text-lg font-semibold">Analytics</h1>
-          <p className="mt-1 text-xs text-muted-foreground">Select a form to view insights</p>
-
-          <p className="mt-6 mb-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            Forms
-          </p>
+    <AppShell docLabel="Analytics">
+      <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[224px_minmax(0,1fr)] lg:p-5">
+        {/* Forms list */}
+        <aside className="self-start border border-border bg-card p-4 lg:sticky lg:top-0">
+          <h1 className="font-display text-2xl font-extrabold">Analytics</h1>
+          <p className="mono-label-sm mt-4 text-muted-foreground">Forms</p>
           {formsLoading ? (
-            <div className="text-xs text-muted-foreground">Loading...</div>
+            <div className="mt-2 text-xs text-muted-foreground">Loading...</div>
           ) : forms && forms.length > 0 ? (
-            <ul className="space-y-0.5">
+            <ul className="mt-2 max-h-[40vh] overflow-y-auto lg:max-h-[60vh]">
               {forms.map((f) => (
-                <li key={f.id}>
+                <li key={f.id} className="border-b border-dashed border-border last:border-b-0">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedFormId(f.id);
                       setSelectedSubmissionId(null);
                     }}
-                    className={`flex w-full items-center gap-2 truncate rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors ${
+                    aria-current={selectedFormId === f.id ? "true" : undefined}
+                    className={`my-0.5 flex w-full items-center gap-2 truncate rounded-[2px] px-2 py-2 text-left font-mono text-[11px] transition-colors ${
                       selectedFormId === f.id
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        ? "bg-primary font-bold text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     }`}
                   >
-                    <FileStack className="size-3.5 shrink-0 opacity-70" />
                     <span className="truncate">{f.title}</span>
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted-foreground">No forms yet.</p>
+            <p className="mt-2 text-xs text-muted-foreground">No forms yet.</p>
           )}
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto px-8 py-8">
+        <div className="min-w-0">
           {!selectedFormId || !selectedForm ? (
-            <div className="flex h-full min-h-[60vh] flex-col items-center justify-center text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-muted">
-                <BarChart3 className="size-6 text-muted-foreground" />
-              </div>
-              <p className="text-lg font-semibold">View Analytics</p>
+            <div className="flex min-h-[50vh] flex-col items-center justify-center border border-dashed border-foreground/40 p-8 text-center">
+              <p className="numeral text-[72px]">00</p>
+              <p className="font-display mt-3 text-2xl font-extrabold">View analytics</p>
               <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                Select a form from the sidebar to view its response analytics and insights.
+                Select a form to see its responses, completion rate and devices.
               </p>
             </div>
           ) : selectedSubmissionId ? (
@@ -209,18 +228,20 @@ export default function AnalyticsPage() {
               onClose={() => setSelectedSubmissionId(null)}
             />
           ) : (
-            <div className="space-y-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold">{selectedForm.title}</h2>
-                  <p className="text-sm text-muted-foreground">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-display truncate text-[28px] leading-tight font-extrabold text-primary">
+                    {selectedForm.title}
+                  </h2>
+                  <p className="mono-label-sm mt-1 text-muted-foreground">
                     {analytics ? `${analytics.totalResponses} responses` : "—"}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/dashboard/forms/${selectedForm.id}`}>
-                      <ExternalLink className="mr-1.5 size-3.5" /> Open Builder
+                      Open builder <ExternalLink />
                     </Link>
                   </Button>
                   <Button
@@ -229,37 +250,36 @@ export default function AnalyticsPage() {
                     disabled={exporting || !analytics || analytics.totalResponses === 0}
                     onClick={handleExport}
                   >
-                    <Download className="mr-1.5 size-3.5" />{" "}
-                    {exporting ? "Exporting..." : "Export CSV"}
+                    <Download /> {exporting ? "Exporting..." : "Export CSV"}
                   </Button>
                 </div>
               </div>
 
               {analyticsLoading || !analytics ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <StatCardSkeleton />
                     <StatCardSkeleton />
                     <StatCardSkeleton />
                   </div>
-                  <div className="glass h-64 animate-pulse rounded-2xl" />
+                  <div className="h-64 animate-pulse border border-border bg-card" />
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <StatCard label="Total Responses" value={analytics.totalResponses} />
-                    <StatCard label="Completion Rate" value={`${analytics.completionRate}%`} />
-                    <StatCard label="Total Views" value={analytics.totalViews} />
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <StatCard label="Total responses" value={analytics.totalResponses} />
+                    <StatCard label="Completion rate" value={`${analytics.completionRate}%`} accent />
+                    <StatCard label="Total views" value={analytics.totalViews} />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
-                    <div className="glass rounded-2xl p-5">
-                      <p className="text-sm font-semibold">Response Timeline</p>
-                      <div className="mt-4 h-56">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_300px]">
+                    <div className="border border-border bg-card p-4">
+                      <p className="font-display text-lg font-extrabold">Response timeline</p>
+                      <div className="mt-3 h-56">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={analytics.timeline}>
                             <CartesianGrid
-                              strokeDasharray="3 3"
+                              strokeDasharray="2 4"
                               stroke="var(--border)"
                               vertical={false}
                             />
@@ -271,35 +291,31 @@ export default function AnalyticsPage() {
                                   month: "short",
                                 })
                               }
-                              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
                               axisLine={false}
                               tickLine={false}
                               interval="preserveStartEnd"
                             />
                             <YAxis
                               allowDecimals={false}
-                              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
                               axisLine={false}
                               tickLine={false}
                               width={24}
                             />
                             <Tooltip
+                              cursor={{ fill: "var(--accent)" }}
                               labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                              contentStyle={{
-                                background: "var(--popover)",
-                                border: "1px solid var(--border)",
-                                borderRadius: 8,
-                                fontSize: 12,
-                              }}
+                              contentStyle={TOOLTIP_STYLE}
                             />
-                            <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="count" fill="var(--primary)" radius={0} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="glass rounded-2xl p-5">
-                      <p className="text-sm font-semibold">Device Breakdown</p>
+                    <div className="border border-border bg-card p-4">
+                      <p className="font-display text-lg font-extrabold">Devices</p>
                       {deviceData.length === 0 ? (
                         <div className="flex h-56 items-center justify-center text-xs text-muted-foreground">
                           No views yet
@@ -313,40 +329,33 @@ export default function AnalyticsPage() {
                                   data={deviceData}
                                   dataKey="value"
                                   nameKey="name"
-                                  innerRadius={45}
-                                  outerRadius={70}
-                                  paddingAngle={2}
+                                  innerRadius={46}
+                                  outerRadius={72}
+                                  paddingAngle={0}
+                                  stroke="var(--card)"
+                                  strokeWidth={2}
                                 >
                                   {deviceData.map((d) => (
                                     <Cell key={d.name} fill={DEVICE_COLORS[d.name]} />
                                   ))}
                                 </Pie>
-                                <Tooltip
-                                  contentStyle={{
-                                    background: "var(--popover)",
-                                    border: "1px solid var(--border)",
-                                    borderRadius: 8,
-                                    fontSize: 12,
-                                  }}
-                                />
+                                <Tooltip contentStyle={TOOLTIP_STYLE} />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
-                          <div className="mt-3 space-y-1.5">
+                          <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1">
                             {deviceData.map((d) => (
-                              <div
+                              <span
                                 key={d.name}
-                                className="flex items-center justify-between text-xs"
+                                className="mono-label-sm flex items-center gap-1.5 text-muted-foreground"
                               >
-                                <span className="flex items-center gap-1.5 text-muted-foreground">
-                                  <span
-                                    className="size-2 rounded-full"
-                                    style={{ background: DEVICE_COLORS[d.name] }}
-                                  />
-                                  {d.name.charAt(0) + d.name.slice(1).toLowerCase()}
-                                </span>
-                                <span className="font-medium">{d.value}</span>
-                              </div>
+                                <span
+                                  className="size-2 rounded-[1px]"
+                                  style={{ background: DEVICE_COLORS[d.name] }}
+                                />
+                                {d.name.charAt(0) + d.name.slice(1).toLowerCase()}{" "}
+                                {Math.round((d.value / deviceTotal) * 100)}%
+                              </span>
                             ))}
                           </div>
                         </>
@@ -354,62 +363,62 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
 
-                  <div className="glass rounded-2xl p-5">
+                  <div className="border border-border bg-card p-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold">Latest Responses</p>
-                      <span className="text-xs text-muted-foreground">
+                      <p className="font-display text-lg font-extrabold">Latest responses</p>
+                      <span className="mono-label-sm text-muted-foreground">
                         {submissionsLoading ? "Loading..." : `${submissions?.length ?? 0} total`}
                       </span>
                     </div>
 
                     {submissionsLoading ? (
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-3 space-y-2">
                         {[0, 1, 2].map((i) => (
-                          <div key={i} className="glass h-14 animate-pulse rounded-xl" />
+                          <div key={i} className="h-12 animate-pulse border border-border bg-muted" />
                         ))}
                       </div>
                     ) : latest.length === 0 ? (
-                      <p className="mt-4 text-sm text-muted-foreground">No responses yet.</p>
+                      <p className="mt-3 text-sm text-muted-foreground">No responses yet.</p>
                     ) : (
-                      <div className="mt-4 space-y-2">
+                      <ul className="mt-2">
                         {latest.map((s) => (
-                          <div
+                          <li
                             key={s.id}
-                            className="flex items-center justify-between rounded-xl border border-border/50 px-4 py-3"
+                            className="flex items-center justify-between gap-3 border-b border-dashed border-border py-2.5 last:border-b-0"
                           >
                             <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                              <div className="flex size-8 shrink-0 items-center justify-center rounded-[3px] bg-primary/15 font-mono text-[10px] font-bold text-primary">
                                 {s.label.slice(0, 2).toUpperCase()}
                               </div>
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium">{s.label}</p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="font-mono text-[10px] text-muted-foreground">
                                   {s.createdAt ? new Date(s.createdAt).toLocaleString() : "—"}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                               <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                className={`mono-label-sm rounded-[2px] border px-1.5 py-[3px] ${
                                   s.isComplete
-                                    ? "bg-green-500/15 text-green-500"
-                                    : "bg-amber-500/15 text-amber-500"
+                                    ? "border-success/60 text-success"
+                                    : "border-amber-500/60 text-amber-600 dark:text-amber-400"
                                 }`}
                               >
                                 {s.isComplete ? "Completed" : "Partial"}
                               </span>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="size-8"
+                                size="icon-sm"
+                                aria-label="View response"
                                 onClick={() => setSelectedSubmissionId(s.id)}
                               >
-                                <Eye className="size-4" />
+                                <Eye />
                               </Button>
                             </div>
-                          </div>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 </>

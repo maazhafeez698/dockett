@@ -30,23 +30,29 @@ export function LogoutConfirm({ children }: LogoutConfirmProps) {
 
   const handleConfirm = async () => {
     await logoutAsync();
-    router.push("/signin");
+    router.push("/");
   };
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
-      <AlertDialogContent className="glass-strong">
-        <AlertDialogHeader>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader className="text-left">
           <AlertDialogTitle>Sign out?</AlertDialogTitle>
           <AlertDialogDescription>
-            You'll need to sign in again to get back to your forms.
+            You&apos;ll need to sign in again to get back to your forms.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="flex-row justify-end gap-2">
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
-            {isPending ? "Signing out..." : "Sign out"}
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              void handleConfirm();
+            }}
+            disabled={isPending}
+          >
+            {isPending ? "Signing out…" : "Sign out"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

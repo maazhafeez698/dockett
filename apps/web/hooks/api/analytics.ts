@@ -59,3 +59,18 @@ export const useGetSubmissionDetail = (submissionId: string | null) => {
 
   return { detail, error, isFetched, isFetching, isLoading, status };
 };
+
+/**
+ * Sum of responses across the given forms — drives the dashboard's REPLIES
+ * counter. One (batched) analytics query per form; cached by react-query.
+ */
+export const useTotalResponses = (formIds: string[]) => {
+  const results = trpc.useQueries((t) =>
+    formIds.map((formId) => t.analytics.getFormAnalytics({ formId }, { retry: false })),
+  );
+
+  const total = results.reduce((sum, r) => sum + (r.data?.totalResponses ?? 0), 0);
+  const isLoading = results.some((r) => r.isLoading);
+
+  return { total, isLoading };
+};

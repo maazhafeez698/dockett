@@ -39,19 +39,20 @@ export function PricingPlans({
     <div className="space-y-6">
       {yearlyOffered ? (
         <div className="flex items-center justify-center gap-3">
-          <div className="inline-flex rounded-full border border-border bg-muted/40 p-1 text-sm">
+          <div className="inline-flex border border-foreground/70 p-0.5">
             {(["month", "year"] as const).map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setCycle(c)}
-                className={`rounded-full px-4 py-1.5 font-medium transition-colors ${cycle === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                aria-pressed={cycle === c}
+                className={`mono-label-sm rounded-[2px] px-4 py-2 transition-colors ${cycle === c ? "bg-solid text-solid-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {c === "month" ? "Monthly" : "Yearly"}
               </button>
             ))}
           </div>
-          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-500">
+          <span className="mono-label-sm border border-success/60 px-2 py-1 text-success">
             SAVE 16%
           </span>
         </div>
@@ -73,8 +74,8 @@ export function PricingPlans({
           } else if (p.key === "premium") {
             if (isCurrent) {
               action = managed ? (
-                <Button variant="outline" className="w-full" onClick={onManage} disabled={busy}>
-                  {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Manage
+                <Button className="w-full" onClick={onManage} disabled={busy}>
+                  {busy ? <Loader2 className="animate-spin" /> : null}Manage
                   subscription
                 </Button>
               ) : (
@@ -96,8 +97,8 @@ export function PricingPlans({
               );
             } else {
               action = (
-                <Button className="w-full" onClick={() => onUpgrade(cycle)} disabled={busy}>
-                  {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Upgrade to Premium
+                <Button variant="ember" className="w-full" onClick={() => onUpgrade(cycle)} disabled={busy}>
+                  {busy ? <Loader2 className="animate-spin" /> : null}Upgrade to Pro
                 </Button>
               );
             }
@@ -116,31 +117,31 @@ export function PricingPlans({
           return (
             <div
               key={p.key}
-              className={`relative flex flex-col rounded-2xl border p-6 ${featured ? "border-primary/60 bg-card/70 shadow-lg" : "border-border bg-card/40"}`}
+              className={`relative flex flex-col bg-card p-5 ${featured ? "border-2 border-primary shadow-[4px_4px_0_0_var(--hard-shadow)]" : "border border-border"}`}
             >
               {featured ? (
-                <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
-                  Most Popular
+                <span className="mono-label-sm absolute -top-2.5 left-4 border border-foreground/70 bg-card px-2 py-1">
+                  Most popular
                 </span>
               ) : null}
-              <h3 className="text-lg font-semibold">{p.name}</h3>
-              <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">{p.tagline}</p>
+              <h3 className="font-display text-3xl leading-none font-extrabold">{p.name}</h3>
+              <p className="mt-2 min-h-[2.5rem] text-xs text-muted-foreground">{p.tagline}</p>
               <p className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tracking-tight">{pr.main}</span>
-                <span className="text-sm text-muted-foreground">{pr.suffix}</span>
+                <span className="font-display text-5xl leading-none font-extrabold">{pr.main}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{pr.suffix}</span>
               </p>
               <ul className="mt-5 flex-1 space-y-2.5">
                 {p.highlights.map((h) => (
-                  <li key={h.text} className="flex items-start gap-2 text-sm">
+                  <li key={h.text} className="flex items-start gap-2 font-mono text-[11px] leading-snug">
                     {h.soon ? (
-                      <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <Clock className="mt-px size-3.5 shrink-0 text-muted-foreground" />
                     ) : (
-                      <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                      <Check className="mt-px size-3.5 shrink-0 text-primary" />
                     )}
                     <span className={h.soon ? "text-muted-foreground" : ""}>
                       {h.text}
                       {h.soon ? (
-                        <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                        <span className="mono-label-sm ml-2 border border-border px-1.5 py-0.5">
                           Coming soon
                         </span>
                       ) : null}

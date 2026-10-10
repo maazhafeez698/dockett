@@ -1,134 +1,171 @@
 // apps/web/components/app-shell.tsx
+//
+// The Dockett workspace frame: ticket-style sidebar (numbered nav, vertical
+// wordmark, FORMS LIVE numeral, sign out), a DOC STRIP header, and the page.
+// Below `lg` the sidebar collapses into a top bar + slide-in sheet.
 
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { FilePlus2, BarChart3, LayoutTemplate, Settings, LogOut, CreditCard } from "lucide-react";
-import { toast } from "sonner";
+import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 
 import { Logo } from "~/components/logo";
 import { ThemeToggle } from "~/components/theme-toggle";
-import { useCreateForm } from "~/hooks/api/form";
 import { LogoutConfirm } from "~/components/logout-confirm";
+import { DocStrip, pad2 } from "~/components/doc-strip";
+import { Sheet, SheetContent, SheetTitle } from "~/components/ui/sheet";
+import { useListForms } from "~/hooks/api/form";
 
 const NAV_ITEMS = [
-  { href: "/dashboard/forms", label: "Forms", icon: FilePlus2, isCreate: true },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, isCreate: false },
-  { href: "/dashboard/templates", label: "Form Templates", icon: LayoutTemplate, isCreate: false },
-  { href: "/dashboard/billing", label: "Plans & Billing", icon: CreditCard, isCreate: false },
-  { href: "/dashboard/settings", label: "Profile & Settings", icon: Settings, isCreate: false },
+  { n: "01", href: "/dashboard", label: "Create" },
+  { n: "02", href: "/dashboard/forms", label: "Forms" },
+  { n: "03", href: "/dashboard/analytics", label: "Analytics" },
+  { n: "04", href: "/dashboard/templates", label: "Templates" },
+  { n: "05", href: "/dashboard/billing", label: "Billing" },
+  { n: "06", href: "/dashboard/settings", label: "Settings" },
 ] as const;
+
+function isActive(pathname: string | null, href: string) {
+  if (!pathname) return false;
+  if (href === "/dashboard") {
+    // The builder lives under CREATE.
+    return pathname === "/dashboard" || pathname.startsWith("/dashboard/forms/");
+  }
+  return pathname === href;
+}
+
+function SidebarBody({ liveForms, onNavigate }: { liveForms: number; onNavigate?: () => void }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="px-4 pt-5 pb-5">
+        <Link href="/dashboard" onClick={onNavigate} aria-label="Dockett — dashboard">
+          <Logo size={24} />
+        </Link>
+      </div>
+
+      <nav aria-label="Primary" className="px-3">
+        <ul>
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(pathname, item.href);
+            return (
+              <li key={item.href} className="border-b border-dashed border-border">
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={`mono-label my-0.5 flex h-8 items-center gap-3 rounded-[2px] px-2.5 transition-colors ${
+                    active
+                      ? "bg-primary font-bold text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  <span className={active ? "opacity-90" : "opacity-70"}>{item.n}</span>
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* wordmark + live counter */}
+      <div className="mt-auto flex items-end gap-2 px-4 pb-3">
+        <span
+          aria-hidden="true"
+          className="font-display shrink-0 rotate-180 text-[64px] leading-[0.82] font-extrabold text-primary [writing-mode:vertical-rl]"
+        >
+          dockett<span className="text-primary">.</span>
+        </span>
+        <div className="min-w-0 pb-1">
+          <div className="mono-label-sm flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block size-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]" aria-hidden="true" />
+            Forms live
+          </div>
+          <div className="numeral text-[88px]" aria-label={`${liveForms} forms live`}>
+            {pad2(liveForms)}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-dashed border-border px-3 py-1.5">
+        <ThemeToggle variant="row" />
+        <LogoutConfirm>
+          <button
+            type="button"
+            className="mono-label flex w-full items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:text-destructive"
+          >
+            Sign out
+          </button>
+        </LogoutConfirm>
+      </div>
+    </div>
+  );
+}
 
 interface AppShellProps {
   children: ReactNode;
-  /** Right-hand contextual panel. Omit for pages that don't need one. */
-  rightPanel?: ReactNode;
+  /** DOC STRIP page label, e.g. "CREATE FORM". */
+  docLabel?: string;
+  /**
+   * true (default): the page scrolls inside the shell.
+   * false: the page fills the shell and manages its own scrolling (builder).
+   */
+  scroll?: boolean;
 }
 
-export function AppShell({ children, rightPanel }: AppShellProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { createFormAsync } = useCreateForm();
-
-  const handleCreateForm = async () => {
-    try {
-      const created = await createFormAsync({ title: "Untitled Form" });
-      router.push(`/dashboard/forms/${created.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create form");
-    }
-  };
+export function AppShell({ children, docLabel = "WORKSPACE", scroll = true }: AppShellProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { forms } = useListForms();
+  const liveForms = forms?.filter((f) => f.status === "PUBLISHED" && !f.planSuspended).length ?? 0;
 
   return (
-    <div className="grid h-screen grid-cols-[72px_1fr] overflow-hidden bg-background lg:grid-cols-[240px_1fr]">
-      {/* --- left nav rail --- */}
-      <aside className="glass-flat flex flex-col border-r border-border/60 py-5">
-        <div className="mb-6 flex justify-center px-4 lg:justify-start">
-          <Link href="/dashboard/forms">
-            {/* <Logo markOnly className="lg:hidden" /> */}
-            <Logo className="hidden lg:flex" />
-          </Link>
-        </div>
-
-        <nav className="flex flex-1 flex-col gap-1 px-3">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.isCreate && pathname?.startsWith("/dashboard/forms/"));
-            const Icon = item.icon;
-
-            if (item.isCreate) {
-              return (
-                <div key={item.href} className="mb-2 flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={handleCreateForm}
-                    className="flex items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <Icon className="size-4 shrink-0" />
-                    <span className="hidden lg:inline">Create Form</span>
-                  </button>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
-                      pathname === item.href
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                    }`}
-                  >
-                    <span className="hidden size-4 lg:inline" />
-                    <span className="hidden lg:inline">All Forms</span>
-                    <span className="lg:hidden">{item.label}</span>
-                  </Link>
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                }`}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="hidden lg:inline">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="flex flex-col gap-1 px-3 pt-3">
-          <div className="flex items-center justify-center px-3 py-1 lg:justify-start">
-            <ThemeToggle />
-          </div>
-          <LogoutConfirm>
-            <button
-              type="button"
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-            >
-              <LogOut className="size-4 shrink-0" />
-              <span className="hidden lg:inline">Sign out</span>
-            </button>
-          </LogoutConfirm>
-        </div>
+    <div className="ticket-page-background flex h-dvh overflow-hidden">
+      {/* desktop sidebar */}
+      <aside className="hidden w-[232px] shrink-0 border-r border-border bg-card lg:block">
+        <SidebarBody liveForms={liveForms} />
       </aside>
 
-      {/* --- center workspace + optional right panel --- */}
-      <div
-        className={`grid h-screen overflow-hidden ${rightPanel ? "grid-cols-1 xl:grid-cols-[1fr_320px]" : "grid-cols-1"}`}
-      >
-        <main className="overflow-y-auto">{children}</main>
-        {rightPanel ? (
-          <aside className="glass-flat hidden overflow-y-auto border-l border-border/60 xl:block">
-            {rightPanel}
-          </aside>
-        ) : null}
+      {/* mobile nav sheet */}
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent side="left" className="w-[260px] gap-0 p-0 sm:max-w-[260px]">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SidebarBody liveForms={liveForms} onNavigate={() => setMenuOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* mobile top bar */}
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3 lg:hidden">
+          <Link href="/dashboard" aria-label="Dockett — dashboard">
+            <Logo size={20} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open navigation"
+            className="flex size-9 items-center justify-center rounded-sm border border-border"
+          >
+            <Menu className="size-4" />
+          </button>
+        </div>
+
+        <div className="shrink-0 px-3 pt-3 sm:px-4 lg:px-5 lg:pt-4">
+          <DocStrip label={docLabel.toUpperCase()} zone={pad2(liveForms)} />
+        </div>
+
+        <main
+          className={
+            scroll
+              ? "min-h-0 flex-1 overflow-y-auto"
+              : "flex min-h-0 flex-1 flex-col overflow-hidden"
+          }
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

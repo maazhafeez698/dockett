@@ -1,53 +1,130 @@
 // apps/web/components/dashboard-right-panel.tsx
+//
+// Right column of the Create window: quick requests, voice input and — for
+// workspaces that aren't on Pro yet — the Dockett Pro upgrade card.
 
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+
+import { VoiceCard } from "~/components/voice-card";
+import { ContactSalesDialog } from "~/components/billing/contact-sales-dialog";
+import { useCreateFormFromTemplate } from "~/hooks/api/form";
+import { useBillingOverview } from "~/hooks/api/billing";
+import { FORM_TEMPLATES } from "~/lib/templates-data";
+import { toastError } from "~/lib/plan-limit";
 
 interface DashboardRightPanelProps {
-  totalForms: number;
-  publishedForms: number;
+  /** Opens the AI builder with this prompt. */
+  onAiPrompt: (prompt: string) => void;
 }
 
-export function DashboardRightPanel({ totalForms, publishedForms }: DashboardRightPanelProps) {
+function UpgradeCard() {
   return (
-    <div className="flex flex-col gap-6 p-5">
-      <div>
-        <h3 className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Overview</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="glass rounded-xl p-3">
-            <div className="text-2xl font-semibold">{totalForms}</div>
-            <div className="text-xs text-muted-foreground">Total forms</div>
-          </div>
-          <div className="glass rounded-xl p-3">
-            <div className="text-2xl font-semibold">{publishedForms}</div>
-            <div className="text-xs text-muted-foreground">Published</div>
-          </div>
-        </div>
+    <section className="border border-foreground/70 bg-card p-3.5" aria-label="Upgrade to Dockett Pro">
+      <div className="flex items-center gap-1.5 text-sm font-bold">
+        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+        Dockett Pro
       </div>
+      <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
+        More active forms, advanced analytics, Pro themes and increased AI usage.
+      </p>
+      <Link
+        href="/dashboard/billing"
+        className="mono-label mt-3 flex h-9 items-center justify-center gap-1.5 rounded-[3px] bg-solid text-solid-foreground transition-opacity hover:opacity-85"
+      >
+        Upgrade to Pro <ArrowRight className="size-3.5" />
+      </Link>
+    </section>
+  );
+}
 
-      <div>
-        <h3 className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Quick actions</h3>
-        <div className="space-y-2">
-          <Link href="/dashboard/analytics" className="glass block rounded-xl px-3 py-2.5 text-sm hover:bg-muted/40">
-            Analytics
-          </Link>
-          <Link href="/dashboard/templates" className="glass block rounded-xl px-3 py-2.5 text-sm hover:bg-muted/40">
-            Browse templates
-          </Link>
-        </div>
+function BusinessCard({ onContact }: { onContact: () => void }) {
+  return (
+    <section className="border border-foreground/70 bg-card p-3.5" aria-label="Dockett Business">
+      <div className="flex items-center gap-1.5 text-sm font-bold">
+        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+        Dockett Business
       </div>
+      <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
+        Unlimited forms and responses, dedicated support and custom needs for your team.
+      </p>
+      <button
+        type="button"
+        onClick={onContact}
+        className="mono-label mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-[3px] bg-solid text-solid-foreground transition-opacity hover:opacity-85"
+      >
+        Contact sales <ArrowRight className="size-3.5" />
+      </button>
+    </section>
+  );
+}
 
-      {/* Static for now — becomes real once Stripe/plans (Phase 7) exist. */}
-      <div className="glass-strong mt-auto rounded-2xl p-4">
-        <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-          <Sparkles className="size-4 text-primary" />
-          Formless Pro
-        </div>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Unlimited forms, advanced analytics, and AI generation credits.
-        </p>
-        <div className="rounded-lg bg-muted/60 px-3 py-2 text-center text-xs text-muted-foreground">Coming soon</div>
-      </div>
+export function DashboardRightPanel({ onAiPrompt }: DashboardRightPanelProps) {
+  const router = useRouter();
+  const { createFormFromTemplateAsync } = useCreateFormFromTemplate();
+  const { overview } = useBillingOverview();
+  const [contactOpen, setContactOpen] = useState(false);
+
+  // Basic → Pro card. Pro → Business card (opens the contact-sales popup).
+  // Business → nothing. Hidden while the plan is loading so nothing flashes.
+  const planKey = overview?.plan.key;
+  const showUpgrade = planKey === "basic";
+  const showBusiness = planKey === "premium"; // "premium" is the internal key of the Pro plan
+
+  const handleBugReport = async () => {
+    const t = FORM_TEMPLATES.find((x) => x.id === "developer-bug-report");
+    if (!t) return;
+    try {
+      const { id } = await createFormFromTemplateAsync({
+        title: t.name,
+        description: t.description,
+        template: t.template,
+        submissionLayout: "ONE_AT_A_TIME",
+        fields: t.fields,
+      });
+      toast.success("Bug Report created — one question at a time.");
+      router.push(`/dashboard/forms/${id}`);
+    } catch (err) {
+      toastError(err, "Couldn't create the form", () => router.push("/dashboard/billing"));
+    }
+  };
+
+  const requests: { label: string; onClick: () => void }[] = [
+    { label: "Build a form from my last survey", onClick: () => onAiPrompt("Build a form from my last survey") },
+    { label: "Summarize this week's responses", onClick: () => router.push("/dashboard/analytics") },
+    { label: "Make “Bug Report” one question at a time", onClick: handleBugReport },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <section className="border border-border bg-card p-3.5" aria-label="Quick requests">
+        <h3 className="text-sm font-bold">Quick requests</h3>
+        <ul className="mt-2">
+          {requests.map((r) => (
+            <li key={r.label} className="border-b border-dashed border-border last:border-b-0">
+              <button
+                type="button"
+                onClick={r.onClick}
+                className="group flex w-full items-center justify-between gap-2 py-2 text-left font-mono text-[10px] leading-snug text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>{r.label}</span>
+                <ArrowRight className="size-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <VoiceCard onTranscript={onAiPrompt} />
+
+      {showUpgrade ? <UpgradeCard /> : null}
+      {showBusiness ? <BusinessCard onContact={() => setContactOpen(true)} /> : null}
+      <ContactSalesDialog open={contactOpen} onOpenChange={setContactOpen} />
     </div>
   );
 }

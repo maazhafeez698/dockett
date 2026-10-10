@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { AppShell } from "~/components/app-shell";
+import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { ContactSalesDialog } from "~/components/billing/contact-sales-dialog";
 import { PricingPlans, type BillingCycle } from "~/components/billing/pricing-plans";
 import { Button } from "~/components/ui/button";
@@ -24,6 +25,7 @@ function fmt(iso: string | null | undefined) {
 }
 
 export default function BillingPage() {
+  const { ready } = useAuthGuard();
   const { overview, isLoading, error, refetch } = useBillingOverview();
   const { createPortalSessionAsync, isPending: portalPending } = useCreatePortalSession();
   const [contactOpen, setContactOpen] = useState(false);
@@ -101,11 +103,17 @@ export default function BillingPage() {
   const sub = overview?.subscription;
   const limitText = (n: number | null) => (n === null ? "Unlimited" : n.toLocaleString());
 
+  if (!ready) return null;
+
+  const formLimit = overview?.plan.maxActiveForms ?? null;
+  const usagePct =
+    overview && formLimit ? Math.min(100, Math.round((overview.usage.activeForms / formLimit) * 100)) : 0;
+
   return (
-    <AppShell>
-      <div className="mx-auto w-full max-w-5xl space-y-8 overflow-y-auto px-6 py-8">
+    <AppShell docLabel="Plans & billing">
+      <div className="mx-auto w-full max-w-5xl space-y-6 p-3 sm:p-4 lg:p-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Plans &amp; Billing</h1>
+          <h1 className="font-display text-4xl font-extrabold text-primary">Plans &amp; Billing</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Your plan decides how many forms and responses you can have. Changes apply instantly.
           </p>
@@ -116,20 +124,20 @@ export default function BillingPage() {
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : error || !overview ? (
-          <p className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+          <p role="alert" className="border border-destructive/50 bg-destructive/10 p-4 text-sm">
             Couldn&apos;t load your plan. Please refresh.
           </p>
         ) : (
           <>
             {activating ? (
-              <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm">
+              <div className="flex items-center gap-3 border border-primary/50 bg-primary/10 p-4 text-sm">
                 <Loader2 className="size-4 animate-spin" /> Activating your plan — this takes a few
                 seconds…
               </div>
             ) : null}
 
             {sub?.status === "PAST_DUE" ? (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <div className="flex items-start gap-3 border border-amber-500/50 bg-amber-500/10 p-4 text-sm">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                 <div>
                   <p className="font-medium">We couldn&apos;t renew your subscription.</p>
@@ -152,7 +160,7 @@ export default function BillingPage() {
             ) : null}
 
             {overview.usage.suspendedForms > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <div className="flex items-start gap-3 border border-amber-500/50 bg-amber-500/10 p-4 text-sm">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                 <p>
                   Your {overview.plan.name} plan allows {limitText(overview.plan.maxActiveForms)}{" "}
@@ -163,51 +171,54 @@ export default function BillingPage() {
               </div>
             ) : null}
 
-            <section className="grid gap-4 rounded-2xl border border-border bg-card/40 p-6 sm:grid-cols-3">
+            <section
+              className="grid items-end gap-5 border border-foreground/70 bg-card p-4 sm:grid-cols-[1.2fr_1fr_1fr_auto]"
+              aria-label="Current plan"
+            >
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Current plan
+                <p className="mono-label-sm text-muted-foreground">Current plan</p>
+                <p className="font-display mt-1 text-2xl leading-none font-extrabold text-primary">
+                  {overview.plan.name}
                 </p>
-                <p className="mt-1 text-xl font-semibold">{overview.plan.name}</p>
                 {sub && sub.status !== "CANCELED" && sub.currentPeriodEnd ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mono-label-sm mt-1.5 text-muted-foreground">
                     {sub.cancelAtPeriodEnd
-                      ? `Ends on ${fmt(sub.currentPeriodEnd)}`
-                      : `Renews on ${fmt(sub.currentPeriodEnd)}`}
+                      ? `Ends ${fmt(sub.currentPeriodEnd)}`
+                      : `Renews ${fmt(sub.currentPeriodEnd)}`}
                   </p>
                 ) : null}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Active forms
+                <p className="mono-label-sm text-muted-foreground">Active forms</p>
+                <p className="font-display mt-1 text-2xl leading-none font-extrabold">
+                  <span className="text-primary">{overview.usage.activeForms}</span>
+                  <span className="text-base font-bold text-muted-foreground"> / {limitText(overview.plan.maxActiveForms)}</span>
                 </p>
-                <p className="mt-1 text-xl font-semibold">
-                  {overview.usage.activeForms}{" "}
-                  <span className="text-base font-normal text-muted-foreground">
-                    / {limitText(overview.plan.maxActiveForms)}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Responses per form / month
-                </p>
-                <p className="mt-1 text-xl font-semibold">
-                  {limitText(overview.plan.maxResponsesPerFormPerMonth)}
-                </p>
-                {sub?.managedByPaddle ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={handleManage}
-                    disabled={portalPending}
+                {formLimit ? (
+                  <div
+                    className="mt-2 h-1 w-full max-w-[160px] bg-foreground/15"
+                    role="progressbar"
+                    aria-valuenow={usagePct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Active forms used"
                   >
-                    {portalPending ? <Loader2 className="mr-2 size-3.5 animate-spin" /> : null}
-                    Manage subscription
-                  </Button>
+                    <div className="h-full bg-primary" style={{ width: `${usagePct}%` }} />
+                  </div>
                 ) : null}
               </div>
+              <div>
+                <p className="mono-label-sm text-muted-foreground">Responses / form / mo</p>
+                <p className="font-display mt-1 text-2xl leading-none font-extrabold">
+                  {limitText(overview.plan.maxResponsesPerFormPerMonth)}
+                </p>
+              </div>
+              {sub?.managedByPaddle ? (
+                <Button onClick={handleManage} disabled={portalPending}>
+                  {portalPending ? <Loader2 className="animate-spin" /> : null}
+                  Manage subscription
+                </Button>
+              ) : null}
             </section>
 
             <PricingPlans

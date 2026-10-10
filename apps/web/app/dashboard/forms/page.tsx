@@ -1,107 +1,152 @@
 // apps/web/app/dashboard/forms/page.tsx
+//
+// FORMS — the full ledger of everything you've issued.
 
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
-import { useDeleteForm, useListForms } from "~/hooks/api/form";
-import { getTemplateDesign } from "~/lib/template-designs";
 import { AppShell } from "~/components/app-shell";
-import { DashboardRightPanel } from "~/components/dashboard-right-panel";
-import { AiGenerateBar } from "~/components/ai-generate-bar";
+import { StatusTag } from "~/components/form-ticket-card";
 import { Button } from "~/components/ui/button";
+import { useDeleteForm, useListForms } from "~/hooks/api/form";
+import { useAuthGuard } from "~/hooks/use-auth-guard";
+import { getTemplateDesign } from "~/lib/template-designs";
+
+const FILTERS = ["ALL", "PUBLISHED", "DRAFT", "CLOSED"] as const;
 
 export default function DashboardForms() {
+  const { ready } = useAuthGuard();
   const { forms, isLoading } = useListForms();
   const { deleteFormAsync } = useDeleteForm();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("ALL");
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...(forms ?? [])]
+      .filter((f) => filter === "ALL" || f.status === filter)
+      .filter((f) => !q || f.title.toLowerCase().includes(q))
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+  }, [forms, query, filter]);
 
   const handleDeleteForm = async (formId: string) => {
     if (!confirm("Delete this form and all of its fields and submissions? This can't be undone."))
       return;
-    await deleteFormAsync({ formId });
+    try {
+      await deleteFormAsync({ formId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete form");
+    }
   };
 
-  const totalForms = forms?.length ?? 0;
-  const publishedForms = forms?.filter((f) => f.status === "PUBLISHED").length ?? 0;
+  if (!ready) return null;
 
   return (
-    <AppShell
-      rightPanel={<DashboardRightPanel totalForms={totalForms} publishedForms={publishedForms} />}
-    >
-      <div className="mx-auto max-w-4xl space-y-8 px-6 py-8">
-        <AiGenerateBar />
-
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">Your forms</h2>
+    <AppShell docLabel="Forms">
+      <div className="mx-auto max-w-5xl space-y-5 p-3 sm:p-4 lg:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-display text-4xl font-extrabold text-primary">Forms</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Everything you&apos;ve issued — {forms?.length ?? 0} in total.
+            </p>
           </div>
+          <Button asChild variant="ember">
+            <Link href="/dashboard">+ New form</Link>
+          </Button>
+        </div>
 
-          {isLoading ? (
-            <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-              Loading forms...
-            </div>
-          ) : forms && forms.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {forms.map((form) => {
-                const design = getTemplateDesign(form.template);
-                return (
-                  <Link
-                    key={form.id}
-                    href={`/dashboard/forms/${form.id}`}
-                    className="glass group relative overflow-hidden rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
-                  >
-                    <div
-                      className="absolute inset-x-0 top-0 h-1"
-                      style={{
-                        background: `linear-gradient(90deg, ${design.accentGradient[0]}, ${design.accentGradient[1]})`,
-                      }}
-                    />
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="truncate font-medium">{form.title}</h3>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {form.description || "No description"}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDeleteForm(form.id);
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex min-w-[200px] flex-1 items-center gap-2 border border-input bg-card px-3 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-ring sm:max-w-xs">
+            <Search className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search forms"
+              aria-label="Search forms"
+              className="h-9 w-full bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={`mono-label-sm border px-2.5 py-2 transition-colors ${
+                  filter === f
+                    ? "border-solid bg-solid text-solid-foreground"
+                    : "border-foreground/50 bg-secondary hover:bg-accent"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-16 animate-pulse border border-border bg-card" />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="border border-dashed border-foreground/40 p-10 text-center">
+            <p className="font-display text-xl font-extrabold">
+              {forms && forms.length > 0 ? "Nothing matches" : "No forms issued yet"}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {forms && forms.length > 0
+                ? "Try a different search or filter."
+                : "Head to Create and describe your first one."}
+            </p>
+          </div>
+        ) : (
+          <ul className="border border-border bg-card">
+            {visible.map((form, i) => {
+              const design = getTemplateDesign(form.template);
+              return (
+                <li
+                  key={form.id}
+                  className="group flex items-center gap-3 border-b border-dashed border-border px-3 py-3 last:border-b-0 hover:bg-accent/50"
+                >
+                  <span className="mono-label w-7 shrink-0 text-muted-foreground">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <Link href={`/dashboard/forms/${form.id}`} className="min-w-0 flex-1">
+                    <div className="truncate font-display text-base font-bold tracking-[-0.02em]">
+                      {form.title}
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {form.status}
-                      </span>
-                      {form.planSuspended ? (
-                        <span
-                          className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-500"
-                          title="Your plan's active-form limit no longer covers this form. Upgrade to bring it back."
-                        >
-                          Suspended
-                        </span>
-                      ) : null}
-                      <span className="text-xs text-muted-foreground">
-                        {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : ""}
-                      </span>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {form.description || "No description"}
                     </div>
                   </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">
-              No forms yet — describe one above, or hit Create Form.
-            </div>
-          )}
-        </section>
+                  <span className="mono-label-sm hidden shrink-0 text-muted-foreground sm:inline">
+                    {design.name}
+                  </span>
+                  <StatusTag status={form.status} suspended={form.planSuspended} />
+                  <span className="hidden w-[84px] shrink-0 text-right font-mono text-[10px] text-muted-foreground md:inline">
+                    {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteForm(form.id)}
+                    aria-label={`Delete ${form.title}`}
+                    className="shrink-0 p-1.5 text-muted-foreground opacity-60 transition-colors hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </AppShell>
   );

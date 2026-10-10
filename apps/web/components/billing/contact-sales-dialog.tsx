@@ -38,17 +38,17 @@ export function ContactSalesDialog({
       key: "email",
       label: "Email Us",
       value: email,
-      href: `mailto:${email}?subject=${encodeURIComponent("Formless Business plan enquiry")}`,
+      href: `mailto:${email}?subject=${encodeURIComponent("Dockett Business plan enquiry")}`,
       icon: Mail,
-      tone: "bg-blue-500/15 text-blue-500",
+      tone: "bg-primary/15 text-primary",
     },
     {
       key: "whatsapp",
       label: "WhatsApp",
       value: whatsapp,
-      href: `https://wa.me/${digits(whatsapp)}?text=${encodeURIComponent("Hi! I'd like to know more about the Formless Business plan.")}`,
+      href: `https://wa.me/${digits(whatsapp)}?text=${encodeURIComponent("Hi! I'd like to know more about the Dockett Business plan.")}`,
       icon: MessageCircle,
-      tone: "bg-emerald-500/15 text-emerald-500",
+      tone: "bg-primary/15 text-primary",
     },
     {
       key: "phone",
@@ -56,7 +56,7 @@ export function ContactSalesDialog({
       value: phone,
       href: `tel:${phone.replace(/\s/g, "")}`,
       icon: Phone,
-      tone: "bg-purple-500/15 text-purple-500",
+      tone: "bg-primary/15 text-primary",
     },
   ];
 
@@ -78,10 +78,10 @@ export function ContactSalesDialog({
                 href={r.href}
                 target={r.key === "whatsapp" ? "_blank" : undefined}
                 rel={r.key === "whatsapp" ? "noreferrer" : undefined}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card/60 p-4 transition-colors hover:bg-muted/60"
+                className="flex items-center gap-4 rounded-[3px] border border-border bg-background/40 p-4 transition-colors hover:border-foreground/60"
               >
                 <span
-                  className={`flex size-11 shrink-0 items-center justify-center rounded-full ${r.tone}`}
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-[3px] ${r.tone}`}
                 >
                   <Icon className="size-5" />
                 </span>
