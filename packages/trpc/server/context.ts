@@ -19,6 +19,8 @@ export interface TRPCContext {
    * by view tracking. Nothing else in the app should need more of `req`
    * than this, so we don't expose the whole request object on ctx. */
   userAgent: string | undefined;
+  /** Client IP (honours `trust proxy`), used only for rate limiting. Never stored raw. */
+  ip: string | undefined;
 
   user?: TRPCCtxUser;
 }
@@ -35,6 +37,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
       return clearCookieUtil(res, name);
     },
     userAgent: req.headers["user-agent"],
+    ip: req.ip,
 
     user: undefined,
   };

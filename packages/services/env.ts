@@ -34,6 +34,61 @@ const envSchema = z.object({
   SMTP_PASS: z
     .string()
     .describe("SMTP password — for Gmail, a 16-character App Password, not your normal password"),
+  // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
+  // builder, but uploading reports "not set up" instead of crashing the server. ----
+  CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Cloudinary cloud name (Console → Settings → API Keys / Product Environment)"),
+  CLOUDINARY_API_KEY: z.string().min(1).optional().describe("Cloudinary API key"),
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Cloudinary API secret — server only, never sent to the browser"),
+  CLOUDINARY_SIGNATURE_ALGORITHM: z
+    .enum(["sha1", "sha256"])
+    .default("sha1")
+    .describe("Must match the signature algorithm set on your Cloudinary account"),
+  CLOUDINARY_DELIVERY_TYPE: z
+    .enum(["authenticated", "private"])
+    .default("authenticated")
+    .describe("Cloudinary access-control type for uploads (both are private). Use the one the storage self-test reports as working"),
+  UPLOAD_MAX_FILE_MB: z.coerce
+    .number()
+    .min(0.1)
+    .max(10)
+    .default(5)
+    .describe("Hard per-file size limit in MB (Cloudinary free plan caps raw files at 10 MB)"),
+  UPLOAD_SIGN_LIMIT_PER_10_MIN: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(30)
+    .describe("Max upload signatures per visitor (IP or user) per 10 minutes"),
+  UPLOAD_MAX_PENDING_PER_ACTOR: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(10)
+    .describe("Max not-yet-confirmed uploads one visitor may hold at a time"),
+  UPLOAD_FORM_MAX_UNATTACHED: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(50)
+    .describe("Max uploads waiting (not yet submitted) per form"),
+  UPLOAD_OWNER_STORAGE_MB: z.coerce
+    .number()
+    .min(1)
+    .default(500)
+    .describe("Max stored upload volume per form owner, in MB"),
+  UPLOAD_CLEANUP_INTERVAL_MIN: z.coerce
+    .number()
+    .min(1)
+    .default(15)
+    .describe("How often abandoned uploads are cleaned up, in minutes"),
   SMTP_FROM_EMAIL: z
     .string()
     .optional()

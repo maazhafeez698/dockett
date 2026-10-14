@@ -5,6 +5,12 @@ import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formsTable } from "@repo/database/models/form";
 import { PlanLimitError, isFormSuspended, withResponseQuota } from "@repo/services/billing";
+import {
+  attachSubmissionFiles,
+  prepareSubmissionFiles,
+  type StoredFileRef,
+} from "@repo/services/file-upload";
+import { numberProblem } from "./number-rules";
 import { createSubmissionInput, CreateSubmissionInputType } from "./model";
 
 export default class FormSubmissionService {
@@ -55,7 +61,46 @@ export default class FormSubmissionService {
       .from(formFieldsTable)
       .where(and(eq(formFieldsTable.formId, formId), eq(formFieldsTable.isRequired, true)));
 
-    const submittedById = new Map(values.map((v) => [v.fieldId, v.value]));
+    // FILE_UPLOAD answers arrive as upload ids. Resolve them against the verified uploads that were
+    // issued for this form + field, and store the file references (not raw client input) instead.
+    const fileFields = await db
+      .select({
+        id: formFieldsTable.id,
+        label: formFieldsTable.label,
+        config: formFieldsTable.config,
+      })
+      .from(formFieldsTable)
+      .where(and(eq(formFieldsTable.formId, formId), eq(formFieldsTable.type, "FILE_UPLOAD")));
+
+    let storedValues = values;
+    const uploadIdsToAttach: string[] = [];
+    if (fileFields.length > 0) {
+      const byField = new Map(values.map((v) => [v.fieldId, v.value]));
+      const replaced = new Map<string, string>();
+      for (const field of fileFields) {
+        const raw = byField.get(field.id);
+        if (raw === undefined) continue;
+        const { ids, refs } = await prepareSubmissionFiles(formId, field, raw);
+        uploadIdsToAttach.push(...ids);
+        replaced.set(field.id, refs.length > 0 ? JSON.stringify(refs satisfies StoredFileRef[]) : "");
+      }
+      storedValues = values.map((v) =>
+        replaced.has(v.fieldId) ? { fieldId: v.fieldId, value: replaced.get(v.fieldId)! } : v,
+      );
+    }
+
+    // NUMBER fields: enforce min / max / step on the server too (the browser's check is advisory).
+    const numberFields = await db
+      .select({ id: formFieldsTable.id, label: formFieldsTable.label, config: formFieldsTable.config })
+      .from(formFieldsTable)
+      .where(and(eq(formFieldsTable.formId, formId), eq(formFieldsTable.type, "NUMBER")));
+    for (const nf of numberFields) {
+      const given = storedValues.find((v) => v.fieldId === nf.id)?.value ?? "";
+      const problem = numberProblem(given, (nf.config ?? {}) as { minValue?: number; maxValue?: number; step?: number });
+      if (problem) throw new Error(`"${nf.label}": ${problem}`);
+    }
+
+    const submittedById = new Map(storedValues.map((v) => [v.fieldId, v.value]));
 
     const missing = requiredFields.filter((field) => {
       const value = submittedById.get(field.id);
@@ -72,7 +117,7 @@ export default class FormSubmissionService {
     const insertRow = async (exec: Pick<typeof db, "insert">) =>
       await exec
         .insert(formSubmissionsTable)
-        .values({ formId, values, submittedBy: requesterId ?? null })
+        .values({ formId, values: storedValues, submittedBy: requesterId ?? null })
         .returning({ id: formSubmissionsTable.id, createdAt: formSubmissionsTable.createdAt });
 
     const result = isLive
@@ -81,6 +126,15 @@ export default class FormSubmissionService {
 
     if (!result || result.length === 0 || !result[0]?.id)
       throw new Error("Something went wrong while creating the submission");
+
+    if (uploadIdsToAttach.length > 0) {
+      const attached = await attachSubmissionFiles(result[0].id, formId, uploadIdsToAttach);
+      if (!attached) {
+        // Someone used the same upload ids concurrently (a double submit). Undo this submission.
+        await db.delete(formSubmissionsTable).where(eq(formSubmissionsTable.id, result[0].id));
+        throw new Error("Those files were already submitted. Please upload them again.");
+      }
+    }
 
     return {
       id: result[0].id,

@@ -10,7 +10,8 @@
     "./form-analytics": "./form-analytics/index.ts",
     "./user": "./user/index.ts",
     "./ai": "./ai/index.ts",
-    "./billing": "./billing/index.ts"
+    "./billing": "./billing/index.ts",
+    "./file-upload": "./file-upload/index.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
@@ -25,6 +26,7 @@
     "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.7.0",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.9.16",
