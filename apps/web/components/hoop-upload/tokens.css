@@ -12,8 +12,7 @@
   Ticket palette (Charcoal surface on Night, Ember-night accent). Instances without `adaptive`
   (e.g. inside a light-coloured template) always keep the reference's light look.
 
-  Font: Inter is the faithful default (--hu-font). Geist/Space Grotesk work too; widths shift
-  slightly (text is laid out in fixed design units).
+  Font: Poppins follows the app-wide type system; text is laid out in fixed design units.
 */
 .dark .hu[data-hu-adaptive] {
   --hu-bg: #0e0d0c;

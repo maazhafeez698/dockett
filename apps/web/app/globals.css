@@ -1,3 +1,7 @@
+@import "@fontsource/poppins/300.css";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -16,9 +20,13 @@
 */
 
 @theme inline {
-  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-archivo), var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: "Poppins", sans-serif;
+  --font-display: "Poppins", sans-serif;
+  --font-mono: "Poppins", sans-serif;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 600;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
@@ -201,6 +209,7 @@
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;
+    font-weight: 400;
     background-image: radial-gradient(circle, var(--grain) 0.7px, transparent 0.95px);
     background-size: 4px 4px;
     letter-spacing: -0.01em;
@@ -260,8 +269,7 @@
   /* ---- type ---- */
   .font-display {
     font-family: var(--font-display);
-    font-stretch: 94%;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.03em;
     font-feature-settings: "kern", "liga";
   }
   .mono-label {
@@ -280,9 +288,8 @@
   }
   .numeral {
     font-family: var(--font-display);
-    font-stretch: 94%;
-    font-weight: 800;
-    letter-spacing: -0.06em;
+    font-weight: 600;
+    letter-spacing: -0.04em;
     line-height: 0.85;
     color: var(--primary);
   }

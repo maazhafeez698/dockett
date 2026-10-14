@@ -153,7 +153,7 @@ export const DEFAULT_THEME: HuTheme = {
   track: "#E4E5EA",
   pill: "#E3E6ED",
   badge: "#DC3545",
-  font: "var(--font-inter, Inter), system-ui, sans-serif",
+  font: "var(--font-sans), sans-serif",
 };
 
 export const DEFAULTS: HoopUploadOptions = {
