@@ -1,0 +1,34 @@
+/*
+  Hoop upload — theme tokens (see DEFAULT_THEME in engine.ts for the light defaults).
+
+  The widget reads these CSS variables; override any of them on a parent, or pass `theme` to the
+  component / createHoopUpload(). The light defaults are injected by the engine, so the widget
+  looks exactly like the reference even without this file. What this file adds:
+
+    --hu-bg --hu-ink --hu-muted --hu-faint --hu-surface --hu-dash --hu-accent --hu-accentSoft
+    --hu-net --hu-ok --hu-track --hu-pill --hu-badge --hu-font
+
+  `adaptive` instances (the Dockett respondent form) follow the app's `.dark` theme using the
+  Ticket palette (Charcoal surface on Night, Ember-night accent). Instances without `adaptive`
+  (e.g. inside a light-coloured template) always keep the reference's light look.
+
+  Font: Inter is the faithful default (--hu-font). Geist/Space Grotesk work too; widths shift
+  slightly (text is laid out in fixed design units).
+*/
+.dark .hu[data-hu-adaptive] {
+  --hu-bg: #0e0d0c;
+  --hu-ink: #f4f1ea;
+  --hu-muted: #a39e92;
+  --hu-faint: #8a857a;
+  --hu-surface: #1c1b18;
+  --hu-dash: #46433b;
+  --hu-accent: #ff5a1f;
+  --hu-accentSoft: #2a1a12;
+  --hu-net: #6b675e;
+  --hu-ok: #3ec27a;
+  --hu-track: #2c2a25;
+  --hu-pill: #262520;
+}
+.dark .hu[data-hu-adaptive] .hu-label {
+  color: #c9c4b8;
+}

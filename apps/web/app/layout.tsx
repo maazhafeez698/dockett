@@ -1,9 +1,31 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/poppins/latin.css";
-
-
+import { Archivo, Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
+
+// Brand type system: Space Grotesk (UI), Archivo (heavy display), JetBrains Mono (labels, data, IDs).
+const sans = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+const display = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  axes: ["wdth"], // variable weight + width — lets us run the display face slightly narrower
+  display: "swap",
+});
+// Inter is the hoop-upload widget's reference font (its layout is measured in fixed units).
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -36,7 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className={`${sans.variable} ${display.variable} ${mono.variable} ${inter.variable}`}>
         <GlobalProviders>{children}</GlobalProviders>
       </body>
     </html>

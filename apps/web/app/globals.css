@@ -16,15 +16,9 @@
 */
 
 @theme inline {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Poppins", ui-sans-serif, system-ui, sans-serif;
-
-  --font-weight-medium: 400;
-  --font-weight-semibold: 500;
-  --font-weight-bold: 500;
-  --font-weight-extrabold: 600;
-  --font-weight-black: 700;
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
@@ -266,7 +260,8 @@
   /* ---- type ---- */
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.035em;
+    font-stretch: 94%;
+    letter-spacing: -0.05em;
     font-feature-settings: "kern", "liga";
   }
   .mono-label {
@@ -285,8 +280,9 @@
   }
   .numeral {
     font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: -0.04em;
+    font-stretch: 94%;
+    font-weight: 800;
+    letter-spacing: -0.06em;
     line-height: 0.85;
     color: var(--primary);
   }
@@ -341,11 +337,6 @@
   .glass-flat {
     background-color: var(--card);
   }
-  .ticket-page-background {
-    background-color: var(--background);
-    background-image: radial-gradient(circle, var(--grain) 0.7px, transparent 0.95px);
-    background-size: 4px 4px;
-  }
 }
 
 @keyframes marquee {
@@ -397,9 +388,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  /* The hoop-upload widget (.hu) is exempt: its throw is started by the visitor's own drag and is the
+     whole point of the interaction, so its transitions / animations must keep playing. */
+  *:not(.hu, .hu *),
+  *:not(.hu, .hu *)::before,
+  *:not(.hu, .hu *)::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
@@ -429,4 +422,21 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+}
+
+/*
+  Ticket texture. Paper / background surfaces carry a fine dot-matrix grain,
+  exactly like the reference screens. (A solid bg-background wrapper would
+  otherwise hide the body texture.)
+*/
+.bg-background,
+.bg-card {
+  background-image: radial-gradient(circle, var(--grain) 0.7px, transparent 0.95px);
+  background-size: 4px 4px;
+}
+input.bg-card,
+textarea.bg-card,
+select.bg-card,
+button.bg-card {
+  background-image: none;
 }
