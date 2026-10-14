@@ -53,7 +53,7 @@ export function TemplatePreviewDialog({
   const fields = toRendererFields(template);
   const sampleValues: Record<string, string> = {};
   for (const f of fields) {
-    if (f.type === "DROPDOWN" || f.type === "MULTI_SELECT" || f.type === "CHECKBOX_GROUP") {
+    if (f.type === "DROPDOWN" || f.type === "RADIO_GROUP" || f.type === "MULTI_SELECT" || f.type === "CHECKBOX_GROUP") {
       const opts = (f.config as { options?: string[] } | null)?.options;
       if (opts?.length) sampleValues[f.id] = opts[0]!;
     } else {

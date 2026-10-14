@@ -9,6 +9,8 @@
 
 import { useMemo, useState } from "react";
 import type { RendererField } from "~/components/form-field-renderer";
+import { isUploading } from "~/lib/file-answer";
+import { numberProblem, type NumberRules } from "~/lib/field-rules";
 
 export type SubmissionLayout = "ONE_AT_A_TIME" | "ALL_AT_ONCE";
 
@@ -39,7 +41,15 @@ export function useSubmissionFlow(fields: RendererField[], layout: SubmissionLay
   function validate(fieldsToCheck: RendererField[]): boolean {
     const missing = new Set<string>();
     for (const f of fieldsToCheck) {
-      if (f.isRequired && !(values[f.id] ?? "").trim()) missing.add(f.id);
+      const v = values[f.id] ?? "";
+      if (f.type === "FILE_UPLOAD") {
+        // an upload still in flight blocks the step/submit; a finished one counts as an answer
+        if (isUploading(v) || (f.isRequired && !v.trim())) missing.add(f.id);
+        continue;
+      }
+      if (f.isRequired && !v.trim()) missing.add(f.id);
+      else if (f.type === "NUMBER" && numberProblem(v, (f.config ?? {}) as NumberRules))
+        missing.add(f.id);
     }
     setMissingFieldIds(missing);
     return missing.size === 0;

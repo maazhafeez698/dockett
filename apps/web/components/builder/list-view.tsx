@@ -20,6 +20,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 import {
@@ -152,7 +153,7 @@ function FieldPreview({
   field: BuilderField;
   onRemoveOption: (index: number) => void;
 }) {
-  const type = field.type as FieldType;
+  const type = field.type;
   const box =
     "flex items-center border border-input bg-background/40 px-3 font-mono text-xs text-muted-foreground";
 
@@ -177,6 +178,21 @@ function FieldPreview({
           ))}
         </div>
       );
+    case "FILE_UPLOAD": {
+      const cfg = (field.config ?? {}) as FieldConfig;
+      return (
+        <div className={`${box} h-20 flex-col items-center justify-center gap-1 border-dashed text-center`}>
+          <Upload className="size-4" aria-hidden="true" />
+          <span>Drop files here · slingshot upload</span>
+          <span className="text-[10px] opacity-70">
+            {(cfg.accept && cfg.accept.length ? cfg.accept : ["pdf", "docx", "jpg", "png"])
+              .map((k) => (k === "jpg" ? "JPEG" : k.toUpperCase()))
+              .join(", ")}{" "}
+            · up to {cfg.maxSizeMB ?? 5} MB
+          </span>
+        </div>
+      );
+    }
     case "RATING": {
       const max = Math.min(10, Math.max(2, ((field.config ?? {}) as FieldConfig).max ?? 5));
       return (
@@ -189,6 +205,7 @@ function FieldPreview({
     }
     case "DROPDOWN":
     case "MULTI_SELECT":
+    case "RADIO_GROUP":
     case "CHECKBOX_GROUP": {
       const opts = getOptions(field);
       const shown = opts.slice(0, 5);
@@ -197,7 +214,7 @@ function FieldPreview({
           {shown.map((o, i) => (
             <div key={`${o}-${i}`} className={`${box} h-9 justify-between`}>
               <span className="flex items-center gap-2">
-                <span aria-hidden="true">{type === "DROPDOWN" ? "◦" : "□"}</span>
+                <span aria-hidden="true">{type === "DROPDOWN" || type === "RADIO_GROUP" ? "○" : "□"}</span>
                 {o}
               </span>
               <button

@@ -20,6 +20,7 @@ import { useCreateSubmission } from "~/hooks/api/form-submission";
 import { useUser } from "~/hooks/api/auth";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
 import { FormTemplateRenderer } from "~/components/form-templates";
+import { FormUploadProvider } from "~/components/form-upload-context";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -238,10 +239,11 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     <div
       className={
         classic
-          ? "ticket-page-background flex min-h-dvh items-center justify-center px-4 py-10"
-          : "ticket-page-background min-h-screen px-4 py-10 sm:py-16"
+          ? "flex min-h-dvh items-center justify-center bg-background px-4 py-10"
+          : "min-h-screen bg-background px-4 py-10 sm:py-16"
       }
     >
+      <FormUploadProvider formId={id} accessCode={enteredCode}>
       <FormTemplateRenderer
         template={form.template}
         title={form.title}
@@ -262,6 +264,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
         submitted={submitted}
         errorMessage={submitError}
       />
+      </FormUploadProvider>
     </div>
   );
 }

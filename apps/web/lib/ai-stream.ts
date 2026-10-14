@@ -19,6 +19,7 @@ export type AiFieldType =
   | "YES_NO"
   | "LONG_TEXT"
   | "DROPDOWN"
+  | "RADIO_GROUP"
   | "MULTI_SELECT"
   | "CHECKBOX_GROUP"
   | "DATE"

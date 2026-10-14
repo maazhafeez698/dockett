@@ -46,10 +46,18 @@ import { ShareFormDialog } from "~/components/share-form-dialog";
 import { PublishFormDialog } from "~/components/publish-form-dialog";
 import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
 import { FormTemplateRenderer } from "~/components/form-templates";
+import { FormUploadProvider } from "~/components/form-upload-context";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
 import type { FormTemplateId } from "~/lib/template-designs";
 
 type BuilderView = "list" | "nodes";
+
+/** What a freshly added field starts with. */
+function defaultConfig(type: FieldType) {
+  if (OPTION_TYPES.has(type)) return { options: ["Option 1"] };
+  if (type === "FILE_UPLOAD") return { maxFiles: 1, maxSizeMB: 5 };
+  return undefined;
+}
 
 export default function FormBuilder() {
   const params = useParams();
@@ -103,7 +111,7 @@ export default function FormBuilder() {
         label: FIELD_TYPE_LABELS[type],
         type,
         formId,
-        config: OPTION_TYPES.has(type) ? { options: ["Option 1"] } : undefined,
+        config: defaultConfig(type),
       });
       setSelectedFieldId(created.id);
     } catch (err) {
@@ -123,7 +131,7 @@ export default function FormBuilder() {
         label: FIELD_TYPE_LABELS[fieldType],
         type: fieldType,
         formId,
-        config: OPTION_TYPES.has(fieldType) ? { options: ["Option 1"] } : undefined,
+        config: defaultConfig(fieldType),
       });
       setSelectedFieldId(created.id);
 
@@ -379,6 +387,7 @@ export default function FormBuilder() {
                   Loading fields...
                 </div>
               ) : fields && fields.length > 0 ? (
+                <FormUploadProvider formId={formId ?? null} isPreview>
                 <FormTemplateRenderer
                   template={form?.template}
                   title={form?.title ?? ""}
@@ -403,6 +412,7 @@ export default function FormBuilder() {
                   submitted={false}
                   isPreview
                 />
+                </FormUploadProvider>
               ) : (
                 <div className="border border-dashed border-foreground/40 bg-card p-10 text-center text-sm text-muted-foreground">
                   No fields yet.

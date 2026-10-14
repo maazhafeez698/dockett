@@ -6,7 +6,8 @@ export const TYPE_LABEL: Record<AiFieldType, string> = {
   EMAIL: "Email",
   NUMBER: "Number",
   YES_NO: "Yes / No",
-  DROPDOWN: "Dropdown",
+  DROPDOWN: "Single-select",
+  RADIO_GROUP: "Radio group",
   MULTI_SELECT: "Multi-select",
   CHECKBOX_GROUP: "Checkboxes",
   DATE: "Date",
@@ -14,7 +15,12 @@ export const TYPE_LABEL: Record<AiFieldType, string> = {
 };
 
 export const FIELD_TYPES = Object.keys(TYPE_LABEL) as AiFieldType[];
-export const OPTION_TYPES = new Set<AiFieldType>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
+export const OPTION_TYPES = new Set<AiFieldType>([
+  "DROPDOWN",
+  "RADIO_GROUP",
+  "MULTI_SELECT",
+  "CHECKBOX_GROUP",
+]);
 export const PLACEHOLDER_TYPES = new Set<AiFieldType>(["TEXT", "EMAIL", "NUMBER", "LONG_TEXT"]);
 
 export const TEMPLATE_LABEL: Record<string, string> = {
@@ -29,7 +35,10 @@ export const TEMPLATE_LABEL: Record<string, string> = {
   CLASSIC: "Classic",
 };
 
-export const LAYOUT_LABEL = { ONE_AT_A_TIME: "One question at a time", ALL_AT_ONCE: "All at once" } as const;
+export const LAYOUT_LABEL = {
+  ONE_AT_A_TIME: "One question at a time",
+  ALL_AT_ONCE: "All at once",
+} as const;
 
 /** Changing a field's type must also reset the settings that only make sense for the old type. */
 export function retypeField(field: AiDraftField, type: AiFieldType): AiDraftField {
@@ -73,7 +82,8 @@ export function validateDraft(draft: AiDraft, requireTitle: boolean): DraftError
     if (OPTION_TYPES.has(f.type)) {
       const opts = (f.config?.options ?? []).map((o) => o.trim()).filter(Boolean);
       if (opts.length < 2) errs.options = "Add at least two options";
-      else if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length) errs.options = "Options must be different";
+      else if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length)
+        errs.options = "Options must be different";
     }
     if (errs.label || errs.options) out.perField[i] = errs;
   });
@@ -91,7 +101,9 @@ export function cleanDraft(draft: AiDraft): AiDraft {
     fields: draft.fields.map((f) => {
       const out: AiDraftField = { ...f, label: f.label.trim(), isRequired: !!f.isRequired };
       out.description = f.description?.trim() || undefined;
-      out.placeholder = PLACEHOLDER_TYPES.has(f.type) ? f.placeholder?.trim() || undefined : undefined;
+      out.placeholder = PLACEHOLDER_TYPES.has(f.type)
+        ? f.placeholder?.trim() || undefined
+        : undefined;
       if (OPTION_TYPES.has(f.type)) {
         out.config = { options: (f.config?.options ?? []).map((o) => o.trim()).filter(Boolean) };
       }

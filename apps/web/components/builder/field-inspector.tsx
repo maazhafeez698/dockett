@@ -10,21 +10,27 @@ import { useState } from "react";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
-import {
-  GALLERY_TEMPLATE_IDS,
-  getTemplateDesign,
-} from "~/lib/template-designs";
+import { GALLERY_TEMPLATE_IDS, getTemplateDesign } from "~/lib/template-designs";
 import {
   OPTION_TYPES,
   typeLabel,
+  type AcceptedFileKind,
   type BuilderField,
   type FieldConfig,
   type FieldType,
 } from "./field-types";
+
+const FILE_KIND_OPTIONS = [
+  { value: "pdf", label: "PDF" },
+  { value: "docx", label: "DOCX" },
+  { value: "jpg", label: "JPEG" },
+  { value: "png", label: "PNG" },
+] as const satisfies readonly { value: AcceptedFileKind; label: string }[];
 
 export interface FieldPatch {
   label: string;
@@ -77,7 +83,12 @@ function FormSection({
   onLayoutChange,
 }: Pick<
   FieldInspectorProps,
-  "form" | "premiumUnlocked" | "savingForm" | "onDescriptionBlur" | "onTemplateChange" | "onLayoutChange"
+  | "form"
+  | "premiumUnlocked"
+  | "savingForm"
+  | "onDescriptionBlur"
+  | "onTemplateChange"
+  | "onLayoutChange"
 > & { showDescription: boolean }) {
   const layout = form?.submissionLayout === "ALL_AT_ONCE" ? "ALL_AT_ONCE" : "ONE_AT_A_TIME";
 
@@ -125,7 +136,11 @@ function FormSection({
 
       <div className="space-y-1.5">
         <Label>Field pacing</Label>
-        <div className="grid grid-cols-2 border border-foreground/70 p-0.5" role="group" aria-label="Field pacing">
+        <div
+          className="grid grid-cols-2 border border-foreground/70 p-0.5"
+          role="group"
+          aria-label="Field pacing"
+        >
           {(
             [
               ["ONE_AT_A_TIME", "One at a time"],
@@ -178,11 +193,35 @@ function FieldEditor({
   );
   const [maxLength, setMaxLength] = useState(cfg.maxLength ? String(cfg.maxLength) : "");
   const [ratingMax, setRatingMax] = useState(cfg.max ? String(cfg.max) : "5");
+  const [minValue, setMinValue] = useState(cfg.minValue !== undefined ? String(cfg.minValue) : "");
+  const [maxValue, setMaxValue] = useState(cfg.maxValue !== undefined ? String(cfg.maxValue) : "");
+  const [step, setStep] = useState(cfg.step !== undefined ? String(cfg.step) : "");
+  const [accept, setAccept] = useState<AcceptedFileKind[]>(
+    cfg.accept && cfg.accept.length > 0 ? cfg.accept : [...FILE_KIND_OPTIONS.map((k) => k.value)],
+  );
+  const [maxFiles, setMaxFiles] = useState(String(cfg.maxFiles ?? 1));
+  const [maxSizeMB, setMaxSizeMB] = useState(String(cfg.maxSizeMB ?? 5));
 
   const buildConfig = (): FieldConfig | undefined => {
     if (OPTION_TYPES.has(type)) return { options: options.map((o) => o.trim()).filter(Boolean) };
     if (type === "LONG_TEXT" && maxLength.trim()) return { maxLength: Number(maxLength) };
     if (type === "RATING") return { max: ratingMax.trim() ? Number(ratingMax) : 5 };
+    if (type === "NUMBER") {
+      const c: FieldConfig = {};
+      if (minValue.trim() !== "" && Number.isFinite(Number(minValue)))
+        c.minValue = Number(minValue);
+      if (maxValue.trim() !== "" && Number.isFinite(Number(maxValue)))
+        c.maxValue = Number(maxValue);
+      if (step.trim() !== "" && Number(step) > 0) c.step = Number(step);
+      return Object.keys(c).length > 0 ? c : undefined;
+    }
+    if (type === "FILE_UPLOAD") {
+      return {
+        accept: accept.length > 0 ? accept : FILE_KIND_OPTIONS.map((k) => k.value),
+        maxFiles: Math.min(5, Math.max(1, Math.round(Number(maxFiles) || 1))),
+        maxSizeMB: Math.min(10, Math.max(0.1, Number(maxSizeMB) || 5)),
+      };
+    }
     return undefined;
   };
 
@@ -195,7 +234,12 @@ function FieldEditor({
       config: buildConfig(),
     });
 
-  const showPlaceholder = !OPTION_TYPES.has(type) && type !== "YES_NO" && type !== "RATING";
+  const showPlaceholder =
+    !OPTION_TYPES.has(type) &&
+    type !== "YES_NO" &&
+    type !== "RATING" &&
+    type !== "FILE_UPLOAD" &&
+    type !== "DATE";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -304,9 +348,95 @@ function FieldEditor({
           </div>
         ) : null}
 
+        {type === "NUMBER" ? (
+          <div className="space-y-1.5">
+            <Label>Limits (optional)</Label>
+            <div className="grid grid-cols-3 gap-1.5">
+              <Input
+                type="number"
+                value={minValue}
+                onChange={(e) => setMinValue(e.target.value)}
+                placeholder="Min"
+                aria-label="Minimum value"
+              />
+              <Input
+                type="number"
+                value={maxValue}
+                onChange={(e) => setMaxValue(e.target.value)}
+                placeholder="Max"
+                aria-label="Maximum value"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={step}
+                onChange={(e) => setStep(e.target.value)}
+                placeholder="Step"
+                aria-label="Step"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {type === "FILE_UPLOAD" ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Accepted files</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {FILE_KIND_OPTIONS.map((k) => {
+                  const on = accept.includes(k.value);
+                  return (
+                    <label
+                      key={k.value}
+                      className="flex cursor-pointer items-center gap-2 border border-input px-2.5 py-2 font-mono text-[11px]"
+                    >
+                      <Checkbox
+                        checked={on}
+                        onCheckedChange={() =>
+                          setAccept(on ? accept.filter((v) => v !== k.value) : [...accept, k.value])
+                        }
+                      />
+                      {k.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Only these four types can ever be uploaded. Files are checked on the server, not
+                just by name.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="field-maxfiles">Max files (1-5)</Label>
+                <Input
+                  id="field-maxfiles"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={maxFiles}
+                  onChange={(e) => setMaxFiles(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="field-maxsize">Max size (MB)</Label>
+                <Input
+                  id="field-maxsize"
+                  type="number"
+                  min={0.1}
+                  max={10}
+                  step={0.5}
+                  value={maxSizeMB}
+                  onChange={(e) => setMaxSizeMB(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {type === "RATING" ? (
           <div className="space-y-1.5">
-            <Label htmlFor="field-scale">Scale (2-10)</Label>
+            <Label htmlFor="field-scale">Stars (2-10)</Label>
             <Input
               id="field-scale"
               type="number"
@@ -352,11 +482,7 @@ export function FieldInspector(props: FieldInspectorProps) {
           saving={props.saving}
           onSave={props.onSave}
           onDelete={props.onDelete}
-          extra={
-            mode === "list" ? (
-              <FormSection {...props} showDescription={false} />
-            ) : undefined
-          }
+          extra={mode === "list" ? <FormSection {...props} showDescription={false} /> : undefined}
         />
       </div>
     );

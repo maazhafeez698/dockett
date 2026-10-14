@@ -1,42 +1,55 @@
-// apps/web/components/builder/field-types.ts
-//
-// Shared by the List view, the Node (canvas) view and the inspector, so both
-// views read exactly the same field model.
-
 import {
   AlignLeft,
   Calendar,
   CheckSquare,
   ChevronDown,
+  CircleDot,
   Hash,
-  KeyRound,
   ListChecks,
   Mail,
   Star,
   ToggleLeft,
   Type,
+  Upload,
 } from "lucide-react";
 
+/**
+ * The final field list (12). PASSWORD is intentionally not here: it is no longer offered in the
+ * builder, but forms that already contain one keep working (see LEGACY_LABELS).
+ * DROPDOWN is the stored value of the "Single-select" field.
+ */
 export type FieldType =
   | "TEXT"
   | "LONG_TEXT"
-  | "NUMBER"
   | "EMAIL"
-  | "YES_NO"
-  | "PASSWORD"
+  | "NUMBER"
   | "DROPDOWN"
   | "MULTI_SELECT"
-  | "CHECKBOX_GROUP"
   | "DATE"
-  | "RATING";
+  | "RADIO_GROUP"
+  | "CHECKBOX_GROUP"
+  | "RATING"
+  | "YES_NO"
+  | "FILE_UPLOAD";
+
+export type AcceptedFileKind = "pdf" | "docx" | "jpg" | "png";
 
 export interface FieldConfig {
   options?: string[];
   maxLength?: number;
+  /** rating scale (stars) */
   max?: number;
+  /** NUMBER */
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  /** FILE_UPLOAD */
+  accept?: AcceptedFileKind[];
+  maxFiles?: number;
+  maxSizeMB?: number;
 }
 
-/** The field shape both views render. */
+/** A field as both builder views render it. */
 export interface BuilderField {
   id: string;
   label: string;
@@ -59,26 +72,35 @@ export const PALETTE: {
   { type: "LONG_TEXT", label: "Long Text", short: "Long text", icon: AlignLeft },
   { type: "EMAIL", label: "Email", short: "Email", icon: Mail },
   { type: "NUMBER", label: "Number", short: "Number", icon: Hash },
-  { type: "YES_NO", label: "Yes / No", short: "Yes / No", icon: ToggleLeft },
-  { type: "PASSWORD", label: "Password", short: "Password", icon: KeyRound },
-  { type: "DROPDOWN", label: "Dropdown", short: "Dropdown", icon: ChevronDown },
+  { type: "DROPDOWN", label: "Single-select", short: "Single", icon: ChevronDown },
   { type: "MULTI_SELECT", label: "Multi-select", short: "Multi", icon: ListChecks },
-  { type: "CHECKBOX_GROUP", label: "Checkbox group", short: "Checkbox", icon: CheckSquare },
   { type: "DATE", label: "Date", short: "Date", icon: Calendar },
+  { type: "RADIO_GROUP", label: "Radio group", short: "Radio", icon: CircleDot },
+  { type: "CHECKBOX_GROUP", label: "Checkbox group", short: "Checkbox", icon: CheckSquare },
   { type: "RATING", label: "Rating", short: "Rating", icon: Star },
+  { type: "YES_NO", label: "Yes / No", short: "Yes / No", icon: ToggleLeft },
+  { type: "FILE_UPLOAD", label: "File upload", short: "File", icon: Upload },
 ];
+
+/** Types that exist in saved forms but are no longer offered. */
+const LEGACY_LABELS: Record<string, string> = { PASSWORD: "Password" };
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = Object.fromEntries(
   PALETTE.map((p) => [p.type, p.label]),
 ) as Record<FieldType, string>;
 
-export const OPTION_TYPES = new Set<FieldType>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
+export const OPTION_TYPES = new Set<FieldType>([
+  "DROPDOWN",
+  "MULTI_SELECT",
+  "CHECKBOX_GROUP",
+  "RADIO_GROUP",
+]);
 
 export const FIELD_MIME = "application/dockett-field-id";
 export const TYPE_MIME = "application/dockett-field-type";
 
 export function typeLabel(type: string): string {
-  return FIELD_TYPE_LABELS[type as FieldType] ?? type;
+  return FIELD_TYPE_LABELS[type as FieldType] ?? LEGACY_LABELS[type] ?? type;
 }
 
 export function getOptions(field: BuilderField): string[] {

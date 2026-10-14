@@ -15,6 +15,8 @@ export type TemplateFieldType =
   | "EMAIL"
   | "YES_NO"
   | "DROPDOWN"
+  | "RADIO_GROUP"
+  | "FILE_UPLOAD"
   | "MULTI_SELECT"
   | "CHECKBOX_GROUP"
   | "DATE"
