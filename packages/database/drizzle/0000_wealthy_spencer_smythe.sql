@@ -3,7 +3,8 @@ CREATE TYPE "public"."form_submission_access_enum" AS ENUM('ANYONE', 'ACCESS_COD
 CREATE TYPE "public"."form_submission_layout_enum" AS ENUM('ONE_AT_A_TIME', 'ALL_AT_ONCE');--> statement-breakpoint
 CREATE TYPE "public"."form_template_enum" AS ENUM('CORPORATE', 'SURVEY', 'EDUCATION', 'DEVELOPER', 'RETRO', 'INVITATION', 'TICKET', 'LANDING', 'CLASSIC');--> statement-breakpoint
 CREATE TYPE "public"."form_visibility_enum" AS ENUM('PUBLIC', 'UNLISTED');--> statement-breakpoint
-CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_NO', 'PASSWORD', 'LONG_TEXT', 'DROPDOWN', 'MULTI_SELECT', 'CHECKBOX_GROUP', 'DATE', 'RATING');--> statement-breakpoint
+CREATE TYPE "public"."field_type_enum" AS ENUM('TEXT', 'EMAIL', 'NUMBER', 'YES_NO', 'PASSWORD', 'LONG_TEXT', 'DROPDOWN', 'MULTI_SELECT', 'CHECKBOX_GROUP', 'DATE', 'RATING', 'RADIO_GROUP', 'FILE_UPLOAD');--> statement-breakpoint
+CREATE TYPE "public"."file_upload_status_enum" AS ENUM('PENDING', 'CONFIRMED', 'ATTACHED');--> statement-breakpoint
 CREATE TYPE "public"."oauth_provider" AS ENUM('google');--> statement-breakpoint
 CREATE TYPE "public"."form_view_device_enum" AS ENUM('DESKTOP', 'MOBILE', 'TABLET', 'UNKNOWN');--> statement-breakpoint
 CREATE TYPE "public"."ai_request_status_enum" AS ENUM('IN_PROGRESS', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'ABANDONED');--> statement-breakpoint
@@ -56,6 +57,25 @@ CREATE TABLE "form_submissions" (
 	"values" json,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "file_uploads" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"form_id" uuid,
+	"field_id" uuid,
+	"submission_id" uuid,
+	"owner_id" uuid,
+	"actor_key" varchar(80) NOT NULL,
+	"storage_key" varchar(255) NOT NULL,
+	"kind" varchar(8) NOT NULL,
+	"mime_type" varchar(100) NOT NULL,
+	"display_name" varchar(200) NOT NULL,
+	"bytes" integer,
+	"status" "file_upload_status_enum" DEFAULT 'PENDING' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"confirmed_at" timestamp,
+	"attached_at" timestamp,
+	CONSTRAINT "file_uploads_storage_key_unique" UNIQUE("storage_key")
 );
 --> statement-breakpoint
 CREATE TABLE "refresh_tokens" (
@@ -174,6 +194,10 @@ ALTER TABLE "forms" ADD CONSTRAINT "forms_created_by_users_id_fk" FOREIGN KEY ("
 ALTER TABLE "form_fields" ADD CONSTRAINT "form_fields_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_submitted_by_users_id_fk" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_form_id_forms_id_fk" FOREIGN KEY ("form_id") REFERENCES "public"."forms"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_field_id_form_fields_id_fk" FOREIGN KEY ("field_id") REFERENCES "public"."form_fields"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_submission_id_form_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."form_submissions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -183,6 +207,11 @@ ALTER TABLE "ai_usage_windows" ADD CONSTRAINT "ai_usage_windows_user_id_users_id
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "forms_created_by_status_idx" ON "forms" USING btree ("created_by","status");--> statement-breakpoint
 CREATE INDEX "form_submissions_form_created_idx" ON "form_submissions" USING btree ("form_id","created_at");--> statement-breakpoint
+CREATE INDEX "file_uploads_status_created_idx" ON "file_uploads" USING btree ("status","created_at");--> statement-breakpoint
+CREATE INDEX "file_uploads_form_status_idx" ON "file_uploads" USING btree ("form_id","status");--> statement-breakpoint
+CREATE INDEX "file_uploads_owner_idx" ON "file_uploads" USING btree ("owner_id");--> statement-breakpoint
+CREATE INDEX "file_uploads_actor_status_idx" ON "file_uploads" USING btree ("actor_key","status");--> statement-breakpoint
+CREATE INDEX "file_uploads_submission_idx" ON "file_uploads" USING btree ("submission_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "ai_requests_user_request_uq" ON "ai_requests" USING btree ("user_id","request_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "ai_requests_one_in_flight_per_user_uq" ON "ai_requests" USING btree ("user_id") WHERE status = 'IN_PROGRESS';--> statement-breakpoint
 CREATE INDEX "ai_requests_user_created_idx" ON "ai_requests" USING btree ("user_id","created_at");--> statement-breakpoint

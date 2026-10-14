@@ -2,6 +2,7 @@ export * from "./models/user";
 export * from "./models/form";
 export * from "./models/form-field";
 export * from "./models/form-submission";
+export * from "./models/file-upload";
 export * from "./models/refresh-token";
 export * from "./models/password-reset-token";
 export * from "./models/oauth-account";
