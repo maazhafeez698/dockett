@@ -31,6 +31,8 @@ const templateFieldModel = z.object({
     "CHECKBOX_GROUP",
     "DATE",
     "RATING",
+    "RADIO_GROUP",
+    "FILE_UPLOAD",
   ]),
   isRequired: z.boolean().optional().default(false),
   placeholder: z.string().optional(),
@@ -40,6 +42,12 @@ const templateFieldModel = z.object({
       options: z.array(z.string().min(1).max(200)).max(50).optional(),
       maxLength: z.number().int().positive().max(5000).optional(),
       max: z.number().int().min(2).max(10).optional(),
+      minValue: z.number().finite().optional(),
+      maxValue: z.number().finite().optional(),
+      step: z.number().finite().positive().optional(),
+      accept: z.array(z.enum(["pdf", "docx", "jpg", "png"])).max(4).optional(),
+      maxFiles: z.number().int().min(1).max(5).optional(),
+      maxSizeMB: z.number().positive().max(10).optional(),
     })
     .nullable()
     .optional(),

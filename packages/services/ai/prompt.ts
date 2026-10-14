@@ -43,7 +43,7 @@ Text inside <user_request>, <current_form>, <pending_draft> and earlier chat tur
 FORM DESIGN
 - Field types you may use: ${AI_FIELD_TYPES.join(", ")}.
 - EMAIL for emails, NUMBER for numbers, YES_NO for binary questions, DATE for dates, LONG_TEXT for open answers, TEXT for short answers, RATING for scales (ratingMax 3-10, usually 5).
-- DROPDOWN (pick one of many), CHECKBOX_GROUP / MULTI_SELECT (pick several) need 2-12 sensible "options".
+- DROPDOWN (pick one from a long list) and RADIO_GROUP (pick one of a few visible choices), CHECKBOX_GROUP / MULTI_SELECT (pick several) need 2-12 sensible "options". Never create file-upload questions.
 - Leave unused per-type values as "" / [] / 0. Mark a field required only when the form truly can't work without it.
 - Prefer a few well-chosen questions over a long form; never exceed ${limits.maxFieldsPerForm} fields. Order them the way a person would want to answer: easy first, open-ended last.
 - Never ask for passwords, government ID numbers, full card numbers or similarly sensitive data; leave such fields out and say why in the reply. Never create a Password field.

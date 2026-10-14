@@ -28,6 +28,7 @@ export const AI_FIELD_TYPES = [
   "CHECKBOX_GROUP",
   "DATE",
   "RATING",
+  "RADIO_GROUP",
 ] as const;
 export type AiFieldType = (typeof AI_FIELD_TYPES)[number];
 
@@ -47,7 +48,7 @@ export type AiTemplate = (typeof AI_TEMPLATES)[number];
 export const AI_LAYOUTS = ["ONE_AT_A_TIME", "ALL_AT_ONCE"] as const;
 export type AiLayout = (typeof AI_LAYOUTS)[number];
 
-const OPTION_TYPES = new Set<string>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
+const OPTION_TYPES = new Set<string>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP", "RADIO_GROUP"]);
 const PLACEHOLDER_TYPES = new Set<string>(["TEXT", "EMAIL", "NUMBER", "LONG_TEXT"]);
 
 /**
@@ -198,7 +199,7 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
               options: {
                 type: "array",
                 items: { type: "string" },
-                description: "Choices for DROPDOWN / MULTI_SELECT / CHECKBOX_GROUP (2-12 items). Empty array for other types.",
+                description: "Choices for DROPDOWN / RADIO_GROUP / MULTI_SELECT / CHECKBOX_GROUP (2-12 items). Empty array for other types.",
               },
               ratingMax: { type: "integer", description: "RATING only: scale size 3-10 (usually 5). 0 for other types." },
               maxLength: { type: "integer", description: "LONG_TEXT only: character cap, or 0 for none." },

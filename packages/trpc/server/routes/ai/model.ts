@@ -11,6 +11,7 @@ const fieldTypeEnum = z.enum([
   "CHECKBOX_GROUP",
   "DATE",
   "RATING",
+  "RADIO_GROUP",
 ]);
 
 export const aiDraftFieldModel = z.object({

@@ -17,7 +17,12 @@ import {
   type FieldConfig,
 } from "./model";
 
-const OPTION_BASED_TYPES = new Set<FieldType>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP"]);
+const OPTION_BASED_TYPES = new Set<FieldType>([
+  "DROPDOWN",
+  "MULTI_SELECT",
+  "CHECKBOX_GROUP",
+  "RADIO_GROUP",
+]);
 
 /**
  * The shape of `config` is validated loosely at the zod layer; which keys
@@ -28,6 +33,12 @@ function validateConfigForType(type: FieldType, config: FieldConfig | undefined 
   if (OPTION_BASED_TYPES.has(type)) {
     if (!config?.options || config.options.length === 0) {
       throw new Error(`${formatTypeName(type)} fields need at least one option`);
+    }
+  }
+  if (type === "NUMBER" && config) {
+    const { minValue, maxValue } = config;
+    if (minValue !== undefined && maxValue !== undefined && minValue > maxValue) {
+      throw new Error("Number fields: the minimum can't be greater than the maximum");
     }
   }
 }

@@ -46,13 +46,15 @@ async function loadForm(userId: string, formId: string): Promise<ExistingFormCon
   return {
     title: form.title,
     fields: fields
-      .filter((f) => f.type !== "PASSWORD")
-      .map((f) => ({
-        label: f.label,
-        type: f.type as Exclude<typeof f.type, "PASSWORD">,
-        isRequired: f.isRequired,
-        config: (f.config as FieldConfig) ?? null,
-      })),
+      .flatMap((f) => {
+        if (f.type === "PASSWORD" || f.type === "FILE_UPLOAD") return [];
+        return [{
+          label: f.label,
+          type: f.type,
+          isRequired: f.isRequired,
+          config: (f.config as FieldConfig) ?? null,
+        }];
+      }),
   };
 }
 
