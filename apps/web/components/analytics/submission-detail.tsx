@@ -9,6 +9,7 @@
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useGetSubmissionDetail } from "~/hooks/api/analytics";
+import { FileAnswer } from "~/components/analytics/file-answer";
 
 interface SubmissionDetailProps {
   submissionId: string;
@@ -90,13 +91,17 @@ export function SubmissionDetail({
               <div key={a.fieldId} className="flex gap-3 border-l-2 border-primary pl-3.5">
                 <div>
                   <p className="mono-label-sm text-muted-foreground">{a.label}</p>
-                  <p className="mt-1 text-sm break-words whitespace-pre-wrap">
-                    {a.value.trim().length > 0 ? (
-                      a.value
-                    ) : (
-                      <span className="text-muted-foreground italic">No answer</span>
-                    )}
-                  </p>
+                  {a.type === "FILE_UPLOAD" && a.value.trim().length > 0 ? (
+                    <FileAnswer value={a.value} />
+                  ) : (
+                    <p className="mt-1 text-sm break-words whitespace-pre-wrap">
+                      {a.value.trim().length > 0 ? (
+                        a.value
+                      ) : (
+                        <span className="text-muted-foreground italic">No answer</span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

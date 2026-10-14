@@ -122,8 +122,10 @@ export default class FormAnalyticsService {
 
     return submissions.map((s) => {
       const values = s.values ?? [];
-      const emailLike = values.find((v) => /\S+@\S+\.\S+/.test(v.value));
-      const firstAnswer = values.find((v) => v.value.trim().length > 0);
+      // file answers are JSON references, not something to show as a response title
+      const isFileRef = (v: string) => v.startsWith('[{"id"');
+      const emailLike = values.find((v) => !isFileRef(v.value) && /\S+@\S+\.\S+/.test(v.value));
+      const firstAnswer = values.find((v) => v.value.trim().length > 0 && !isFileRef(v.value));
       const label = emailLike?.value ?? firstAnswer?.value ?? "Anonymous response";
       const answeredCount = values.filter((v) => v.value.trim().length > 0).length;
 
@@ -144,7 +146,7 @@ export default class FormAnalyticsService {
     await assertFormOwnership(formId, userId);
 
     const fields = await db
-      .select({ id: formFieldsTable.id, label: formFieldsTable.label })
+      .select({ id: formFieldsTable.id, label: formFieldsTable.label, type: formFieldsTable.type })
       .from(formFieldsTable)
       .where(eq(formFieldsTable.formId, formId))
       .orderBy(formFieldsTable.index);
@@ -161,7 +163,7 @@ export default class FormAnalyticsService {
       .orderBy(formSubmissionsTable.createdAt);
 
     return {
-      fields: fields.map((f) => ({ id: f.id, label: f.label })),
+      fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type })),
       submissions: submissions.map((s) => ({
         id: s.id,
         createdAt: s.createdAt ? s.createdAt.toISOString() : null,

@@ -27,6 +27,7 @@ import { Download, Eye, ExternalLink } from "lucide-react";
 
 import { AppShell } from "~/components/app-shell";
 import { useAuthGuard } from "~/hooks/use-auth-guard";
+import { parseStoredFiles } from "~/lib/file-answer";
 import { Button } from "~/components/ui/button";
 import { useListForms } from "~/hooks/api/form";
 import { useGetFormAnalytics, useListSubmissions, useExportData } from "~/hooks/api/analytics";
@@ -47,11 +48,6 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
   fontFamily: "var(--font-mono)",
 } as const;
-
-function formatTimelineDate(date: string, options?: Intl.DateTimeFormatOptions): string {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day!).toLocaleDateString(undefined, options);
-}
 
 function StatCard({
   label,
@@ -98,7 +94,7 @@ function formatCsvTimestamp(iso: string | null): string {
 function downloadSubmissionsCsv(
   formTitle: string,
   data: {
-    fields: { id: string; label: string }[];
+    fields: { id: string; label: string; type: string }[];
     submissions: {
       id: string;
       createdAt: string | null;
@@ -114,7 +110,15 @@ function downloadSubmissionsCsv(
     return [
       String(i + 1),
       formatCsvTimestamp(s.createdAt),
-      ...data.fields.map((f) => byField.get(f.id) ?? ""),
+      ...data.fields.map((f) => {
+        const raw = byField.get(f.id) ?? "";
+        // file answers are stored as references; the export lists file names
+        return f.type === "FILE_UPLOAD"
+          ? parseStoredFiles(raw)
+              .map((x) => x.name)
+              .join("; ")
+          : raw;
+      }),
     ];
   });
 
@@ -295,7 +299,7 @@ export default function AnalyticsPage() {
                             <XAxis
                               dataKey="date"
                               tickFormatter={(d: string) =>
-                                formatTimelineDate(d, {
+                                new Date(d).toLocaleDateString(undefined, {
                                   day: "2-digit",
                                   month: "short",
                                 })
@@ -322,7 +326,7 @@ export default function AnalyticsPage() {
                             />
                             <Tooltip
                               cursor={{ fill: "var(--accent)" }}
-                              labelFormatter={(d: string) => formatTimelineDate(d)}
+                              labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
                               contentStyle={TOOLTIP_STYLE}
                             />
                             <Bar dataKey="count" fill="var(--primary)" radius={0} />

@@ -48,7 +48,7 @@ export const getExportDataInputModel = z.object({
 });
 
 export const getExportDataOutputModel = z.object({
-  fields: z.array(z.object({ id: z.string(), label: z.string() })),
+  fields: z.array(z.object({ id: z.string(), label: z.string(), type: z.string() })),
   submissions: z.array(
     z.object({
       id: z.string(),
