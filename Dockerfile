@@ -46,8 +46,8 @@ ENV APP_FILTER=$APP_FILTER
 ENV NODE_ENV=production
 
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
-COPY --from=build /app/apps ./apps
-COPY --from=build /app/packages ./packages
+COPY --from=build --exclude=**/node_modules --exclude=**/.next/cache /app/apps ./apps
+COPY --from=build --exclude=**/node_modules /app/packages ./packages
 
 RUN pnpm install --prod --frozen-lockfile \
     && mkdir -p /pnpm \
