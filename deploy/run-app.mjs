@@ -61,7 +61,7 @@ process.once("SIGINT", () => stopAll(0));
 
 start("api", ["apps/api/dist/index.js"]);
 start("web", [
-  "apps/web/node_modules/next/dist/bin/next",
+  `${appRoot}/apps/web/node_modules/next/dist/bin/next`,
   "start",
   "--hostname",
   "0.0.0.0",
