@@ -25,7 +25,7 @@ COPY . .
 
 RUN pnpm install --offline --frozen-lockfile
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000/trpc
+ARG NEXT_PUBLIC_API_URL=/trpc
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ARG NEXT_PUBLIC_SALES_EMAIL
 ARG NEXT_PUBLIC_SALES_WHATSAPP
@@ -41,20 +41,26 @@ RUN pnpm build
 
 FROM base AS runtime
 
-ARG APP_FILTER=web
-ENV APP_FILTER=$APP_FILTER
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
-COPY --from=build --exclude=**/node_modules --exclude=**/.next/cache /app/apps ./apps
-COPY --from=build --exclude=**/node_modules /app/packages ./packages
+COPY --from=build --exclude=**/node_modules --exclude=**/.next/cache --exclude=**/.env --exclude=**/.env.* /app/apps ./apps
+COPY --from=build --exclude=**/node_modules --exclude=**/.env --exclude=**/.env.* /app/packages ./packages
+COPY deploy/run-app.mjs ./deploy/run-app.mjs
 
-RUN pnpm install --prod --frozen-lockfile \
-    && mkdir -p /pnpm \
+RUN if find apps packages -type f \( -name '.env' -o -name '.env.*' \) -print -quit | grep -q .; then \
+      echo "Environment files must not be copied into the runtime image" >&2; exit 1; \
+    fi \
+    && pnpm install --prod --frozen-lockfile \
     && chown -R node:node /app /pnpm
 
 USER node
 
 EXPOSE 3000 8000
 
-CMD ["sh", "-c", "pnpm --filter \"$APP_FILTER\" start"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+  CMD node -e "Promise.all([fetch('http://127.0.0.1:3000/'),fetch('http://127.0.0.1:8000/health')]).then(rs=>process.exit(rs.every(r=>r.ok)?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "deploy/run-app.mjs"]

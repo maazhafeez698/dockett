@@ -1,33 +1,50 @@
+name: dockett
+
 services:
   postgresdb:
     image: postgres:15
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the server .env file}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the EC2 .env file}
       POSTGRES_DB: ${POSTGRES_DB:-dev}
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    networks:
+      - database
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    stop_grace_period: 1m
+    logging: &default-logging
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 
-  api:
-    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME in the server .env file}/dockett-api:${IMAGE_TAG:-latest}
+  app:
+    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME in the EC2 .env file}/dockett-app:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    init: true
     env_file:
       - .env
     environment:
-      NODE_ENV: prod
+      NODE_ENV: production
       PORT: 8000
-      BASE_URL: ${BASE_URL:-http://localhost:8000}
-      WEB_URL: ${WEB_URL:-http://localhost:3000}
-    ports:
-      - "${API_PORT:-8000}:8000"
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the EC2 .env file with host postgresdb}
+      WEB_URL: ${WEB_URL:?Set WEB_URL in the EC2 .env file}
+      BASE_URL: ${BASE_URL:?Set BASE_URL in the EC2 .env file}
+      TRUST_PROXY: "1"
+      LOGGER_LEVEL: ${LOGGER_LEVEL:-info}
+    expose:
+      - "3000"
+      - "8000"
+    networks:
+      - proxy
+      - database
     depends_on:
       postgresdb:
         condition: service_healthy
@@ -37,36 +54,53 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:8000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+          "Promise.all([fetch('http://127.0.0.1:3000/'),fetch('http://127.0.0.1:8000/health')]).then(rs=>process.exit(rs.every(r=>r.ok)?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 45s
+    stop_grace_period: 30s
+    logging: *default-logging
 
-  web:
-    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME in the server .env file}/dockett-web:${IMAGE_TAG:-latest}
+  caddy:
+    image: caddy:2.10-alpine
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      HOSTNAME: 0.0.0.0
+      DOMAIN: ${DOMAIN:?Set DOMAIN in the EC2 .env file}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in the EC2 .env file}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy
     depends_on:
-      api:
+      app:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
-        ]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 10s
+    stop_grace_period: 30s
+    logging: *default-logging
 
 volumes:
   pg_data:
+    external: true
+    name: dockett_pg_data
+  caddy_data:
+  caddy_config:
+
+networks:
+  proxy:
+    driver: bridge
+  database:
+    driver: bridge
+    internal: true

@@ -39,15 +39,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate Docker Hub and public app configuration
+      - name: Validate Docker Hub configuration
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
           test -n "$DOCKERHUB_USERNAME" || { echo "::error::Set the DOCKERHUB_USERNAME repository variable."; exit 1; }
           test -n "$DOCKERHUB_TOKEN" || { echo "::error::Set the DOCKERHUB_TOKEN repository secret."; exit 1; }
-          test -n "$NEXT_PUBLIC_API_URL" || { echo "::error::Set the NEXT_PUBLIC_API_URL repository variable (for example, https://api.example.com/trpc)."; exit 1; }
+          test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" || { echo "::error::Set NEXT_PUBLIC_GOOGLE_CLIENT_ID as a repository variable to keep Google sign-in enabled."; exit 1; }
 
       - name: Login to Docker Hub
         uses: docker/login-action@v4
@@ -58,43 +58,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push API image
+      - name: Build and push combined application image
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           platforms: linux/amd64
-          cache-from: type=gha,scope=dockett-api
-          cache-to: type=gha,mode=max,scope=dockett-api
+          cache-from: type=gha,scope=dockett-app
+          cache-to: type=gha,mode=max,scope=dockett-app
           build-args: |
-            APP_FILTER=@repo/api
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_API_URL=/trpc
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_SALES_EMAIL=${{ vars.NEXT_PUBLIC_SALES_EMAIL }}
             NEXT_PUBLIC_SALES_WHATSAPP=${{ vars.NEXT_PUBLIC_SALES_WHATSAPP }}
             NEXT_PUBLIC_SALES_PHONE=${{ vars.NEXT_PUBLIC_SALES_PHONE }}
           tags: |
-            ${{ vars.DOCKERHUB_USERNAME }}/dockett-api:latest
-            ${{ vars.DOCKERHUB_USERNAME }}/dockett-api:${{ github.sha }}
-
-      - name: Build and push web image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64
-          cache-from: type=gha,scope=dockett-web
-          cache-to: type=gha,mode=max,scope=dockett-web
-          build-args: |
-            APP_FILTER=web
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-            NEXT_PUBLIC_SALES_EMAIL=${{ vars.NEXT_PUBLIC_SALES_EMAIL }}
-            NEXT_PUBLIC_SALES_WHATSAPP=${{ vars.NEXT_PUBLIC_SALES_WHATSAPP }}
-            NEXT_PUBLIC_SALES_PHONE=${{ vars.NEXT_PUBLIC_SALES_PHONE }}
-          tags: |
-            ${{ vars.DOCKERHUB_USERNAME }}/dockett-web:latest
-            ${{ vars.DOCKERHUB_USERNAME }}/dockett-web:${{ github.sha }}
+            ${{ vars.DOCKERHUB_USERNAME }}/dockett-app:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/dockett-app:${{ github.sha }}
 
       - name: Copy Compose file to EC2
         uses: appleboy/scp-action@v1
@@ -102,7 +82,7 @@ jobs:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          source: docker-compose.yml
+          source: docker-compose.yml,Caddyfile,deploy.sh
           target: /home/ubuntu/dockett
           overwrite: true
 
@@ -115,7 +95,4 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/dockett
-            export IMAGE_TAG=${{ github.sha }}
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker compose ps
+            bash ./deploy.sh ${{ github.sha }}

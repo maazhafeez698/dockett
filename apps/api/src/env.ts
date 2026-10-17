@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   PORT: z.string().optional(),
-  NODE_ENV: z.enum(["development", "prod"]).default("development"),
+  NODE_ENV: z.enum(["development", "prod", "production"]).default("development"),
   BASE_URL: z.string().default("http://localhost:8000"),
   WEB_URL: z.string().default("http://localhost:3000"),
   // Number of reverse proxies in front of the API (0 = none). Needed so req.ip
