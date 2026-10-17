@@ -12,6 +12,7 @@ const fieldTypeEnum = z.enum([
   "DATE",
   "RATING",
   "RADIO_GROUP",
+  "FILE_UPLOAD",
 ]);
 
 export const aiDraftFieldModel = z.object({
@@ -25,10 +26,13 @@ export const aiDraftFieldModel = z.object({
       options: z.array(z.string().trim().min(1).max(200)).min(1).max(20).optional(),
       maxLength: z.number().int().positive().max(5000).optional(),
       max: z.number().int().min(2).max(10).optional(),
+      accept: z.array(z.enum(["pdf", "docx", "jpg", "png"])).min(1).max(4).optional(),
+      maxFiles: z.number().int().min(1).max(5).optional(),
+      maxSizeMB: z.number().positive().max(10).optional(),
     })
     .nullable()
     .optional()
-    .describe("Type-specific settings"),
+    .describe("Type-specific settings, including accepted file kinds and limits for FILE_UPLOAD"),
 });
 
 export const aiDraftModel = z.object({

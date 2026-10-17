@@ -47,7 +47,7 @@ async function loadForm(userId: string, formId: string): Promise<ExistingFormCon
     title: form.title,
     fields: fields
       .flatMap((f) => {
-        if (f.type === "PASSWORD" || f.type === "FILE_UPLOAD") return [];
+        if (f.type === "PASSWORD") return [];
         return [{
           label: f.label,
           type: f.type,

@@ -147,7 +147,7 @@
 
   --dot: rgb(24 24 24 / 0.1);
   --grain: rgb(24 24 24 / 0.1);
-  --hard-shadow: #181818;
+  --hard-shadow: #000000;
 }
 
 .dark {
@@ -196,7 +196,7 @@
 
   --dot: rgb(244 241 234 / 0.07);
   --grain: rgb(244 241 234 / 0.055);
-  --hard-shadow: #000000;
+  --hard-shadow: var(--ember);
 }
 
 @layer base {

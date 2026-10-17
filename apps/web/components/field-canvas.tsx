@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -38,7 +38,6 @@ import {
 } from "~/components/field-node";
 import { PALETTE, TYPE_MIME, type FieldType } from "~/components/builder/field-types";
 
-const COLS = 4;
 const H_GAP = 252;
 const V_GAP = 138;
 const ORIGIN_X = 30;
@@ -70,10 +69,10 @@ interface FieldCanvasProps {
 type AnyNode = Node<FieldNodeData> | Node<EndpointNodeData>;
 
 /** Slot `i` of the serpentine: row 0 runs left→right, row 1 right→left, … */
-function slotPosition(i: number) {
-  const row = Math.floor(i / COLS);
-  const inRow = i % COLS;
-  const col = row % 2 === 0 ? inRow : COLS - 1 - inRow;
+function slotPosition(i: number, columns: number) {
+  const row = Math.floor(i / columns);
+  const inRow = i % columns;
+  const col = row % 2 === 0 ? inRow : columns - 1 - inRow;
   return { x: ORIGIN_X + col * H_GAP, y: ORIGIN_Y + row * V_GAP, row, col };
 }
 
@@ -88,9 +87,30 @@ function CanvasInner({
 }: FieldCanvasProps) {
   const { screenToFlowPosition, zoomIn, zoomOut, fitView, setViewport } = useReactFlow();
   const { x, y, zoom } = useViewport();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(4);
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInput, setZoomInput] = useState(String(Math.round(zoom * 100)));
   const [zoomError, setZoomError] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? canvas.clientWidth;
+      const nextColumns = width < 520 ? 1 : width < 900 ? 2 : 4;
+      setColumns((current) => (current === nextColumns ? current : nextColumns));
+    });
+    resizeObserver.observe(canvas);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      void fitView({ padding: 0.14, maxZoom: 1, duration: 150 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [columns, fitView]);
 
   useEffect(() => {
     if (!isEditingZoom) setZoomInput(String(Math.round(zoom * 100)));
@@ -116,11 +136,11 @@ function CanvasInner({
         draggable: false,
         selectable: false,
         deletable: false,
-        position: { x: slotPosition(0).x, y: slotPosition(0).y },
+        position: { x: slotPosition(0, columns).x, y: slotPosition(0, columns).y },
         data: { kicker: "START", title: "Form opens" },
       };
       const body: Node<FieldNodeData>[] = list.map((f, i) => {
-        const p = slotPosition(i + 1);
+        const p = slotPosition(i + 1, columns);
         return {
           id: f.id,
           type: "field",
@@ -135,7 +155,7 @@ function CanvasInner({
           },
         };
       });
-      const endPos = slotPosition(list.length + 1);
+      const endPos = slotPosition(list.length + 1, columns);
       const end: Node<EndpointNodeData> = {
         id: "__end",
         type: "end",
@@ -148,7 +168,7 @@ function CanvasInner({
       return [start, ...body, end];
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedFieldId],
+    [columns, selectedFieldId],
   );
 
   const [nodes, setNodes] = useState<AnyNode[]>(() => buildNodes(fields));
@@ -158,14 +178,14 @@ function CanvasInner({
   useEffect(() => {
     setNodes(buildNodes(fields));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, selectedFieldId]);
+  }, [columns, fields, selectedFieldId]);
 
   const edges: Edge[] = useMemo(() => {
     const ids = ["__start", ...fields.map((f) => f.id), "__end"];
     const out: Edge[] = [];
     for (let i = 0; i < ids.length - 1; i++) {
-      const a = slotPosition(i);
-      const b = slotPosition(i + 1);
+      const a = slotPosition(i, columns);
+      const b = slotPosition(i + 1, columns);
       let sourceHandle = "b-out";
       let targetHandle = "t-in";
       if (a.row === b.row) {
@@ -185,7 +205,7 @@ function CanvasInner({
       });
     }
     return out;
-  }, [fields]);
+  }, [columns, fields]);
 
   const handleNodeClick: NodeMouseHandler = (_e, node) => {
     if (node.id === "__start" || node.id === "__end") onSelectField(null);
@@ -213,7 +233,7 @@ function CanvasInner({
     let best = 0;
     let bestD = Infinity;
     for (let i = 0; i < fields.length; i++) {
-      const p = slotPosition(i + 1);
+      const p = slotPosition(i + 1, columns);
       const d = (p.x + NODE_WIDTH / 2 - px) ** 2 + (p.y + NODE_HEIGHT / 2 - py) ** 2;
       if (d < bestD) {
         bestD = d;
@@ -257,14 +277,14 @@ function CanvasInner({
     if (fields.length === 0) return onDropNewField(type, undefined);
     // land after the nearest slot's field, unless dropped before its centre in flow order
     const idx = nearestFieldIndex(p.x, p.y);
-    const slot = slotPosition(idx + 1);
+    const slot = slotPosition(idx + 1, columns);
     const before = p.y < slot.y || (p.y < slot.y + NODE_HEIGHT && p.x < slot.x);
     const after = before ? fields[idx - 1]?.id : fields[idx]!.id;
     onDropNewField(type, after);
   };
 
   return (
-    <div className="dotgrid h-full w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div ref={canvasRef} className="dotgrid h-full min-w-0 w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -362,8 +382,8 @@ function CanvasInner({
         </Panel>
 
         {/* add node */}
-        <Panel position="bottom-center" className="!mb-3 max-w-[calc(100%-1rem)]">
-          <div className="scrollbar-none flex items-center gap-0.5 overflow-x-auto bg-solid p-1 text-solid-foreground rounded-md">
+        <Panel position="bottom-center" className="!mb-2 max-w-[calc(100%-1rem)] sm:!mb-3">
+          <div className="scrollbar-none flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-solid p-1 text-solid-foreground">
             <span className="mono-label-sm shrink-0 px-2 opacity-70">Add node</span>
             {PALETTE.map(({ type, short, icon: Icon }) => (
               <button

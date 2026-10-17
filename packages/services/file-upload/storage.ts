@@ -24,6 +24,8 @@ export interface SignedUpload {
   url: string;
   /** Extra form fields to send together with the `file` part, exactly as given. */
   fields: Record<string, string>;
+  /** Safe generated filename with the canonical extension required by Cloudinary raw assets. */
+  fileName: string;
 }
 
 export interface StoredObjectInfo {
@@ -89,11 +91,14 @@ class CloudinaryStorage implements StorageProvider {
   public signUpload(key: string, type: DeliveryType = env.CLOUDINARY_DELIVERY_TYPE): SignedUpload {
     this.ensure();
     const timestamp = Math.floor(Date.now() / 1000);
+    const extension = key.slice(key.lastIndexOf(".") + 1);
+    const publicId = key.slice(0, -(extension.length + 1));
+    const fileName = key.slice(key.lastIndexOf("/") + 1);
     // Everything in here is covered by the signature. Cloudinary rejects the upload if the browser
     // changes (or adds) any of these values.
     const signed: Record<string, string> = {
       overwrite: "false",
-      public_id: key,
+      public_id: publicId,
       timestamp: String(timestamp),
       type,
       unique_filename: "false",
@@ -103,6 +108,7 @@ class CloudinaryStorage implements StorageProvider {
     return {
       url: `https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD_NAME}/${RESOURCE_TYPE}/upload`,
       fields: { ...signed, api_key: env.CLOUDINARY_API_KEY!, signature },
+      fileName,
     };
   }
 
@@ -205,7 +211,7 @@ class CloudinaryStorage implements StorageProvider {
       const signed = this.signUpload(key, type);
       const form = new FormData();
       for (const [k, v] of Object.entries(signed.fields)) form.append(k, v);
-      form.append("file", new Blob([PROBE_PNG], { type: "image/png" }), "probe.png");
+      form.append("file", new Blob([PROBE_PNG], { type: "image/png" }), signed.fileName);
       const res = await fetch(signed.url, { method: "POST", body: form });
       const text = await res.text();
       let message = text.slice(0, 300);

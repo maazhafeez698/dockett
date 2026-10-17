@@ -23,7 +23,10 @@ export type AiFieldType =
   | "MULTI_SELECT"
   | "CHECKBOX_GROUP"
   | "DATE"
-  | "RATING";
+  | "RATING"
+  | "FILE_UPLOAD";
+
+export type AiFileKind = "pdf" | "docx" | "jpg" | "png";
 
 export interface AiDraftField {
   label: string;
@@ -31,7 +34,14 @@ export interface AiDraftField {
   description?: string;
   placeholder?: string;
   isRequired: boolean;
-  config?: { options?: string[]; maxLength?: number; max?: number } | null;
+  config?: {
+    options?: string[];
+    maxLength?: number;
+    max?: number;
+    accept?: AiFileKind[];
+    maxFiles?: number;
+    maxSizeMB?: number;
+  } | null;
 }
 
 export type AiTemplate =

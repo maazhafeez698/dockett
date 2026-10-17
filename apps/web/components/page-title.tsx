@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const TITLES: Record<string, string> = {
-  "/": "Home",
+  "/": "",
   "/signin": "Sign in",
   "/signup": "Create account",
   "/forgot-password": "Forgot password",

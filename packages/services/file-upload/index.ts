@@ -269,6 +269,7 @@ export default class FileUploadService {
       uploadId: row.id,
       uploadUrl: signed.url,
       fields: signed.fields,
+      fileName: signed.fileName,
       maxBytes: rules.maxBytes,
     };
   }

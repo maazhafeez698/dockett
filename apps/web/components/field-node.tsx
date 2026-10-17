@@ -56,7 +56,7 @@ export function FieldNode({ data }: { data: FieldNodeData }) {
               e.stopPropagation();
               data.onDelete();
             }}
-            className="hidden text-muted-foreground transition-colors group-hover:block hover:text-destructive"
+            className="block text-muted-foreground transition-colors hover:text-destructive md:hidden md:group-hover:block"
             aria-label="Delete field"
           >
             <Trash2 className="size-3" />

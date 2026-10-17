@@ -192,7 +192,7 @@ function HeroBuilder() {
           className="top-[62%] left-[72%] w-[26%]"
         />
       </div>
-      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-[3deg] bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_var(--hard-shadow)]">
+      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-[3deg] bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_var(--paper)]">
         ✦ AI built this in seconds
       </span>
     </div>

@@ -407,6 +407,7 @@ interface Row {
   file: File | HuFileLike;
   result: unknown;
   state: "uploading" | "done" | "failed";
+  dismissed?: boolean;
 }
 
 interface State {
@@ -579,7 +580,7 @@ export function createHoopUpload(
   };
   // stage grows when rows pile up; rows sit lower while another file waits on the shelf
   const layout = () => {
-    const n = S.rows.length;
+    const n = S.rows.filter((row) => !row.dismissed).length;
     const wait = S.queue.length ? 56 : 0;
     rows.style.top = G.rows.y + wait + "px";
     rows.style.transition = "top .25s";
@@ -1242,7 +1243,9 @@ export function createHoopUpload(
     });
 
   function relayoutRows() {
-    S.rows.forEach((r, i) => (r.el.style.top = i * (G.rows.h + G.rows.gap) + "px"));
+    S.rows
+      .filter((row) => !row.dismissed)
+      .forEach((row, i) => (row.el.style.top = i * (G.rows.h + G.rows.gap) + "px"));
     layout();
   }
 
@@ -1256,7 +1259,7 @@ export function createHoopUpload(
       <button type="button" class="rm" aria-label="${esc(text.remove)}">×</button>`;
     (el.querySelector(".nm") as HTMLElement).textContent = f.name;
     const row: Row = { el, file: f, result: undefined, state: "uploading" };
-    const n = S.rows.length;
+    const n = S.rows.filter((existing) => !existing.dismissed).length;
     el.style.top = n * (G.rows.h + G.rows.gap) + "px";
     S.rows.push(row);
     rows.append(el);
@@ -1299,6 +1302,7 @@ export function createHoopUpload(
         st.textContent = text.done;
       });
       o.onUploaded?.(f, row.result);
+      later(4500, () => dismissRow(row));
     } catch (err) {
       if (S.dead) return;
       row.state = "failed";
@@ -1322,6 +1326,14 @@ export function createHoopUpload(
       row.el.remove();
       relayoutRows();
     });
+    relayoutRows();
+  }
+
+  function dismissRow(row: Row) {
+    if (row.state !== "done" || row.dismissed || !S.rows.includes(row)) return;
+    row.dismissed = true;
+    row.el.classList.add("out");
+    later(200, () => row.el.remove());
     relayoutRows();
   }
 
@@ -1424,7 +1436,8 @@ export function createHoopUpload(
       <button type="button" class="rm" aria-label="${esc(text.remove)}">×</button>`;
     (el.querySelector(".nm") as HTMLElement).textContent = f.name;
     const row: Row = { el, file: f, result, state: "done" };
-    el.style.top = S.rows.length * (G.rows.h + G.rows.gap) + "px";
+    el.style.top =
+      S.rows.filter((existing) => !existing.dismissed).length * (G.rows.h + G.rows.gap) + "px";
     el.style.transition = "none";
     S.rows.push(row);
     rows.append(el);

@@ -18,6 +18,7 @@ export const createUploadOutput = z.object({
   uploadId: z.string(),
   uploadUrl: z.string(),
   fields: z.record(z.string(), z.string()),
+  fileName: z.string(),
   maxBytes: z.number(),
 });
 

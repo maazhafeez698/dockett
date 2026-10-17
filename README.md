@@ -2,6 +2,27 @@
 
 This Turborepo starter is maintained by the Turborepo core team.
 
+## Run locally
+
+Set `DATABASE_URL` in the root `.env` to a PostgreSQL URL at `localhost:5432` and set
+`POSTGRES_PASSWORD` to the same password. Start the isolated local database, apply migrations,
+then start the app:
+
+```sh
+pnpm db:up
+pnpm db:migrate
+pnpm dev
+```
+
+Stop the local database without deleting its data with:
+
+```sh
+pnpm db:down
+```
+
+The local database uses its own Compose file and volume; it does not start or share the production
+EC2 database.
+
 ## Using this example
 
 Run the following command:

@@ -265,7 +265,7 @@ export default function FormBuilder() {
 
   return (
     <AppShell docLabel="Create form" scroll={false}>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
         {/* --- toolbar --- */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
           <Link
@@ -282,7 +282,7 @@ export default function FormBuilder() {
             onBlur={handleTitleBlur}
             onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             aria-label="Form title"
-            className="font-display min-w-0 max-w-[16rem] flex-1 bg-transparent text-lg font-extrabold tracking-[-0.03em] outline-none focus-visible:underline decoration-primary underline-offset-4 sm:flex-none sm:text-xl"
+            className="font-display min-w-0 max-w-none flex-1 bg-transparent text-lg font-extrabold tracking-[-0.03em] outline-none focus-visible:underline decoration-primary underline-offset-4 sm:max-w-[16rem] sm:flex-none sm:text-xl"
           />
 
           {form ? <Badge variant={statusVariant}>{form.status}</Badge> : null}
@@ -317,7 +317,7 @@ export default function FormBuilder() {
 
           <div className="hidden flex-1 md:block" />
 
-          <div className="ml-auto flex flex-wrap items-center gap-1.5 md:ml-0">
+          <div className="flex w-full flex-wrap items-center gap-1.5 md:ml-0 md:w-auto">
             <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
               <Sparkles /> AI Generate
             </Button>
@@ -421,7 +421,7 @@ export default function FormBuilder() {
             </div>
           </div>
         ) : view === "list" ? (
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[212px_minmax(0,1fr)] xl:grid-cols-[212px_minmax(0,1fr)_300px]">
+          <div className="grid min-h-0 min-w-0 flex-1 gap-3 lg:grid-cols-[212px_minmax(0,1fr)] xl:grid-cols-[212px_minmax(0,1fr)_300px]">
             <ListView
               fields={builderFields}
               loading={fieldsLoading}
@@ -445,9 +445,9 @@ export default function FormBuilder() {
             ) : null}
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="grid min-h-0 min-w-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
             <section
-              className="relative min-h-[360px] overflow-hidden border border-border bg-card/40"
+              className="relative min-h-[360px] min-w-0 overflow-hidden border border-border bg-card/40"
               aria-label="Form canvas"
             >
               {fieldsLoading ? (

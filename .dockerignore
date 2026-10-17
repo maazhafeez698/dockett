@@ -14,3 +14,15 @@ coverage
 **/.env.*
 !.env.example
 *.log
+*.pem
+*.key
+*.p12
+*.pfx
+.DS_Store
+Thumbs.db
+backups
+**/backups
+*.sql
+*.sql.gz
+.deployed-image-tag*
+docker-compose.dev.yml

@@ -44,6 +44,23 @@ export interface FileFieldConfig {
 
 export const DEFAULT_MAX_FILE_MB = 5;
 
+const UPLOAD_WIDGET_THEME = {
+  bg: "var(--background)",
+  ink: "var(--foreground)",
+  muted: "var(--muted-foreground)",
+  faint: "var(--muted-foreground)",
+  surface: "var(--card)",
+  dash: "var(--border)",
+  accent: "var(--primary)",
+  accentSoft: "color-mix(in srgb, var(--primary) 12%, var(--card))",
+  net: "var(--muted-foreground)",
+  ok: "var(--success)",
+  track: "var(--secondary)",
+  pill: "var(--secondary)",
+  badge: "var(--primary)",
+  font: "var(--font-sans), sans-serif",
+};
+
 export function fileFieldSettings(config: unknown) {
   const cfg = (config ?? {}) as FileFieldConfig;
   const kinds = (cfg.accept ?? []).filter((k) => (ALL_KINDS as readonly string[]).includes(k));
@@ -76,8 +93,6 @@ interface FileUploadFieldProps {
   config: unknown;
   value: string;
   onChange: (value: string) => void;
-  /** Follow the app's dark theme (Dockett respondent form). */
-  adaptive?: boolean;
   isMissing?: boolean;
 }
 
@@ -87,7 +102,6 @@ export function FileUploadField({
   config,
   value,
   onChange,
-  adaptive,
   isMissing,
 }: FileUploadFieldProps) {
   const { formId, accessCode, isPreview } = useFormUpload();
@@ -190,7 +204,7 @@ export function FileUploadField({
       ) : null}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[94dvh] w-[calc(100vw-1.5rem)] max-w-[480px] gap-3 overflow-y-auto p-3 sm:max-w-[480px]">
+        <DialogContent className="min-w-0 max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[480px] gap-3 overflow-x-hidden overflow-y-auto p-2 sm:max-h-[94dvh] sm:w-[calc(100vw-2rem)] sm:p-3">
           <DialogHeader className="sr-only">
             <DialogTitle>Upload files</DialogTitle>
             <DialogDescription>
@@ -200,7 +214,7 @@ export function FileUploadField({
           </DialogHeader>
 
           <div
-            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition-colors ${
+            className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-2.5 py-2.5 transition-colors sm:px-3 ${
               shotOn ? "border-primary bg-primary/10" : "border-border bg-card"
             }`}
           >
@@ -232,11 +246,13 @@ export function FileUploadField({
           <HoopUpload
             // limits are read once at mount: re-mount if the field's settings change
             key={`${acceptAttr}|${maxFiles}|${maxSizeMB}|${isPreview}`}
+            className="min-w-0 w-full"
+            theme={UPLOAD_WIDGET_THEME}
             accept={acceptAttr}
             multiple={maxFiles > 1}
             maxFiles={maxFiles}
             maxSize={Math.floor(maxSizeMB * 1024 * 1024)}
-            adaptive={adaptive}
+            adaptive
             shotMode={shotOn}
             disabled={isPreview || !formId}
             initialFiles={initialFiles}

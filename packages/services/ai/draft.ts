@@ -29,6 +29,7 @@ export const AI_FIELD_TYPES = [
   "DATE",
   "RATING",
   "RADIO_GROUP",
+  "FILE_UPLOAD",
 ] as const;
 export type AiFieldType = (typeof AI_FIELD_TYPES)[number];
 
@@ -50,6 +51,8 @@ export type AiLayout = (typeof AI_LAYOUTS)[number];
 
 const OPTION_TYPES = new Set<string>(["DROPDOWN", "MULTI_SELECT", "CHECKBOX_GROUP", "RADIO_GROUP"]);
 const PLACEHOLDER_TYPES = new Set<string>(["TEXT", "EMAIL", "NUMBER", "LONG_TEXT"]);
+const FILE_UPLOAD_KINDS = ["pdf", "docx", "jpg", "png"] as const;
+type FileUploadKind = (typeof FILE_UPLOAD_KINDS)[number];
 
 /**
  * What the model says the user's message is. This is the server-enforced
@@ -98,6 +101,9 @@ export const draftFieldSchema = z.object({
       options: z.array(z.string().trim().min(1).max(LIMITS.option)).min(1).max(LIMITS.maxOptions).optional(),
       maxLength: z.number().int().positive().max(5000).optional(),
       max: z.number().int().min(2).max(10).optional(),
+      accept: z.array(z.enum(FILE_UPLOAD_KINDS)).min(1).max(4).optional(),
+      maxFiles: z.number().int().min(1).max(5).optional(),
+      maxSizeMB: z.number().positive().max(10).optional(),
     })
     .nullable()
     .optional(),
@@ -140,6 +146,9 @@ const rawFieldSchema = z.object({
   options: z.array(z.string()).default([]),
   ratingMax: z.number().default(0),
   maxLength: z.number().default(0),
+  accept: z.array(z.string()).default([]),
+  maxFiles: z.number().default(0),
+  maxSizeMB: z.number().default(0),
 });
 export type RawField = z.infer<typeof rawFieldSchema>;
 
@@ -189,7 +198,19 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
           items: {
             type: "object",
             additionalProperties: false,
-            required: ["label", "type", "description", "placeholder", "isRequired", "options", "ratingMax", "maxLength"],
+            required: [
+              "label",
+              "type",
+              "description",
+              "placeholder",
+              "isRequired",
+              "options",
+              "ratingMax",
+              "maxLength",
+              "accept",
+              "maxFiles",
+              "maxSizeMB",
+            ],
             properties: {
               label: { type: "string", description: `The question, at most ${LIMITS.label} characters.` },
               type: { type: "string", enum: [...AI_FIELD_TYPES] },
@@ -203,6 +224,13 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
               },
               ratingMax: { type: "integer", description: "RATING only: scale size 3-10 (usually 5). 0 for other types." },
               maxLength: { type: "integer", description: "LONG_TEXT only: character cap, or 0 for none." },
+              accept: {
+                type: "array",
+                items: { type: "string", enum: [...FILE_UPLOAD_KINDS] },
+                description: "FILE_UPLOAD only: allowed file kinds. Choose one or more supported kinds; empty for other types.",
+              },
+              maxFiles: { type: "integer", description: "FILE_UPLOAD only: number of files allowed, 1-5 (usually 1). 0 for other types." },
+              maxSizeMB: { type: "number", description: "FILE_UPLOAD only: max file size in MB, 0.1-10 (usually 5). 0 for other types." },
             },
           },
         },
@@ -279,6 +307,22 @@ export function normalizeRawField(input: unknown): DraftField | null {
   } else if (t === "LONG_TEXT") {
     const n = Math.round(Number.isFinite(r.maxLength) ? r.maxLength : 0);
     if (n > 0) field.config = { maxLength: Math.min(n, 5000) };
+  } else if (t === "FILE_UPLOAD") {
+    const allowed = new Set<string>(FILE_UPLOAD_KINDS);
+    const accept = [
+      ...new Set(
+        r.accept
+          .map((kind) => kind.trim().toLowerCase())
+          .filter((kind): kind is FileUploadKind => allowed.has(kind)),
+      ),
+    ];
+    const maxFiles = Math.round(Number.isFinite(r.maxFiles) ? r.maxFiles : 0);
+    const maxSizeMB = Number.isFinite(r.maxSizeMB) ? r.maxSizeMB : 0;
+    field.config = {
+      accept: accept.length ? accept : ["pdf", "docx", "jpg", "png"],
+      maxFiles: maxFiles >= 1 && maxFiles <= 5 ? maxFiles : 1,
+      maxSizeMB: maxSizeMB >= 0.1 && maxSizeMB <= 10 ? maxSizeMB : 5,
+    };
   }
 
   return field;

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeModelOutput, parseModelJson, dedupeLabels, toLabelKey, formDraftSchema, clipReply, LIMITS } from "../draft";
+import { buildSystemPrompt } from "../prompt";
 import { baseField, goodJson } from "./helpers";
 
 const opts = { maxFields: 30 };
@@ -15,10 +16,52 @@ test("valid output normalises and satisfies the save schema", () => {
   assert.ok(formDraftSchema.safeParse(out.draft).success);
 });
 
-test("PASSWORD and unknown field types are dropped, never persisted", () => {
+test("retired PASSWORD and unknown field types are dropped, while FILE_UPLOAD is supported", () => {
   const out = normalizeModelOutput(JSON.parse(goodJson({ fields: [f({ label: "Pw", type: "PASSWORD" }), f({ label: "X", type: "HOLOGRAM" }), f({ label: "Ok" })] })), opts);
   assert.deepEqual(out.draft!.fields.map((x) => x.label), ["Ok"]);
   assert.equal(out.droppedFields, 2);
+});
+
+test("FILE_UPLOAD is normalized with supported kinds and bounded defaults", () => {
+  const out = normalizeModelOutput(
+    JSON.parse(
+      goodJson({
+        fields: [
+          f({
+            label: "Attach slides",
+            type: "FILE_UPLOAD",
+            accept: ["PDF", "jpg", "exe", "pdf"],
+            maxFiles: 3,
+            maxSizeMB: 8,
+          }),
+        ],
+      }),
+    ),
+    opts,
+  );
+  assert.deepEqual(out.draft!.fields[0]!.config, {
+    accept: ["pdf", "jpg"],
+    maxFiles: 3,
+    maxSizeMB: 8,
+  });
+  assert.equal(out.droppedFields, 0);
+
+  const defaults = normalizeModelOutput(
+    JSON.parse(goodJson({ fields: [f({ label: "Attach", type: "FILE_UPLOAD" })] })),
+    opts,
+  );
+  assert.deepEqual(defaults.draft!.fields[0]!.config, {
+    accept: ["pdf", "docx", "jpg", "png"],
+    maxFiles: 1,
+    maxSizeMB: 5,
+  });
+});
+
+test("the AI prompt treats requested supported field types as available", () => {
+  const prompt = buildSystemPrompt("ADD_FIELDS", { maxFieldsPerForm: 30 });
+  assert.match(prompt, /FILE_UPLOAD is supported/);
+  assert.match(prompt, /include every supported field type the user explicitly requests/i);
+  assert.doesNotMatch(prompt, /Never create file-upload questions/i);
 });
 
 test("choice fields need >=2 distinct options; duplicates removed case-insensitively", () => {

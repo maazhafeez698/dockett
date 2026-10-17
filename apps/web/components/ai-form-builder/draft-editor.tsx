@@ -5,7 +5,17 @@ import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import type { AiDraft, AiDraftField, AiFieldType } from "~/lib/ai-stream";
-import { FIELD_TYPES, OPTION_TYPES, PLACEHOLDER_TYPES, TYPE_LABEL, cleanDraft, retypeField, validateDraft } from "./shared";
+import {
+  DEFAULT_UPLOAD_CONFIG,
+  FILE_KINDS,
+  FIELD_TYPES,
+  OPTION_TYPES,
+  PLACEHOLDER_TYPES,
+  TYPE_LABEL,
+  cleanDraft,
+  retypeField,
+  validateDraft,
+} from "./shared";
 
 const inputCls =
   "w-full rounded-lg border border-border bg-background/60 px-2.5 py-1.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60";
@@ -24,13 +34,28 @@ interface DraftEditorProps {
  * Edits a COPY of the draft. Save hands the copy back; Cancel just discards it,
  * so the structure in the chat is untouched and returns to its original state.
  */
-export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }: DraftEditorProps) {
+export function DraftEditor({
+  draft,
+  showFormMeta,
+  maxFields,
+  onSave,
+  onCancel,
+}: DraftEditorProps) {
   const [work, setWork] = useState<AiDraft>(() => structuredClone(draft));
   const errors = useMemo(() => validateDraft(work, showFormMeta), [work, showFormMeta]);
 
   const patchField = (i: number, patch: Partial<AiDraftField>) =>
-    setWork((w) => ({ ...w, fields: w.fields.map((f, idx) => (idx === i ? { ...f, ...patch } : f)) }));
-  const setOptions = (i: number, options: string[]) => patchField(i, { config: { ...work.fields[i]!.config, options } });
+    setWork((w) => ({
+      ...w,
+      fields: w.fields.map((f, idx) => (idx === i ? { ...f, ...patch } : f)),
+    }));
+  const setOptions = (i: number, options: string[]) =>
+    patchField(i, { config: { ...work.fields[i]!.config, options } });
+  const setAcceptedKinds = (i: number, kind: (typeof FILE_KINDS)[number], checked: boolean) => {
+    const current = work.fields[i]!.config?.accept ?? [...FILE_KINDS];
+    const accept = checked ? [...current, kind] : current.filter((value) => value !== kind);
+    patchField(i, { config: { ...work.fields[i]!.config, accept: [...new Set(accept)] } });
+  };
   const move = (i: number, dir: -1 | 1) =>
     setWork((w) => {
       const j = i + dir;
@@ -39,11 +64,15 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
       [fields[i], fields[j]] = [fields[j]!, fields[i]!];
       return { ...w, fields };
     });
-  const remove = (i: number) => setWork((w) => ({ ...w, fields: w.fields.filter((_, idx) => idx !== i) }));
+  const remove = (i: number) =>
+    setWork((w) => ({ ...w, fields: w.fields.filter((_, idx) => idx !== i) }));
   const add = () =>
     setWork((w) => ({
       ...w,
-      fields: [...w.fields, { label: `Question ${w.fields.length + 1}`, type: "TEXT", isRequired: false }],
+      fields: [
+        ...w.fields,
+        { label: `Question ${w.fields.length + 1}`, type: "TEXT", isRequired: false },
+      ],
     }));
 
   return (
@@ -77,7 +106,10 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
         {work.fields.map((f, i) => {
           const fe = errors.perField[i];
           return (
-            <li key={i} className="space-y-2 rounded-[3px] border border-border/60 bg-background/30 p-3">
+            <li
+              key={i}
+              className="space-y-2 rounded-[3px] border border-border/60 bg-background/30 p-3"
+            >
               <div className="flex items-start gap-1.5">
                 <div className="min-w-0 flex-1">
                   <input
@@ -91,13 +123,30 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
                   {fe?.label ? <p className={errCls}>{fe.label}</p> : null}
                 </div>
                 <div className="flex shrink-0 items-center">
-                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move up">
+                  <button
+                    type="button"
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                    aria-label="Move up"
+                  >
                     <ArrowUp className="size-3.5" />
                   </button>
-                  <button type="button" onClick={() => move(i, 1)} disabled={i === work.fields.length - 1} className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move down">
+                  <button
+                    type="button"
+                    onClick={() => move(i, 1)}
+                    disabled={i === work.fields.length - 1}
+                    className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                    aria-label="Move down"
+                  >
                     <ArrowDown className="size-3.5" />
                   </button>
-                  <button type="button" onClick={() => remove(i)} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive" aria-label="Delete field">
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                    aria-label="Delete field"
+                  >
                     <Trash2 className="size-3.5" />
                   </button>
                 </div>
@@ -107,7 +156,14 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
                 <select
                   value={f.type}
                   aria-label={`Type for field ${i + 1}`}
-                  onChange={(e) => setWork((w) => ({ ...w, fields: w.fields.map((x, idx) => (idx === i ? retypeField(x, e.target.value as AiFieldType) : x)) }))}
+                  onChange={(e) =>
+                    setWork((w) => ({
+                      ...w,
+                      fields: w.fields.map((x, idx) =>
+                        idx === i ? retypeField(x, e.target.value as AiFieldType) : x,
+                      ),
+                    }))
+                  }
                   className={`${inputCls} flex-1`}
                 >
                   {FIELD_TYPES.map((t) => (
@@ -117,7 +173,12 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
                   ))}
                 </select>
                 <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={f.isRequired} onChange={(e) => patchField(i, { isRequired: e.target.checked })} className="size-3.5 accent-[var(--primary)]" />
+                  <input
+                    type="checkbox"
+                    checked={f.isRequired}
+                    onChange={(e) => patchField(i, { isRequired: e.target.checked })}
+                    className="size-3.5 accent-[var(--primary)]"
+                  />
                   Required
                 </label>
               </div>
@@ -142,7 +203,11 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
               {f.type === "RATING" ? (
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   Scale
-                  <select value={f.config?.max ?? 5} onChange={(e) => patchField(i, { config: { max: Number(e.target.value) } })} className={`${inputCls} w-24`}>
+                  <select
+                    value={f.config?.max ?? 5}
+                    onChange={(e) => patchField(i, { config: { max: Number(e.target.value) } })}
+                    className={`${inputCls} w-24`}
+                  >
                     {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                       <option key={n} value={n}>
                         1 – {n}
@@ -160,21 +225,109 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
                         value={o}
                         maxLength={200}
                         aria-label={`Option ${oi + 1} of field ${i + 1}`}
-                        onChange={(e) => setOptions(i, (f.config?.options ?? []).map((x, xi) => (xi === oi ? e.target.value : x)))}
+                        onChange={(e) =>
+                          setOptions(
+                            i,
+                            (f.config?.options ?? []).map((x, xi) =>
+                              xi === oi ? e.target.value : x,
+                            ),
+                          )
+                        }
                         className={inputCls}
                       />
-                      <button type="button" onClick={() => setOptions(i, (f.config?.options ?? []).filter((_, xi) => xi !== oi))} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Remove option">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOptions(
+                            i,
+                            (f.config?.options ?? []).filter((_, xi) => xi !== oi),
+                          )
+                        }
+                        className="rounded p-1.5 text-muted-foreground hover:bg-muted"
+                        aria-label="Remove option"
+                      >
                         <X className="size-3.5" />
                       </button>
                     </div>
                   ))}
                   {fe?.options ? <p className={errCls}>{fe.options}</p> : null}
                   {(f.config?.options?.length ?? 0) < 20 ? (
-                    <button type="button" onClick={() => setOptions(i, [...(f.config?.options ?? []), `Option ${(f.config?.options?.length ?? 0) + 1}`])} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOptions(i, [
+                          ...(f.config?.options ?? []),
+                          `Option ${(f.config?.options?.length ?? 0) + 1}`,
+                        ])
+                      }
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
                       <Plus className="size-3" /> Add option
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+
+              {f.type === "FILE_UPLOAD" ? (
+                <fieldset className="space-y-2 rounded-[3px] border border-border/60 p-2.5">
+                  <legend className="px-1 text-[11px] font-medium text-muted-foreground">
+                    Allowed file types
+                  </legend>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {FILE_KINDS.map((kind) => (
+                      <label
+                        key={kind}
+                        className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(f.config?.accept ?? [...FILE_KINDS]).includes(kind)}
+                          onChange={(e) => setAcceptedKinds(i, kind, e.target.checked)}
+                          className="size-3.5 accent-[var(--primary)]"
+                        />
+                        {kind === "jpg" ? "JPEG" : kind.toUpperCase()}
+                      </label>
+                    ))}
+                  </div>
+                  {fe?.fileKinds ? <p className={errCls}>{fe.fileKinds}</p> : null}
+                  {fe?.fileSize ? <p className={errCls}>{fe.fileSize}</p> : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-muted-foreground">
+                      Maximum files
+                      <select
+                        value={f.config?.maxFiles ?? DEFAULT_UPLOAD_CONFIG.maxFiles}
+                        onChange={(e) =>
+                          patchField(i, {
+                            config: { ...f.config, maxFiles: Number(e.target.value) },
+                          })
+                        }
+                        className={`${inputCls} mt-1`}
+                      >
+                        {[1, 2, 3, 4, 5].map((count) => (
+                          <option key={count} value={count}>
+                            {count}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      Maximum size (MB)
+                      <input
+                        type="number"
+                        min={0.1}
+                        max={10}
+                        step={0.1}
+                        value={f.config?.maxSizeMB ?? DEFAULT_UPLOAD_CONFIG.maxSizeMB}
+                        onChange={(e) =>
+                          patchField(i, {
+                            config: { ...f.config, maxSizeMB: Number(e.target.value) },
+                          })
+                        }
+                        className={`${inputCls} mt-1`}
+                      />
+                    </label>
+                  </div>
+                </fieldset>
               ) : null}
             </li>
           );
@@ -183,7 +336,11 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
 
       {errors.fields ? <p className={errCls}>{errors.fields}</p> : null}
       {work.fields.length < maxFields ? (
-        <button type="button" onClick={add} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+        <button
+          type="button"
+          onClick={add}
+          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        >
           <Plus className="size-3.5" /> Add field
         </button>
       ) : null}
@@ -192,7 +349,12 @@ export function DraftEditor({ draft, showFormMeta, maxFields, onSave, onCancel }
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" size="sm" disabled={!errors.valid} onClick={() => onSave(cleanDraft(work))}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!errors.valid}
+          onClick={() => onSave(cleanDraft(work))}
+        >
           Save
         </Button>
       </div>

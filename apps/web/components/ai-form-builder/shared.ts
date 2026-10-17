@@ -1,4 +1,6 @@
-import type { AiDraft, AiDraftField, AiFieldType } from "~/lib/ai-stream";
+import type { AiDraft, AiDraftField, AiFieldType, AiFileKind } from "~/lib/ai-stream";
+
+export const FILE_KINDS: AiFileKind[] = ["pdf", "docx", "jpg", "png"];
 
 export const TYPE_LABEL: Record<AiFieldType, string> = {
   TEXT: "Short text",
@@ -12,6 +14,7 @@ export const TYPE_LABEL: Record<AiFieldType, string> = {
   CHECKBOX_GROUP: "Checkboxes",
   DATE: "Date",
   RATING: "Rating",
+  FILE_UPLOAD: "File upload",
 };
 
 export const FIELD_TYPES = Object.keys(TYPE_LABEL) as AiFieldType[];
@@ -22,6 +25,11 @@ export const OPTION_TYPES = new Set<AiFieldType>([
   "CHECKBOX_GROUP",
 ]);
 export const PLACEHOLDER_TYPES = new Set<AiFieldType>(["TEXT", "EMAIL", "NUMBER", "LONG_TEXT"]);
+export const DEFAULT_UPLOAD_CONFIG = {
+  accept: FILE_KINDS,
+  maxFiles: 1,
+  maxSizeMB: 5,
+} as const;
 
 export const TEMPLATE_LABEL: Record<string, string> = {
   CORPORATE: "Professional",
@@ -50,6 +58,12 @@ export function retypeField(field: AiDraftField, type: AiFieldType): AiDraftFiel
     next.config = { max: field.config?.max ?? 5 };
   } else if (type === "LONG_TEXT" && field.config?.maxLength) {
     next.config = { maxLength: field.config.maxLength };
+  } else if (type === "FILE_UPLOAD") {
+    next.config = {
+      accept: field.config?.accept?.length ? field.config.accept : [...FILE_KINDS],
+      maxFiles: field.config?.maxFiles ?? 1,
+      maxSizeMB: field.config?.maxSizeMB ?? 5,
+    };
   } else {
     next.config = null;
   }
@@ -60,7 +74,10 @@ export function retypeField(field: AiDraftField, type: AiFieldType): AiDraftFiel
 export interface DraftErrors {
   title?: string;
   fields?: string;
-  perField: Record<number, { label?: string; options?: string }>;
+  perField: Record<
+    number,
+    { label?: string; options?: string; fileKinds?: string; fileSize?: string }
+  >;
   valid: boolean;
 }
 
@@ -71,7 +88,7 @@ export function validateDraft(draft: AiDraft, requireTitle: boolean): DraftError
 
   const seen = new Set<string>();
   draft.fields.forEach((f, i) => {
-    const errs: { label?: string; options?: string } = {};
+    const errs: { label?: string; options?: string; fileKinds?: string; fileSize?: string } = {};
     const label = f.label.trim();
     if (!label) errs.label = "Label can't be empty";
     else {
@@ -85,7 +102,17 @@ export function validateDraft(draft: AiDraft, requireTitle: boolean): DraftError
       else if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length)
         errs.options = "Options must be different";
     }
-    if (errs.label || errs.options) out.perField[i] = errs;
+    if (f.type === "FILE_UPLOAD" && !(f.config?.accept && f.config.accept.length > 0)) {
+      errs.fileKinds = "Choose at least one file type";
+    }
+    if (
+      f.type === "FILE_UPLOAD" &&
+      f.config?.maxSizeMB !== undefined &&
+      (!Number.isFinite(f.config.maxSizeMB) || f.config.maxSizeMB <= 0 || f.config.maxSizeMB > 10)
+    ) {
+      errs.fileSize = "File size must be greater than 0 and no more than 10 MB";
+    }
+    if (errs.label || errs.options || errs.fileKinds || errs.fileSize) out.perField[i] = errs;
   });
 
   out.valid = !out.title && !out.fields && Object.keys(out.perField).length === 0;
@@ -106,6 +133,18 @@ export function cleanDraft(draft: AiDraft): AiDraft {
         : undefined;
       if (OPTION_TYPES.has(f.type)) {
         out.config = { options: (f.config?.options ?? []).map((o) => o.trim()).filter(Boolean) };
+      } else if (f.type === "FILE_UPLOAD") {
+        out.config = {
+          accept: f.config?.accept?.length ? f.config.accept : [...FILE_KINDS],
+          maxFiles: f.config?.maxFiles ?? DEFAULT_UPLOAD_CONFIG.maxFiles,
+          maxSizeMB: f.config?.maxSizeMB ?? DEFAULT_UPLOAD_CONFIG.maxSizeMB,
+        };
+      } else if (f.type === "RATING") {
+        out.config = { max: f.config?.max ?? 5 };
+      } else if (f.type === "LONG_TEXT" && f.config?.maxLength) {
+        out.config = { maxLength: f.config.maxLength };
+      } else {
+        out.config = null;
       }
       return out;
     }),

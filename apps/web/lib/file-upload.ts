@@ -53,6 +53,7 @@ function postToStorage(
   url: string,
   fields: Record<string, string>,
   file: File,
+  fileName: string,
   onProgress: (fraction: number) => void,
   signal: AbortSignal,
 ): Promise<void> {
@@ -60,7 +61,7 @@ function postToStorage(
     const xhr = new XMLHttpRequest();
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
-    form.append("file", file); // must be last
+    form.append("file", file, fileName); // must be last; keeps Cloudinary's raw asset extension canonical
 
     xhr.open("POST", url);
     xhr.upload.onprogress = (e) => {
@@ -122,6 +123,7 @@ export function useFileFieldUploader(ctx: UploaderContext) {
           sig.uploadUrl,
           sig.fields,
           real,
+          sig.fileName,
           (f) => onProgress(Math.min(0.9, f * 0.9)),
           controller.current?.signal ?? new AbortController().signal,
         );

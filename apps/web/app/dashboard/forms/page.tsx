@@ -6,13 +6,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "~/components/app-shell";
 import { StatusTag } from "~/components/form-ticket-card";
 import { Button } from "~/components/ui/button";
-import { useDeleteForm, useListForms } from "~/hooks/api/form";
+import { useCreateForm, useDeleteForm, useListForms } from "~/hooks/api/form";
 import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { getTemplateDesign } from "~/lib/template-designs";
 
@@ -20,10 +21,23 @@ const FILTERS = ["ALL", "PUBLISHED", "DRAFT", "CLOSED"] as const;
 
 export default function DashboardForms() {
   const { ready } = useAuthGuard();
+  const router = useRouter();
   const { forms, isLoading } = useListForms();
+  const { createFormAsync } = useCreateForm();
   const { deleteFormAsync } = useDeleteForm();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("ALL");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  async function handleBlankForm() {
+    setPendingId("__blank__");
+    try {
+      const { id } = await createFormAsync({ title: "Untitled form" });
+      router.push(`/dashboard/forms/${id}`);
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,8 +69,12 @@ export default function DashboardForms() {
               Everything you&apos;ve issued — {forms?.length ?? 0} in total.
             </p>
           </div>
-          <Button asChild variant="ember">
-            <Link href="/dashboard">+ New form</Link>
+          <Button
+            variant="ember"
+            onClick={handleBlankForm}
+            disabled={pendingId === "__blank__"}
+          >
+            {pendingId === "__blank__" ? "Creating…" : "+ New form"}
           </Button>
         </div>
 

@@ -391,7 +391,6 @@ export function FormFieldRenderer({
           config={f.config}
           value={value}
           onChange={onChange}
-          adaptive={ticket}
           isMissing={isMissing}
         />
       )}

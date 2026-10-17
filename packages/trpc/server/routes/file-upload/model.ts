@@ -15,6 +15,7 @@ export const createUploadOutputModel = z.object({
   uploadId: z.string().describe("ID to confirm / submit after the upload finishes"),
   uploadUrl: z.string().describe("Storage URL to POST the file to"),
   fields: z.record(z.string(), z.string()).describe("Form fields to send with the file, as given"),
+  fileName: z.string().describe("Generated filename with the canonical storage extension"),
   maxBytes: z.number().describe("Largest file the field accepts, in bytes"),
 });
 
