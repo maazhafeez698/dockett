@@ -7,6 +7,7 @@ import { oauthAccountsTable } from "@repo/database/models/oauth-account";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import { logger } from "@repo/logger";
 
 import { env } from "../env";
 import { generateOpaqueToken, hashToken } from "./token-utils";
@@ -233,7 +234,9 @@ export default class UserService {
       await sendPasswordResetEmail(existingUser.email, resetUrl);
     } catch (error) {
       // Deliberately swallowed — see doc comment above.
-      console.error("Failed to send password reset email", error);
+      logger.error("password_reset.email_failed", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
     }
   }
 

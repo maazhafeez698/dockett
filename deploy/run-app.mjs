@@ -42,14 +42,14 @@ function start(name, args, cwd = appRoot) {
   children.set(name, state);
 
   child.once("error", (error) => {
-    console.error(`${name} failed to start:`, error);
+    process.stderr.write(`${name} failed to start: ${error.stack ?? error.message}\n`);
     stopAll(1);
   });
 
   child.once("close", (code, signal) => {
     state.closed = true;
     if (!stopping) {
-      console.error(`${name} exited unexpectedly (code=${code}, signal=${signal})`);
+      process.stderr.write(`${name} exited unexpectedly (code=${code}, signal=${signal})\n`);
       stopAll(code && code !== 0 ? code : 1);
     }
     finishIfStopped();

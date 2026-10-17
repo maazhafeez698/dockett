@@ -12,7 +12,6 @@ import { ArrowRight, ArrowUp, Check, Clock, Minus, Plus } from "lucide-react";
 
 import { Logo } from "~/components/logo";
 import { ContactSalesDialog } from "~/components/billing/contact-sales-dialog";
-import { FORM_TEMPLATES } from "~/lib/templates-data";
 
 const wrap = "mx-auto max-w-[1240px] px-5 sm:px-8";
 

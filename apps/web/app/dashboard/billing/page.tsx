@@ -26,7 +26,7 @@ function fmt(iso: string | null | undefined) {
 
 export default function BillingPage() {
   const { ready } = useAuthGuard();
-  const { overview, isLoading, error, refetch } = useBillingOverview();
+  const { overview, isLoading, error, refetch } = useBillingOverview(ready);
   const { createPortalSessionAsync, isPending: portalPending } = useCreatePortalSession();
   const [contactOpen, setContactOpen] = useState(false);
   const [opening, setOpening] = useState(false);

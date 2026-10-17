@@ -45,8 +45,6 @@ function storageErrorMessage(xhr: XMLHttpRequest): string {
   } catch {
     message = xhr.responseText?.slice(0, 200) ?? "";
   }
-  // eslint-disable-next-line no-console
-  console.error("[upload] storage rejected the upload", { status: xhr.status, message, response: xhr.responseText });
   const base = `Storage rejected the upload (HTTP ${xhr.status})`;
   return message ? `${base}: ${message}` : base;
 }

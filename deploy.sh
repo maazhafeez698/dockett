@@ -92,7 +92,7 @@ if ! wait_healthy app; then
 fi
 
 docker compose pull caddy
-docker compose up -d caddy
+docker compose up -d --force-recreate caddy
 if ! wait_healthy caddy; then
   docker compose logs --tail=100 caddy
   if ! rollback; then
