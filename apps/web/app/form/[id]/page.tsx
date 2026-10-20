@@ -69,7 +69,9 @@ function AccessCodeGate({
         className="flex w-full max-w-sm flex-col items-center gap-4 border border-foreground/70 bg-card p-8 text-center shadow-[5px_5px_0_0_var(--hard-shadow)]"
       >
         <KeyRound className="size-8 text-muted-foreground" />
-        <p className="font-display text-2xl leading-tight font-extrabold">This form needs an access code</p>
+        <p className="font-display text-2xl leading-tight font-extrabold">
+          This form needs an access code
+        </p>
         <p className="text-sm text-muted-foreground">
           Ask whoever shared this form's link for the code.
         </p>
@@ -219,6 +221,10 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+    if (form?.submissionLayout === "ALL_AT_ONCE" && !flow.isLastStep) {
+      flow.onNext();
+      return;
+    }
     if (!flow.validateAll()) return;
 
     try {
@@ -244,26 +250,28 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
       }
     >
       <FormUploadProvider formId={id} accessCode={enteredCode}>
-      <FormTemplateRenderer
-        template={form.template}
-        title={form.title}
-        description={form.description}
-        fields={fields}
-        visibleFields={flow.visibleFields}
-        values={flow.values}
-        onChange={flow.onChange}
-        missingFieldIds={flow.missingFieldIds}
-        layout={form.submissionLayout}
-        stepIndex={flow.step}
-        isFirstStep={flow.isFirstStep}
-        isLastStep={flow.isLastStep}
-        onNext={flow.onNext}
-        onBack={flow.onBack}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        submitted={submitted}
-        errorMessage={submitError}
-      />
+        <FormTemplateRenderer
+          template={form.template}
+          title={form.title}
+          description={form.description}
+          fields={fields}
+          visibleFields={flow.visibleFields}
+          values={flow.values}
+          onChange={flow.onChange}
+          missingFieldIds={flow.missingFieldIds}
+          layout={form.submissionLayout}
+          stepIndex={flow.step}
+          stepCount={flow.stepCount}
+          stepStartIndex={flow.stepStartIndex}
+          isFirstStep={flow.isFirstStep}
+          isLastStep={flow.isLastStep}
+          onNext={flow.onNext}
+          onBack={flow.onBack}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          submitted={submitted}
+          errorMessage={submitError}
+        />
       </FormUploadProvider>
     </div>
   );

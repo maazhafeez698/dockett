@@ -24,6 +24,8 @@ export function CorporateShell(props: FormTemplateShellProps) {
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
+    stepStartIndex,
     isLastStep,
     onNext,
     onBack,
@@ -35,6 +37,7 @@ export function CorporateShell(props: FormTemplateShellProps) {
 
   const design = getTemplateDesign("CORPORATE");
   const visibleIds = new Set(visibleFields.map((f) => f.id));
+  const outlineFields = layout === "ALL_AT_ONCE" ? visibleFields : fields;
 
   return (
     <div className="mx-auto grid max-w-4xl gap-0 overflow-hidden rounded-2xl border border-slate-700/40 bg-slate-950 shadow-2xl sm:grid-cols-[280px_1fr]">
@@ -47,9 +50,9 @@ export function CorporateShell(props: FormTemplateShellProps) {
         {description ? <p className="mt-3 text-sm text-slate-400">{description}</p> : null}
 
         <ol className="mt-8 space-y-3 border-t border-slate-700/60 pt-6">
-          {fields.map((f, i) => {
+          {outlineFields.map((f, i) => {
             const active = visibleIds.has(f.id);
-            const done = layout === "ONE_AT_A_TIME" ? i < stepIndex : false;
+            const done = layout === "ONE_AT_A_TIME" && i < stepStartIndex;
             return (
               <li key={f.id} className="flex items-start gap-3 text-sm">
                 <span
@@ -79,7 +82,12 @@ export function CorporateShell(props: FormTemplateShellProps) {
             <p className="text-sm text-slate-500">We'll be in touch.</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="space-y-7">
+          <form data-submission-form onSubmit={onSubmit} noValidate className="space-y-7">
+            {stepCount > 1 ? (
+              <p className="text-xs text-slate-500" role="status">
+                Page {stepIndex + 1} of {stepCount}
+              </p>
+            ) : null}
             {visibleFields.map((f) => (
               <div key={f.id} className="border-b border-slate-200 pb-6 last:border-0">
                 <FormFieldRenderer
@@ -100,12 +108,12 @@ export function CorporateShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex justify-end gap-2 pt-2">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button type="button" variant="outline" onClick={onBack}>
                   Back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

@@ -54,7 +54,7 @@ const FEATURES = [
 
 function Nav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-foreground/70 bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-foreground/70 bg-background/95 dark:bg-[#1C1B18]/95 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-5 sm:px-8">
         <Link href="/" aria-label="Dockett home">
           <Logo size={22} />
@@ -95,7 +95,7 @@ function Nav() {
 function HeroTicket() {
   return (
     <div
-      className="relative -rotate-[3deg] border border-foreground/80 bg-card shadow-[6px_6px_0_0_var(--hard-shadow)] transition-transform duration-300 hover:-rotate-[1deg] motion-reduce:transition-none"
+      className="relative -rotate-[3deg] border border-foreground/80 bg-card shadow-[6px_6px_0_0_var(--hard-shadow)] transition-transform duration-300 hover:-rotate-1 motion-reduce:transition-none"
       aria-label="Example form ticket: Job Application"
     >
       <div className="grid grid-cols-[1fr_34%]">
@@ -192,7 +192,7 @@ function HeroBuilder() {
           className="top-[62%] left-[72%] w-[26%]"
         />
       </div>
-      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-[3deg] bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_var(--paper)]">
+      <span className="mono-label-sm absolute -right-2 -bottom-3 rotate-3 bg-primary px-3 py-2 text-primary-foreground shadow-[3px_3px_0_0_#171717] dark:shadow-[3px_3px_0_0_var(--ember)]">
         ✦ AI built this in seconds
       </span>
     </div>
@@ -202,7 +202,7 @@ function HeroBuilder() {
 function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-foreground/70">
-      <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
+      <div className="mx-auto grid max-w-310 items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
         <div>
           <div className="mb-8 inline-grid grid-cols-[auto_auto_auto_auto] border border-foreground/70 bg-card text-left">
             {[

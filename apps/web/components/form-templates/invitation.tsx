@@ -16,13 +16,13 @@ export function InvitationShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -55,10 +55,12 @@ export function InvitationShell(props: FormTemplateShellProps) {
             <p className="font-serif text-lg text-[#3B2A12]">We look forward to seeing you.</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="space-y-6">
-            {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
+          <form data-submission-form onSubmit={onSubmit} noValidate className="space-y-6">
+            {stepCount > 1 ? (
               <p className="text-center font-serif text-xs text-amber-800/60 italic">
-                {stepIndex + 1} of {fields.length}
+                {layout === "ONE_AT_A_TIME"
+                  ? `${stepIndex + 1} of ${stepCount}`
+                  : `Page ${stepIndex + 1} of ${stepCount}`}
               </p>
             ) : null}
 
@@ -89,7 +91,7 @@ export function InvitationShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex justify-center gap-3 pt-4">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -99,7 +101,7 @@ export function InvitationShell(props: FormTemplateShellProps) {
                   Back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

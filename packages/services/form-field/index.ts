@@ -1,6 +1,8 @@
-import { db, eq, max } from "@repo/database";
+import { db, eq, max, count } from "@repo/database";
+import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { assertFormOwnership } from "@repo/services/form";
+import { MAX_FIELDS_PER_FORM } from "./limits";
 
 import {
   createFieldInput,
@@ -77,18 +79,6 @@ function mapField(r: typeof formFieldsTable.$inferSelect) {
 }
 
 export default class FormFieldService {
-  private async getNextIndex(formId: string): Promise<string> {
-    const result = await db
-      .select({ maxIndex: max(formFieldsTable.index) })
-      .from(formFieldsTable)
-      .where(eq(formFieldsTable.formId, formId));
-
-    const current = result[0]?.maxIndex;
-    const next = current ? Number(current) + 1 : 1;
-
-    return next.toString();
-  }
-
   private async getFieldOrThrow(fieldId: string) {
     const rows = await db.select().from(formFieldsTable).where(eq(formFieldsTable.id, fieldId));
     const field = rows[0];
@@ -104,27 +94,51 @@ export default class FormFieldService {
     validateConfigForType(type, config);
 
     const labelKey = toLabelKey(label);
-    const index = await this.getNextIndex(formId);
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: formsTable.id })
+        .from(formsTable)
+        .where(eq(formsTable.id, formId))
+        .for("update");
+      const countRows = await tx
+        .select({ fieldCount: count() })
+        .from(formFieldsTable)
+        .where(eq(formFieldsTable.formId, formId));
+      const fieldCount = countRows[0]?.fieldCount;
+      if (fieldCount === undefined) throw new Error("Failed to check the form's field count");
 
-    const result = await db
-      .insert(formFieldsTable)
-      .values({
-        label,
-        labelKey,
-        type,
-        formId,
-        description,
-        placeholder,
-        isRequired,
-        config: config ?? null,
-        index,
-      })
-      .returning({ id: formFieldsTable.id });
+      if (fieldCount >= MAX_FIELDS_PER_FORM) {
+        throw new Error(`A form can have at most ${MAX_FIELDS_PER_FORM} fields.`);
+      }
 
-    if (!result || result.length === 0 || !result[0]?.id)
+      const indexRows = await tx
+        .select({ maxIndex: max(formFieldsTable.index) })
+        .from(formFieldsTable)
+        .where(eq(formFieldsTable.formId, formId));
+      const maxIndex = indexRows[0]?.maxIndex;
+      const index = maxIndex ? String(Number(maxIndex) + 1) : "1";
+
+      const fields = await tx
+        .insert(formFieldsTable)
+        .values({
+          label,
+          labelKey,
+          type,
+          formId,
+          description,
+          placeholder,
+          isRequired,
+          config: config ?? null,
+          index,
+        })
+        .returning({ id: formFieldsTable.id });
+      return { fields, index };
+    });
+
+    if (result.fields.length === 0 || !result.fields[0]?.id)
       throw new Error("Something went wrong while creating the field");
 
-    return { id: result[0].id, labelKey, index };
+    return { id: result.fields[0].id, labelKey, index: result.index };
   }
 
   public async getFields(payload: GetFieldsInputType) {

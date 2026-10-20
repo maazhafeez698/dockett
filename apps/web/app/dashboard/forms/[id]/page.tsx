@@ -49,6 +49,7 @@ import { FormTemplateRenderer } from "~/components/form-templates";
 import { FormUploadProvider } from "~/components/form-upload-context";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
 import type { FormTemplateId } from "~/lib/template-designs";
+import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 type BuilderView = "list" | "nodes";
 
@@ -88,7 +89,9 @@ export default function FormBuilder() {
   const previewFlow = useSubmissionFlow(fields ?? [], form?.submissionLayout ?? "ONE_AT_A_TIME");
 
   const selectedField = fields?.find((f) => f.id === selectedFieldId) ?? null;
-  const selectedIndex = selectedField ? (fields ?? []).findIndex((f) => f.id === selectedField.id) : -1;
+  const selectedIndex = selectedField
+    ? (fields ?? []).findIndex((f) => f.id === selectedField.id)
+    : -1;
 
   // a deleted/missing field can't stay selected
   useEffect(() => {
@@ -105,7 +108,13 @@ export default function FormBuilder() {
   /* ----------------------------- actions ----------------------------- */
 
   const handleAddField = async (type: FieldType) => {
-    if (!formId) return;
+    if (!formId || !fields || fieldsLoading) return;
+    if (fields && fields.length >= MAX_FIELDS_PER_FORM) {
+      toast.error(
+        `A form can have at most ${MAX_FIELDS_PER_FORM} fields. Delete a field to add another.`,
+      );
+      return;
+    }
     try {
       const created = await createFieldAsync({
         label: FIELD_TYPE_LABELS[type],
@@ -123,6 +132,12 @@ export default function FormBuilder() {
   // reorder if it didn't land at the end (createField always appends).
   const handleDropNewField = async (type: string, afterFieldId: string | undefined) => {
     if (!formId || !fields) return;
+    if (fields.length >= MAX_FIELDS_PER_FORM) {
+      toast.error(
+        `A form can have at most ${MAX_FIELDS_PER_FORM} fields. Delete a field to add another.`,
+      );
+      return;
+    }
     const fieldType = type as FieldType;
     if (!FIELD_TYPE_LABELS[fieldType]) return;
 
@@ -318,7 +333,17 @@ export default function FormBuilder() {
           <div className="hidden flex-1 md:block" />
 
           <div className="flex w-full flex-wrap items-center gap-1.5 md:ml-0 md:w-auto">
-            <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiOpen(true)}
+              disabled={!formId || fieldsLoading || (fields?.length ?? 0) >= MAX_FIELDS_PER_FORM}
+              title={
+                (fields?.length ?? 0) >= MAX_FIELDS_PER_FORM
+                  ? "Delete a field to make room for AI-generated fields."
+                  : undefined
+              }
+            >
               <Sparkles /> AI Generate
             </Button>
 
@@ -388,30 +413,36 @@ export default function FormBuilder() {
                 </div>
               ) : fields && fields.length > 0 ? (
                 <FormUploadProvider formId={formId ?? null} isPreview>
-                <FormTemplateRenderer
-                  template={form?.template}
-                  title={form?.title ?? ""}
-                  description={form?.description}
-                  fields={fields}
-                  visibleFields={previewFlow.visibleFields}
-                  values={previewFlow.values}
-                  onChange={previewFlow.onChange}
-                  missingFieldIds={previewFlow.missingFieldIds}
-                  layout={form?.submissionLayout ?? "ONE_AT_A_TIME"}
-                  stepIndex={previewFlow.step}
-                  isFirstStep={previewFlow.isFirstStep}
-                  isLastStep={previewFlow.isLastStep}
-                  onNext={previewFlow.onNext}
-                  onBack={previewFlow.onBack}
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!previewFlow.validateAll()) return;
-                    toast.info("This is a preview — publish the form to collect real responses.");
-                  }}
-                  submitting={false}
-                  submitted={false}
-                  isPreview
-                />
+                  <FormTemplateRenderer
+                    template={form?.template}
+                    title={form?.title ?? ""}
+                    description={form?.description}
+                    fields={fields}
+                    visibleFields={previewFlow.visibleFields}
+                    values={previewFlow.values}
+                    onChange={previewFlow.onChange}
+                    missingFieldIds={previewFlow.missingFieldIds}
+                    layout={form?.submissionLayout ?? "ONE_AT_A_TIME"}
+                    stepIndex={previewFlow.step}
+                    stepCount={previewFlow.stepCount}
+                    stepStartIndex={previewFlow.stepStartIndex}
+                    isFirstStep={previewFlow.isFirstStep}
+                    isLastStep={previewFlow.isLastStep}
+                    onNext={previewFlow.onNext}
+                    onBack={previewFlow.onBack}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (form?.submissionLayout === "ALL_AT_ONCE" && !previewFlow.isLastStep) {
+                        previewFlow.onNext();
+                        return;
+                      }
+                      if (!previewFlow.validateAll()) return;
+                      toast.info("This is a preview — publish the form to collect real responses.");
+                    }}
+                    submitting={false}
+                    submitted={false}
+                    isPreview
+                  />
                 </FormUploadProvider>
               ) : (
                 <div className="border border-dashed border-foreground/40 bg-card p-10 text-center text-sm text-muted-foreground">
@@ -441,7 +472,9 @@ export default function FormBuilder() {
               layout={form?.submissionLayout === "ALL_AT_ONCE" ? "ALL_AT_ONCE" : "ONE_AT_A_TIME"}
             />
             {isWide ? (
-              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
+              <aside className="flex min-h-0 flex-col border border-border bg-card">
+                {inspector}
+              </aside>
             ) : null}
           </div>
         ) : (
@@ -473,11 +506,14 @@ export default function FormBuilder() {
                   onDeleteField={handleDeleteField}
                   onDropNewField={handleDropNewField}
                   onAddField={handleAddField}
+                  canAddFields={!fieldsLoading && (fields?.length ?? 0) < MAX_FIELDS_PER_FORM}
                 />
               ) : null}
             </section>
             {isWide ? (
-              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
+              <aside className="flex min-h-0 flex-col border border-border bg-card">
+                {inspector}
+              </aside>
             ) : null}
           </div>
         )}

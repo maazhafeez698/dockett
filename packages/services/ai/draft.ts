@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_FIELDS_PER_FORM } from "../form-field/limits";
 
 /**
  * The form "draft" — what the AI proposes and what the user reviews before
@@ -98,7 +99,11 @@ export const draftFieldSchema = z.object({
   isRequired: z.boolean().default(false),
   config: z
     .object({
-      options: z.array(z.string().trim().min(1).max(LIMITS.option)).min(1).max(LIMITS.maxOptions).optional(),
+      options: z
+        .array(z.string().trim().min(1).max(LIMITS.option))
+        .min(1)
+        .max(LIMITS.maxOptions)
+        .optional(),
       maxLength: z.number().int().positive().max(5000).optional(),
       max: z.number().int().min(2).max(10).optional(),
       accept: z.array(z.enum(FILE_UPLOAD_KINDS)).min(1).max(4).optional(),
@@ -115,7 +120,7 @@ export const formDraftSchema = z.object({
   description: z.string().trim().max(LIMITS.description).optional(),
   template: z.enum(AI_TEMPLATES).default("CLASSIC"),
   submissionLayout: z.enum(AI_LAYOUTS).default("ONE_AT_A_TIME"),
-  fields: z.array(draftFieldSchema).min(1).max(100),
+  fields: z.array(draftFieldSchema).min(1).max(MAX_FIELDS_PER_FORM),
 });
 export type FormDraft = z.infer<typeof formDraftSchema>;
 
@@ -163,7 +168,13 @@ const rawOutputSchema = z.object({
       submissionLayout: z.string().default("ONE_AT_A_TIME"),
       fields: z.array(z.unknown()).default([]),
     })
-    .default({ title: "", description: "", template: "CLASSIC", submissionLayout: "ONE_AT_A_TIME", fields: [] }),
+    .default({
+      title: "",
+      description: "",
+      template: "CLASSIC",
+      submissionLayout: "ONE_AT_A_TIME",
+      fields: [],
+    }),
 });
 
 /** JSON Schema handed to providers. Property order matters: `reply` first so it streams first. */
@@ -188,13 +199,29 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
       additionalProperties: false,
       required: ["title", "description", "template", "submissionLayout", "fields"],
       properties: {
-        title: { type: "string", description: `Form title, at most ${LIMITS.title} characters. Empty if no form.` },
-        description: { type: "string", description: `One-line description, at most ${LIMITS.description} characters. May be empty.` },
-        template: { type: "string", enum: [...AI_TEMPLATES], description: "Visual template that best fits the purpose." },
-        submissionLayout: { type: "string", enum: [...AI_LAYOUTS], description: "ONE_AT_A_TIME suits short/personal forms; ALL_AT_ONCE suits long or reference-heavy ones." },
+        title: {
+          type: "string",
+          description: `Form title, at most ${LIMITS.title} characters. Empty if no form.`,
+        },
+        description: {
+          type: "string",
+          description: `One-line description, at most ${LIMITS.description} characters. May be empty.`,
+        },
+        template: {
+          type: "string",
+          enum: [...AI_TEMPLATES],
+          description: "Visual template that best fits the purpose.",
+        },
+        submissionLayout: {
+          type: "string",
+          enum: [...AI_LAYOUTS],
+          description:
+            "ONE_AT_A_TIME suits short/personal forms; ALL_AT_ONCE suits long or reference-heavy ones.",
+        },
         fields: {
           type: "array",
-          description: "Ordered form fields. EMPTY array when you are not creating or changing a form.",
+          description:
+            "Ordered form fields. EMPTY array when you are not creating or changing a form.",
           items: {
             type: "object",
             additionalProperties: false,
@@ -212,25 +239,51 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
               "maxSizeMB",
             ],
             properties: {
-              label: { type: "string", description: `The question, at most ${LIMITS.label} characters.` },
+              label: {
+                type: "string",
+                description: `The question, at most ${LIMITS.label} characters.`,
+              },
               type: { type: "string", enum: [...AI_FIELD_TYPES] },
-              description: { type: "string", description: "Optional helper text. Empty string if none." },
-              placeholder: { type: "string", description: "Optional example text (TEXT/EMAIL/NUMBER/LONG_TEXT only). Empty string if none." },
+              description: {
+                type: "string",
+                description: "Optional helper text. Empty string if none.",
+              },
+              placeholder: {
+                type: "string",
+                description:
+                  "Optional example text (TEXT/EMAIL/NUMBER/LONG_TEXT only). Empty string if none.",
+              },
               isRequired: { type: "boolean" },
               options: {
                 type: "array",
                 items: { type: "string" },
-                description: "Choices for DROPDOWN / RADIO_GROUP / MULTI_SELECT / CHECKBOX_GROUP (2-12 items). Empty array for other types.",
+                description:
+                  "Choices for DROPDOWN / RADIO_GROUP / MULTI_SELECT / CHECKBOX_GROUP (2-12 items). Empty array for other types.",
               },
-              ratingMax: { type: "integer", description: "RATING only: scale size 3-10 (usually 5). 0 for other types." },
-              maxLength: { type: "integer", description: "LONG_TEXT only: character cap, or 0 for none." },
+              ratingMax: {
+                type: "integer",
+                description: "RATING only: scale size 3-10 (usually 5). 0 for other types.",
+              },
+              maxLength: {
+                type: "integer",
+                description: "LONG_TEXT only: character cap, or 0 for none.",
+              },
               accept: {
                 type: "array",
                 items: { type: "string", enum: [...FILE_UPLOAD_KINDS] },
-                description: "FILE_UPLOAD only: allowed file kinds. Choose one or more supported kinds; empty for other types.",
+                description:
+                  "FILE_UPLOAD only: allowed file kinds. Choose one or more supported kinds; empty for other types.",
               },
-              maxFiles: { type: "integer", description: "FILE_UPLOAD only: number of files allowed, 1-5 (usually 1). 0 for other types." },
-              maxSizeMB: { type: "number", description: "FILE_UPLOAD only: max file size in MB, 0.1-10 (usually 5). 0 for other types." },
+              maxFiles: {
+                type: "integer",
+                description:
+                  "FILE_UPLOAD only: number of files allowed, 1-5 (usually 1). 0 for other types.",
+              },
+              maxSizeMB: {
+                type: "number",
+                description:
+                  "FILE_UPLOAD only: max file size in MB, 0.1-10 (usually 5). 0 for other types.",
+              },
             },
           },
         },
@@ -357,9 +410,11 @@ export interface NormalizedOutput {
 }
 
 const FALLBACK_REPLY: Record<Exclude<AiIntent, "BUILD">, string> = {
-  CLARIFY: "Tell me a bit more about the form you have in mind — who fills it in, and what do you want to find out?",
+  CLARIFY:
+    "Tell me a bit more about the form you have in mind — who fills it in, and what do you want to find out?",
   CHAT: "Hey! 👋 Tell me what kind of form you need and I'll sketch it out.",
-  OFF_TOPIC: "That one's outside my lane — I only build forms 😄 What kind of form can I make for you?",
+  OFF_TOPIC:
+    "That one's outside my lane — I only build forms 😄 What kind of form can I make for you?",
 };
 
 function toIntent(raw: string, hasFields: boolean): AiIntent {
@@ -393,7 +448,12 @@ export function normalizeModelOutput(
   if (form.fields.length === 0) {
     // Said BUILD but built nothing — treat as a clarifying question rather than an error.
     intent = "CLARIFY";
-    return { intent, reply: clipReply(rawReply, LIMITS.replyOther) || FALLBACK_REPLY.CLARIFY, draft: null, droppedFields: 0 };
+    return {
+      intent,
+      reply: clipReply(rawReply, LIMITS.replyOther) || FALLBACK_REPLY.CLARIFY,
+      draft: null,
+      droppedFields: 0,
+    };
   }
 
   const cleaned: DraftField[] = [];
@@ -414,10 +474,13 @@ export function normalizeModelOutput(
     title: clip(cleanText(form.title), LIMITS.title) || "Untitled Form",
     // Only templates the user's plan includes; anything else (or unknown) becomes the plain default.
     template:
-      (AI_TEMPLATES as readonly string[]).includes(template) && (opts.allowedTemplates ?? AI_TEMPLATES).includes(template)
+      (AI_TEMPLATES as readonly string[]).includes(template) &&
+      (opts.allowedTemplates ?? AI_TEMPLATES).includes(template)
         ? (template as AiTemplate)
         : "CLASSIC",
-    submissionLayout: (AI_LAYOUTS as readonly string[]).includes(layout) ? (layout as AiLayout) : "ONE_AT_A_TIME",
+    submissionLayout: (AI_LAYOUTS as readonly string[]).includes(layout)
+      ? (layout as AiLayout)
+      : "ONE_AT_A_TIME",
     fields: dedupeLabels(cleaned),
   };
   const description = clip(cleanText(form.description), LIMITS.description);
@@ -430,7 +493,9 @@ export function normalizeModelOutput(
 
   return {
     intent,
-    reply: clipReply(rawReply, LIMITS.reply) || "Here's a draft — have a look and tell me what to tweak!",
+    reply:
+      clipReply(rawReply, LIMITS.reply) ||
+      "Here's a draft — have a look and tell me what to tweak!",
     draft: check.data,
     droppedFields: dropped,
   };
@@ -439,7 +504,11 @@ export function normalizeModelOutput(
 /** Extract the JSON object from model text, tolerating stray code fences / prefix text. */
 export function parseModelJson(text: string): unknown {
   let t = text.trim();
-  if (t.startsWith("```")) t = t.replace(/^```[a-zA-Z]*\s*/, "").replace(/```\s*$/, "").trim();
+  if (t.startsWith("```"))
+    t = t
+      .replace(/^```[a-zA-Z]*\s*/, "")
+      .replace(/```\s*$/, "")
+      .trim();
   const first = t.indexOf("{");
   const last = t.lastIndexOf("}");
   if (first === -1 || last <= first) throw new Error("Model output contained no JSON object");

@@ -16,13 +16,13 @@ export function DeveloperShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -58,10 +58,12 @@ export function DeveloperShell(props: FormTemplateShellProps) {
             <p className="text-sm text-emerald-300">// submission received — exit code 0</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="mt-6 space-y-6">
-            {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
+          <form data-submission-form onSubmit={onSubmit} noValidate className="mt-6 space-y-6">
+            {stepCount > 1 ? (
               <p className="text-xs text-emerald-600">
-                [{stepIndex + 1}/{fields.length}]
+                {layout === "ONE_AT_A_TIME"
+                  ? `[${stepIndex + 1}/${stepCount}]`
+                  : `[page ${stepIndex + 1}/${stepCount}]`}
               </p>
             ) : null}
 
@@ -93,7 +95,7 @@ export function DeveloperShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex gap-2 pt-1">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -103,7 +105,7 @@ export function DeveloperShell(props: FormTemplateShellProps) {
                   back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

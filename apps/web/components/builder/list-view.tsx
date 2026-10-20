@@ -33,6 +33,7 @@ import {
   type FieldConfig,
   type FieldType,
 } from "./field-types";
+import { ALL_AT_ONCE_PAGE_SIZE, MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 type DragState = { kind: "field"; id: string } | { kind: "type"; type: string } | null;
 
@@ -69,6 +70,7 @@ function PaletteTile({
   onDragStart,
   onDragEnd,
   compact,
+  disabled,
 }: {
   type: FieldType;
   short: string;
@@ -77,11 +79,13 @@ function PaletteTile({
   onDragStart: () => void;
   onDragEnd: () => void;
   compact?: boolean;
+  disabled: boolean;
 }) {
   return (
     <button
       type="button"
-      draggable
+      draggable={!disabled}
+      disabled={disabled}
       onDragStart={(e) => {
         e.dataTransfer.setData(TYPE_MIME, type);
         e.dataTransfer.setData("text/plain", type);
@@ -91,7 +95,7 @@ function PaletteTile({
       onDragEnd={onDragEnd}
       onClick={onAdd}
       title={`Add ${short}`}
-      className={`group flex cursor-grab flex-col items-center justify-center gap-1.5 rounded-[3px] border border-transparent bg-ink text-paper transition-all hover:border-primary hover:-translate-y-px active:cursor-grabbing dark:border-border dark:bg-secondary ${
+      className={`group flex flex-col items-center justify-center gap-1.5 rounded-[3px] border border-transparent bg-ink text-paper transition-all hover:border-primary hover:-translate-y-px active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 dark:border-border dark:bg-secondary ${
         compact ? "h-14 w-[76px] shrink-0" : "h-[62px]"
       }`}
     >
@@ -111,30 +115,39 @@ function PagesPanel({
     return <p className="p-1 text-xs text-muted-foreground">No pages yet — add a field first.</p>;
   }
   const paged = layout === "ONE_AT_A_TIME";
+  const pages = paged
+    ? fields.map((field) => [field])
+    : Array.from({ length: Math.ceil(fields.length / ALL_AT_ONCE_PAGE_SIZE) }, (_, i) =>
+        fields.slice(i * ALL_AT_ONCE_PAGE_SIZE, (i + 1) * ALL_AT_ONCE_PAGE_SIZE),
+      );
   return (
     <div className="space-y-2">
       <p className="text-[11px] leading-snug text-muted-foreground">
         {paged
           ? "One question per page — respondents see them in this order."
-          : "All at once — every field appears on a single page."}
+          : `All at once — up to ${ALL_AT_ONCE_PAGE_SIZE} fields per page, grouped automatically.`}
       </p>
-      <ol className="space-y-1">
-        {fields.map((f, i) => (
-          <li key={f.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(f.id)}
-              className={`flex w-full items-center gap-2 rounded-[2px] border px-2 py-1.5 text-left transition-colors ${
-                selectedFieldId === f.id
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-foreground/50"
-              }`}
-            >
-              <span className="mono-label-sm w-9 shrink-0 text-primary">
-                {paged ? `P${String(i + 1).padStart(2, "0")}` : "P01"}
-              </span>
-              <span className="truncate text-xs font-medium">{f.label}</span>
-            </button>
+      <ol className="space-y-2">
+        {pages.map((page, pageIndex) => (
+          <li key={pageIndex} className="space-y-1">
+            <div className="mono-label-sm flex justify-between text-primary">
+              <span>P{String(pageIndex + 1).padStart(2, "0")}</span>
+              {!paged ? <span className="text-muted-foreground">{page.length} fields</span> : null}
+            </div>
+            {page.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onSelect(f.id)}
+                className={`flex w-full items-center gap-2 rounded-[2px] border px-2 py-1.5 text-left transition-colors ${
+                  selectedFieldId === f.id
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-foreground/50"
+                }`}
+              >
+                <span className="truncate text-xs font-medium">{f.label}</span>
+              </button>
+            ))}
           </li>
         ))}
       </ol>
@@ -159,7 +172,11 @@ function FieldPreview({
 
   switch (type) {
     case "LONG_TEXT":
-      return <div className={`${box} h-20 items-start py-2.5`}>{field.placeholder || "Type your answer…"}</div>;
+      return (
+        <div className={`${box} h-20 items-start py-2.5`}>
+          {field.placeholder || "Type your answer…"}
+        </div>
+      );
     case "EMAIL":
       return <div className={`${box} h-9`}>{field.placeholder || "name@example.com"}</div>;
     case "NUMBER":
@@ -181,7 +198,9 @@ function FieldPreview({
     case "FILE_UPLOAD": {
       const cfg = (field.config ?? {}) as FieldConfig;
       return (
-        <div className={`${box} h-20 flex-col items-center justify-center gap-1 border-dashed text-center`}>
+        <div
+          className={`${box} h-20 flex-col items-center justify-center gap-1 border-dashed text-center`}
+        >
           <Upload className="size-4" aria-hidden="true" />
           <span>Drop files here · slingshot upload</span>
           <span className="text-[10px] opacity-70">
@@ -214,7 +233,9 @@ function FieldPreview({
           {shown.map((o, i) => (
             <div key={`${o}-${i}`} className={`${box} h-9 justify-between`}>
               <span className="flex items-center gap-2">
-                <span aria-hidden="true">{type === "DROPDOWN" || type === "RADIO_GROUP" ? "○" : "□"}</span>
+                <span aria-hidden="true">
+                  {type === "DROPDOWN" || type === "RADIO_GROUP" ? "○" : "□"}
+                </span>
                 {o}
               </span>
               <button
@@ -231,7 +252,9 @@ function FieldPreview({
             </div>
           ))}
           {opts.length > shown.length ? (
-            <div className="mono-label-sm text-muted-foreground">+{opts.length - shown.length} more</div>
+            <div className="mono-label-sm text-muted-foreground">
+              +{opts.length - shown.length} more
+            </div>
           ) : null}
           {opts.length === 0 ? <div className={`${box} h-9`}>No options yet</div> : null}
         </div>
@@ -296,6 +319,7 @@ export function ListView(props: ListViewProps) {
   const palette = PALETTE.filter((p) =>
     `${p.short} ${p.label}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const canAddFields = !loading && fields.length < MAX_FIELDS_PER_FORM;
 
   const commitOrder = async (ids: string[]) => {
     if (ids.join(",") === ordered.map((f) => f.id).join(",")) return;
@@ -349,6 +373,7 @@ export function ListView(props: ListViewProps) {
         short={p.short}
         icon={p.icon}
         compact={compact}
+        disabled={!canAddFields}
         onAdd={() => onAddField(p.type)}
         onDragStart={() => setDrag({ kind: "type", type: p.type })}
         onDragEnd={endDrag}
@@ -359,7 +384,11 @@ export function ListView(props: ListViewProps) {
     <>
       {/* ---------- palette (lg+) ---------- */}
       <aside className="hidden min-h-0 flex-col gap-3 overflow-y-auto border border-border bg-card p-3 lg:flex">
-        <div className="grid grid-cols-2 border border-border p-0.5" role="tablist" aria-label="Palette">
+        <div
+          className="grid grid-cols-2 border border-border p-0.5"
+          role="tablist"
+          aria-label="Palette"
+        >
           {(["fields", "pages"] as const).map((t) => (
             <button
               key={t}
@@ -368,7 +397,9 @@ export function ListView(props: ListViewProps) {
               aria-selected={tab === t}
               onClick={() => setTab(t)}
               className={`mono-label-sm rounded-[2px] py-2 transition-colors ${
-                tab === t ? "bg-solid text-solid-foreground" : "text-muted-foreground hover:text-foreground"
+                tab === t
+                  ? "bg-solid text-solid-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t}
@@ -396,7 +427,8 @@ export function ListView(props: ListViewProps) {
                 <button
                   type="button"
                   onClick={onOpenAi}
-                  className="flex h-[62px] flex-col items-center justify-center gap-1.5 rounded-[3px] border border-primary bg-primary/10 text-primary transition-all hover:-translate-y-px hover:bg-primary hover:text-primary-foreground"
+                  disabled={!canAddFields}
+                  className="flex h-[62px] flex-col items-center justify-center gap-1.5 rounded-[3px] border border-primary bg-primary/10 text-primary transition-all hover:-translate-y-px hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Sparkles className="size-4" aria-hidden="true" />
                   <span className="font-mono text-[10px] leading-none">AI field</span>
@@ -406,12 +438,21 @@ export function ListView(props: ListViewProps) {
             {palette.length === 0 ? (
               <p className="text-xs text-muted-foreground">No components match “{search}”.</p>
             ) : null}
+            <p className="text-[11px] text-muted-foreground">
+              {fields.length}/{MAX_FIELDS_PER_FORM} fields
+              {!canAddFields ? " — limit reached; delete a field to add another." : ""}
+            </p>
             <p className="mt-auto text-[11px] leading-snug text-muted-foreground">
               Drag a component into the form, or click to add it to the end.
             </p>
           </>
         ) : (
-          <PagesPanel fields={ordered} layout={layout} selectedFieldId={selectedFieldId} onSelect={onSelect} />
+          <PagesPanel
+            fields={ordered}
+            layout={layout}
+            selectedFieldId={selectedFieldId}
+            onSelect={onSelect}
+          />
         )}
       </aside>
 
@@ -422,11 +463,15 @@ export function ListView(props: ListViewProps) {
       >
         {/* palette strip (below lg) */}
         <div className="scrollbar-none flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-card p-2 lg:hidden">
+          <span className="flex shrink-0 items-center px-1 font-mono text-[10px] text-muted-foreground">
+            {fields.length}/{MAX_FIELDS_PER_FORM}
+          </span>
           {tiles(true)}
           <button
             type="button"
             onClick={onOpenAi}
-            className="flex h-14 w-[76px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[3px] border border-primary text-primary"
+            disabled={!canAddFields}
+            className="flex h-14 w-[76px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[3px] border border-primary text-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Sparkles className="size-4" />
             <span className="font-mono text-[10px] leading-none">AI field</span>
@@ -540,19 +585,29 @@ export function ListView(props: ListViewProps) {
                   >
                     {selected ? (
                       <>
-                        <span className="absolute -top-[5px] left-1/2 size-2 -translate-x-1/2 border border-card bg-primary" aria-hidden="true" />
-                        <span className="absolute -bottom-[5px] left-1/2 size-2 -translate-x-1/2 border border-card bg-primary" aria-hidden="true" />
+                        <span
+                          className="absolute -top-[5px] left-1/2 size-2 -translate-x-1/2 border border-card bg-primary"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="absolute -bottom-[5px] left-1/2 size-2 -translate-x-1/2 border border-card bg-primary"
+                          aria-hidden="true"
+                        />
                       </>
                     ) : null}
 
                     <div className="flex items-start justify-between gap-2">
                       <div className="mono-label-sm min-w-0 truncate text-muted-foreground">
                         {typeLabel(field.type)}
-                        {field.isRequired ? <span className="text-primary"> · Required</span> : null}
+                        {field.isRequired ? (
+                          <span className="text-primary"> · Required</span>
+                        ) : null}
                       </div>
                       <div
                         className={`-mt-1 -mr-1 flex items-center ${
-                          selected ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+                          selected
+                            ? "opacity-100"
+                            : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
                         } transition-opacity`}
                       >
                         <button
@@ -602,7 +657,10 @@ export function ListView(props: ListViewProps) {
                         >
                           <Trash2 className="size-3.5" />
                         </button>
-                        <span className="cursor-grab p-1 text-muted-foreground active:cursor-grabbing" aria-hidden="true">
+                        <span
+                          className="cursor-grab p-1 text-muted-foreground active:cursor-grabbing"
+                          aria-hidden="true"
+                        >
                           <GripVertical className="size-3.5" />
                         </span>
                       </div>
@@ -616,7 +674,10 @@ export function ListView(props: ListViewProps) {
                     ) : null}
 
                     <div className="mt-3">
-                      <FieldPreview field={field} onRemoveOption={(idx) => onRemoveOption(field.id, idx)} />
+                      <FieldPreview
+                        field={field}
+                        onRemoveOption={(idx) => onRemoveOption(field.id, idx)}
+                      />
                     </div>
                   </article>
                 </div>

@@ -24,6 +24,7 @@ export function ClassicShell(props: FormTemplateShellProps) {
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
     isFirstStep,
     isLastStep,
     onNext,
@@ -37,7 +38,8 @@ export function ClassicShell(props: FormTemplateShellProps) {
 
   const oneAtATime = layout === "ONE_AT_A_TIME";
   const current = oneAtATime ? visibleFields[0] : undefined;
-  const progress = fields.length > 0 ? ((stepIndex + (submitted ? 1 : 0.4)) / fields.length) * 100 : 0;
+  const progress =
+    fields.length > 0 ? ((stepIndex + (submitted ? 1 : 0.4)) / fields.length) * 100 : 0;
 
   const handleFormSubmit = (e: React.FormEvent) => {
     // Enter inside an input should move forward, not submit a half-filled form.
@@ -68,7 +70,10 @@ export function ClassicShell(props: FormTemplateShellProps) {
           aria-valuenow={stepIndex + 1}
           aria-label="Form progress"
         >
-          <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progress}%` }} />
+          <div
+            className="h-full bg-primary transition-[width] duration-300"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       ) : null}
 
@@ -79,15 +84,24 @@ export function ClassicShell(props: FormTemplateShellProps) {
               <Check className="size-7" strokeWidth={3} />
             </div>
             <p className="mono-label text-muted-foreground">Punched · {title}</p>
-            <p className="font-display text-4xl leading-none font-extrabold text-primary">Thank you.</p>
+            <p className="font-display text-4xl leading-none font-extrabold text-primary">
+              Thank you.
+            </p>
             <p className="text-sm text-muted-foreground">Your response has been received.</p>
           </div>
         ) : (
-          <form onSubmit={handleFormSubmit} onKeyDown={handleKeyDown} noValidate>
+          <form
+            data-submission-form
+            onSubmit={handleFormSubmit}
+            onKeyDown={handleKeyDown}
+            noValidate
+          >
             <p className="mono-label text-muted-foreground">
               {oneAtATime
                 ? `${stepIndex + 1} → ${fields.length} · ${title}`
-                : `${fields.length} ${fields.length === 1 ? "field" : "fields"} · ${title}`}
+                : stepCount > 1
+                  ? `Page ${stepIndex + 1} of ${stepCount} · ${title}`
+                  : `${fields.length} ${fields.length === 1 ? "field" : "fields"} · ${title}`}
             </p>
 
             {oneAtATime && current ? (
@@ -121,7 +135,9 @@ export function ClassicShell(props: FormTemplateShellProps) {
                 <h1 className="font-display text-[34px] leading-[1] font-extrabold text-primary sm:text-[44px]">
                   {title}
                 </h1>
-                {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
+                {description ? (
+                  <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+                ) : null}
                 <div className="mt-7 space-y-6">
                   {visibleFields.map((f) => (
                     <FormFieldRenderer
@@ -156,10 +172,28 @@ export function ClassicShell(props: FormTemplateShellProps) {
                 <Button type="button" onClick={onNext} size="lg">
                   OK <Check />
                 </Button>
+              ) : !oneAtATime && !isLastStep ? (
+                <>
+                  {stepIndex > 0 ? (
+                    <Button type="button" variant="outline" size="lg" onClick={onBack}>
+                      Back
+                    </Button>
+                  ) : null}
+                  <Button type="button" onClick={onNext} size="lg">
+                    Next
+                  </Button>
+                </>
               ) : (
-                <Button type="submit" size="lg" disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit"} {!submitting ? <Check /> : null}
-                </Button>
+                <>
+                  {!oneAtATime && stepIndex > 0 ? (
+                    <Button type="button" variant="outline" size="lg" onClick={onBack}>
+                      Back
+                    </Button>
+                  ) : null}
+                  <Button type="submit" size="lg" disabled={submitting}>
+                    {submitting ? "Submitting..." : "Submit"} {!submitting ? <Check /> : null}
+                  </Button>
+                </>
               )}
               {oneAtATime && !isLastStep ? (
                 <span className="mono-label-sm text-muted-foreground">
@@ -203,7 +237,8 @@ export function ClassicShell(props: FormTemplateShellProps) {
           rel="noopener noreferrer"
           className="mono-label-sm flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
         >
-          <LogoMark size={12} className="text-primary" /> Powered by <b className="text-foreground">Dockett</b>
+          <LogoMark size={12} className="text-primary" /> Powered by{" "}
+          <b className="text-foreground">Dockett</b>
         </a>
       </div>
     </div>

@@ -78,6 +78,8 @@ export function TemplatePreviewDialog({
             missingFieldIds={new Set()}
             layout="ALL_AT_ONCE"
             stepIndex={0}
+            stepCount={1}
+            stepStartIndex={0}
             isFirstStep
             isLastStep
             onNext={() => {}}

@@ -19,13 +19,12 @@ export function LandingShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
-    layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -66,16 +65,21 @@ export function LandingShell(props: FormTemplateShellProps) {
             <p className="text-lg font-semibold text-white">You're on the list!</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="space-y-5">
-            {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
-              <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${((stepIndex + 1) / fields.length) * 100}%`,
-                    background: design.accent,
-                  }}
-                />
+          <form data-submission-form onSubmit={onSubmit} noValidate className="space-y-5">
+            {stepCount > 1 ? (
+              <div>
+                <p className="mb-1 text-xs text-white/70" role="status">
+                  Page {stepIndex + 1} of {stepCount}
+                </p>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${((stepIndex + 1) / stepCount) * 100}%`,
+                      background: design.accent,
+                    }}
+                  />
+                </div>
               </div>
             ) : null}
 
@@ -99,7 +103,7 @@ export function LandingShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex gap-2 pt-1">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -109,7 +113,7 @@ export function LandingShell(props: FormTemplateShellProps) {
                   Back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

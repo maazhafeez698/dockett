@@ -465,7 +465,7 @@ export function FinalCta() {
   return (
     <section className="py-16 sm:py-24">
       <div className={wrap}>
-        <div className="grid items-end gap-8 bg-primary p-7 text-primary-foreground shadow-[8px_8px_0_0_var(--hard-shadow)] sm:p-12 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid items-end gap-8 rounded-md bg-primary p-7 text-primary-foreground shadow-[8px_8px_0_0_var(--hard-shadow)] sm:p-12 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <p className="mono-label-sm opacity-90">Now boarding</p>
             <h2 className="font-display mt-3 text-[clamp(48px,7.5vw,104px)] leading-[0.9] font-extrabold">
@@ -512,7 +512,15 @@ export function LandingFooter() {
       items: [
         { label: "Templates", href: "/signup" },
         { label: "FAQ", href: "#faq" },
-        { label: "Sign in", href: "/signin" },
+      ],
+    },
+    {
+      title: "Company",
+      items: [
+        { label: "About", href: "/about" },
+        { label: "Privacy", href: "/privacy" },
+        { label: "Terms", href: "/terms" },
+        { label: "Contact us", href: "/contact" },
       ],
     },
   ];
@@ -523,7 +531,7 @@ export function LandingFooter() {
           <Logo size={22} />
           <p className="mt-3 text-sm text-muted-foreground">Every form, a ticket.</p>
         </div>
-        <div className="grid grid-cols-2 gap-x-16 gap-y-6">
+        <div className="grid grid-cols-2 gap-x-10 gap-y-6 sm:grid-cols-3 sm:gap-x-16">
           {cols.map((c) => (
             <div key={c.title}>
               <p className="mono-label-sm text-muted-foreground">{c.title}</p>

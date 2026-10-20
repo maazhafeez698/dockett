@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 import { fieldOutputModel } from "../form-field/model";
 
 export const formStatusEnum = z.enum(["DRAFT", "PUBLISHED", "CLOSED"]);
@@ -45,7 +46,10 @@ const templateFieldModel = z.object({
       minValue: z.number().finite().optional(),
       maxValue: z.number().finite().optional(),
       step: z.number().finite().positive().optional(),
-      accept: z.array(z.enum(["pdf", "docx", "jpg", "png"])).max(4).optional(),
+      accept: z
+        .array(z.enum(["pdf", "docx", "jpg", "png"]))
+        .max(4)
+        .optional(),
       maxFiles: z.number().int().min(1).max(5).optional(),
       maxSizeMB: z.number().positive().max(10).optional(),
     })
@@ -69,7 +73,7 @@ export const createFormFromTemplateInputModel = z.object({
   description: z.string().max(300).optional(),
   template: formTemplateEnum,
   submissionLayout: formSubmissionLayoutEnum,
-  fields: z.array(templateFieldModel).max(60),
+  fields: z.array(templateFieldModel).max(MAX_FIELDS_PER_FORM),
 });
 
 export const createFormFromTemplateOutputModel = z.object({

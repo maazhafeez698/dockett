@@ -37,6 +37,7 @@ import {
   type FieldNodeData,
 } from "~/components/field-node";
 import { PALETTE, TYPE_MIME, type FieldType } from "~/components/builder/field-types";
+import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 const H_GAP = 252;
 const V_GAP = 138;
@@ -64,6 +65,7 @@ interface FieldCanvasProps {
   /** Field type dragged from the ADD NODE bar + the field it should land after. */
   onDropNewField: (type: string, afterFieldId: string | undefined) => void;
   onAddField: (type: FieldType) => void;
+  canAddFields: boolean;
 }
 
 type AnyNode = Node<FieldNodeData> | Node<EndpointNodeData>;
@@ -84,6 +86,7 @@ function CanvasInner({
   onDeleteField,
   onDropNewField,
   onAddField,
+  canAddFields,
 }: FieldCanvasProps) {
   const { screenToFlowPosition, zoomIn, zoomOut, fitView, setViewport } = useReactFlow();
   const { x, y, zoom } = useViewport();
@@ -264,6 +267,7 @@ function CanvasInner({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!canAddFields) return;
     if (!e.dataTransfer.types.includes(TYPE_MIME)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -271,7 +275,7 @@ function CanvasInner({
 
   const handleDrop = (e: React.DragEvent) => {
     const type = e.dataTransfer.getData(TYPE_MIME);
-    if (!type) return;
+    if (!type || !canAddFields) return;
     e.preventDefault();
     const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     if (fields.length === 0) return onDropNewField(type, undefined);
@@ -284,7 +288,12 @@ function CanvasInner({
   };
 
   return (
-    <div ref={canvasRef} className="dotgrid h-full min-w-0 w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div
+      ref={canvasRef}
+      className="dotgrid h-full min-w-0 w-full"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -298,7 +307,9 @@ function CanvasInner({
           // from `fields` after every server round-trip above.
           setNodes((nds) =>
             nds.map((n) => {
-              const change = changes.find((c) => "id" in c && c.id === n.id && c.type === "position");
+              const change = changes.find(
+                (c) => "id" in c && c.id === n.id && c.type === "position",
+              );
               return change && "position" in change && change.position
                 ? { ...n, position: change.position }
                 : n;
@@ -357,7 +368,9 @@ function CanvasInner({
             }`}
             aria-label="Canvas zoom percentage"
             aria-invalid={zoomError}
-            title={zoomError ? "Enter a zoom percentage from 25 to 200" : "Zoom percentage (25-200)"}
+            title={
+              zoomError ? "Enter a zoom percentage from 25 to 200" : "Zoom percentage (25-200)"
+            }
           />
           <span className="pr-1 font-mono text-[10px] text-muted-foreground">%</span>
           <button
@@ -385,11 +398,18 @@ function CanvasInner({
         <Panel position="bottom-center" className="!mb-2 max-w-[calc(100%-1rem)] sm:!mb-3">
           <div className="scrollbar-none flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-solid p-1 text-solid-foreground">
             <span className="mono-label-sm shrink-0 px-2 opacity-70">Add node</span>
+            <span className="mono-label-sm shrink-0 px-1 opacity-70">
+              {fields.length}/{MAX_FIELDS_PER_FORM}
+            </span>
+            {!canAddFields ? (
+              <span className="mono-label-sm shrink-0 px-1 text-red-300">limit reached</span>
+            ) : null}
             {PALETTE.map(({ type, short, icon: Icon }) => (
               <button
                 key={type}
                 type="button"
-                draggable
+                draggable={canAddFields}
+                disabled={!canAddFields}
                 onDragStart={(e) => {
                   e.dataTransfer.setData(TYPE_MIME, type);
                   e.dataTransfer.setData("text/plain", type);
@@ -398,7 +418,7 @@ function CanvasInner({
                 onClick={() => onAddField(type)}
                 title={`Add ${short}`}
                 aria-label={`Add ${short} node`}
-                className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-[2px] transition-colors hover:bg-primary hover:text-primary-foreground active:cursor-grabbing"
+                className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-[2px] transition-colors hover:bg-primary hover:text-primary-foreground active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Icon className="size-3.5" />
               </button>

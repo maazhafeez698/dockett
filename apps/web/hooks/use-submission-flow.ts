@@ -7,10 +7,11 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RendererField } from "~/components/form-field-renderer";
 import { isUploading } from "~/lib/file-answer";
 import { numberProblem, type NumberRules } from "~/lib/field-rules";
+import { ALL_AT_ONCE_PAGE_SIZE } from "@repo/services/form-field/limits";
 
 export type SubmissionLayout = "ONE_AT_A_TIME" | "ALL_AT_ONCE";
 
@@ -19,14 +20,37 @@ export function useSubmissionFlow(fields: RendererField[], layout: SubmissionLay
   const [values, setValues] = useState<Record<string, string>>({});
   const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
 
-  const visibleFields = useMemo(() => {
-    if (layout === "ALL_AT_ONCE") return fields;
-    const current = fields[Math.min(step, Math.max(fields.length - 1, 0))];
-    return current ? [current] : [];
-  }, [fields, layout, step]);
+  const stepCount =
+    layout === "ONE_AT_A_TIME" ? fields.length : Math.ceil(fields.length / ALL_AT_ONCE_PAGE_SIZE);
+  const currentStep = Math.min(step, Math.max(stepCount - 1, 0));
 
-  const isFirstStep = step === 0;
-  const isLastStep = layout === "ALL_AT_ONCE" ? true : step >= fields.length - 1;
+  useEffect(() => {
+    setStep(0);
+  }, [layout]);
+
+  const visibleFields = useMemo(() => {
+    if (layout === "ALL_AT_ONCE") {
+      const start = currentStep * ALL_AT_ONCE_PAGE_SIZE;
+      return fields.slice(start, start + ALL_AT_ONCE_PAGE_SIZE);
+    }
+    const current = fields[currentStep];
+    return current ? [current] : [];
+  }, [currentStep, fields, layout]);
+
+  const isFirstStep = currentStep === 0;
+  const isLastStep = currentStep >= stepCount - 1;
+  const previousStep = useRef(currentStep);
+
+  useEffect(() => {
+    if (previousStep.current === currentStep) return;
+    previousStep.current = currentStep;
+    const form = document.querySelector<HTMLFormElement>("[data-submission-form]");
+    form?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const firstField = form?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]), textarea, select, button',
+    );
+    firstField?.focus({ preventScroll: true });
+  }, [currentStep]);
 
   function onChange(fieldId: string, value: string) {
     setValues((v) => ({ ...v, [fieldId]: value }));
@@ -55,9 +79,10 @@ export function useSubmissionFlow(fields: RendererField[], layout: SubmissionLay
     return missing.size === 0;
   }
 
-  function onNext() {
+  function onNext(event?: React.MouseEvent<HTMLButtonElement>) {
+    event?.preventDefault();
     if (!validate(visibleFields)) return;
-    setStep((s) => Math.min(s + 1, Math.max(fields.length - 1, 0)));
+    setStep((s) => Math.min(s + 1, Math.max(stepCount - 1, 0)));
   }
 
   function onBack() {
@@ -73,7 +98,9 @@ export function useSubmissionFlow(fields: RendererField[], layout: SubmissionLay
   }
 
   return {
-    step,
+    step: currentStep,
+    stepCount,
+    stepStartIndex: layout === "ONE_AT_A_TIME" ? currentStep : currentStep * ALL_AT_ONCE_PAGE_SIZE,
     setStep,
     values,
     setValues,

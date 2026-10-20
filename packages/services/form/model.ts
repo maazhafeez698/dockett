@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_FIELDS_PER_FORM } from "../form-field/limits";
 
 export const formTemplateEnum = z.enum([
   "CORPORATE",
@@ -77,7 +78,7 @@ export const createFormFromTemplateInput = z.object({
   createdBy: z.uuid(),
   template: formTemplateEnum,
   submissionLayout: formSubmissionLayoutEnum,
-  fields: z.array(templateFieldInput).max(60),
+  fields: z.array(templateFieldInput).max(MAX_FIELDS_PER_FORM),
 });
 
 export type CreateFormFromTemplateInputType = z.infer<typeof createFormFromTemplateInput>;

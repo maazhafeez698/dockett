@@ -17,13 +17,12 @@ export function SurveyShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
-    layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -40,11 +39,18 @@ export function SurveyShell(props: FormTemplateShellProps) {
       <p className="text-xs font-medium tracking-[0.25em] text-teal-500 uppercase">{title}</p>
       {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
 
-      {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
-        <div className="mt-6 flex items-center gap-1.5">
-          {fields.map((f, i) => (
+      {stepCount > 1 ? (
+        <div
+          className="mt-6 flex items-center gap-1.5"
+          role="status"
+          aria-label={`Page ${stepIndex + 1} of ${stepCount}`}
+        >
+          <span className="sr-only">
+            Page {stepIndex + 1} of {stepCount}
+          </span>
+          {Array.from({ length: stepCount }).map((_, i) => (
             <span
-              key={f.id}
+              key={i}
               className="h-1.5 rounded-full transition-all"
               style={{
                 width: i === stepIndex ? 24 : 8,
@@ -62,7 +68,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
             <p className="text-xl font-semibold">Thanks for your feedback!</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="w-full space-y-10">
+          <form data-submission-form onSubmit={onSubmit} noValidate className="w-full space-y-10">
             <div className="space-y-8">
               {visibleFields.map((f) => (
                 <div key={f.id} className="text-left">
@@ -85,7 +91,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex items-center justify-center gap-3">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <button
                   type="button"
                   onClick={onBack}
@@ -94,7 +100,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
                   Back
                 </button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

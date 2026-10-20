@@ -28,13 +28,13 @@ export function RetroShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -93,10 +93,12 @@ export function RetroShell(props: FormTemplateShellProps) {
               <p className="text-sm font-bold text-[#0A246A]">Entry saved to guestbook.exe</p>
             </div>
           ) : (
-            <form onSubmit={onSubmit} noValidate className="space-y-4">
-              {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
+            <form data-submission-form onSubmit={onSubmit} noValidate className="space-y-4">
+              {stepCount > 1 ? (
                 <p className="text-[11px] font-bold text-[#0A246A]">
-                  Entry {stepIndex + 1} of {fields.length}
+                  {layout === "ONE_AT_A_TIME"
+                    ? `Entry ${stepIndex + 1} of ${stepCount}`
+                    : `Page ${stepIndex + 1} of ${stepCount}`}
                 </p>
               ) : null}
 
@@ -134,7 +136,7 @@ export function RetroShell(props: FormTemplateShellProps) {
               ) : null}
 
               <div className="flex justify-end gap-2 pt-1">
-                {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+                {stepIndex > 0 ? (
                   <Button
                     type="button"
                     onClick={onBack}
@@ -144,7 +146,7 @@ export function RetroShell(props: FormTemplateShellProps) {
                     &lt; Back
                   </Button>
                 ) : null}
-                {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+                {!isLastStep ? (
                   <Button
                     type="button"
                     onClick={onNext}

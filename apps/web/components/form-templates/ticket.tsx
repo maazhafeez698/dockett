@@ -17,13 +17,13 @@ export function TicketShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
     isLastStep,
     onNext,
     onBack,
@@ -56,10 +56,12 @@ export function TicketShell(props: FormTemplateShellProps) {
             <p className="text-sm text-neutral-200">Ticket filed. We'll route it shortly.</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
-            {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
+          <form data-submission-form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+            {stepCount > 1 ? (
               <p className="font-mono text-[11px] text-orange-400/80">
-                field {stepIndex + 1}/{fields.length}
+                {layout === "ONE_AT_A_TIME"
+                  ? `field ${stepIndex + 1}/${stepCount}`
+                  : `page ${stepIndex + 1}/${stepCount}`}
               </p>
             ) : null}
 
@@ -86,7 +88,7 @@ export function TicketShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex justify-end gap-2 pt-2">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -96,7 +98,7 @@ export function TicketShell(props: FormTemplateShellProps) {
                   Back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

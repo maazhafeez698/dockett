@@ -2,7 +2,8 @@
   "extends": "@repo/typescript-config/nextjs.json",
   "compilerOptions": {
     "paths": {
-      "~/*": ["./*"]
+      "~/*": ["./*"],
+      "@repo/services/form-field/limits": ["../../packages/services/form-field/limits.ts"]
     },
     "plugins": [
       {

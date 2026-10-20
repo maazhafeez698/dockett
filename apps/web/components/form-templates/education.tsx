@@ -17,13 +17,14 @@ export function EducationShell(props: FormTemplateShellProps) {
   const {
     title,
     description,
-    fields,
     visibleFields,
     values,
     onChange,
     missingFieldIds,
     layout,
     stepIndex,
+    stepCount,
+    stepStartIndex,
     isLastStep,
     onNext,
     onBack,
@@ -58,17 +59,22 @@ export function EducationShell(props: FormTemplateShellProps) {
             <p className="text-lg font-medium text-green-900">Submitted — thanks!</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate className="space-y-7 pl-4 sm:pl-6">
-            {layout === "ONE_AT_A_TIME" && fields.length > 1 ? (
+          <form
+            data-submission-form
+            onSubmit={onSubmit}
+            noValidate
+            className="space-y-7 pl-4 sm:pl-6"
+          >
+            {stepCount > 1 ? (
               <p className="font-serif text-xs text-green-800/70 italic">
-                Question {stepIndex + 1} of {fields.length}
+                {layout === "ONE_AT_A_TIME" ? "Question" : "Page"} {stepIndex + 1} of {stepCount}
               </p>
             ) : null}
 
             {visibleFields.map((f, i) => (
               <div key={f.id} className="space-y-1.5">
                 <p className="font-serif text-xs text-green-800/60 italic">
-                  {i + 1 + (layout === "ONE_AT_A_TIME" ? stepIndex : 0)}.
+                  {stepStartIndex + i + 1}.
                 </p>
                 <FormFieldRenderer
                   field={f}
@@ -88,12 +94,12 @@ export function EducationShell(props: FormTemplateShellProps) {
             ) : null}
 
             <div className="flex justify-end gap-2 pt-2">
-              {layout === "ONE_AT_A_TIME" && stepIndex > 0 ? (
+              {stepIndex > 0 ? (
                 <Button type="button" variant="outline" onClick={onBack}>
                   Back
                 </Button>
               ) : null}
-              {layout === "ONE_AT_A_TIME" && !isLastStep ? (
+              {!isLastStep ? (
                 <Button
                   type="button"
                   onClick={onNext}

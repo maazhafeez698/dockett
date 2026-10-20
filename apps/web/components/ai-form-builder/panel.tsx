@@ -21,6 +21,7 @@ import { CreditsBar } from "./credits-bar";
 import { DraftCard, LiveDraftPreview } from "./draft-card";
 import { formatReset } from "./shared";
 import { TypingIndicator } from "./typing-indicator";
+import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 const WELCOME_NEW =
   "Hi! I'm your AI Form Builder 👋 Tell me what you need — like “a feedback form for my presentation” — and I'll sketch the whole form. You can tweak it before it goes anywhere.";
@@ -145,6 +146,15 @@ export function AiFormBuilderPanel({
 
   const approve = async () => {
     if (!chat.draft || busy) return;
+    if (
+      mode === "ADD_FIELDS" &&
+      existingFieldCount + chat.draft.fields.length > MAX_FIELDS_PER_FORM
+    ) {
+      toast.error(
+        `This draft exceeds the ${MAX_FIELDS_PER_FORM}-field form limit. Modify it to remove some fields, then try again.`,
+      );
+      return;
+    }
     try {
       if (mode === "NEW_FORM") {
         const { id } = await saveDraftAsync({ draft: chat.draft });
@@ -269,17 +279,31 @@ export function AiFormBuilderPanel({
                 <LiveDraftPreview fields={chat.liveFields} />
               ) : null}
               {card ? (
-                <DraftCard
-                  draft={card}
-                  additionsOnly={additionsOnly}
-                  maxFields={100}
-                  approved={!!approved}
-                  interactive={!approved}
-                  busy={busy}
-                  approveLabel={approveLabel}
-                  onApprove={approve}
-                  onSave={saveEdits}
-                />
+                <>
+                  {mode === "ADD_FIELDS" &&
+                  existingFieldCount + card.fields.length > MAX_FIELDS_PER_FORM ? (
+                    <p role="status" className="text-xs text-destructive">
+                      This draft would exceed the {MAX_FIELDS_PER_FORM}-field limit. Modify it to
+                      fit within the {MAX_FIELDS_PER_FORM - existingFieldCount} remaining field
+                      {MAX_FIELDS_PER_FORM - existingFieldCount === 1 ? "" : "s"}.
+                    </p>
+                  ) : null}
+                  <DraftCard
+                    draft={card}
+                    additionsOnly={additionsOnly}
+                    maxFields={
+                      mode === "ADD_FIELDS"
+                        ? MAX_FIELDS_PER_FORM - existingFieldCount
+                        : MAX_FIELDS_PER_FORM
+                    }
+                    approved={!!approved}
+                    interactive={!approved}
+                    busy={busy}
+                    approveLabel={approveLabel}
+                    onApprove={approve}
+                    onSave={saveEdits}
+                  />
+                </>
               ) : null}
             </div>
           );

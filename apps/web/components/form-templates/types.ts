@@ -25,6 +25,8 @@ export interface FormTemplateShellProps {
   missingFieldIds: Set<string>;
   layout: SubmissionLayout;
   stepIndex: number;
+  stepCount: number;
+  stepStartIndex: number;
   isFirstStep: boolean;
   isLastStep: boolean;
   onNext: () => void;

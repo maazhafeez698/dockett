@@ -1,8 +1,9 @@
-import { db, eq, max } from "@repo/database";
+import { db, eq, max, count } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { assertFormOwnership } from "@repo/services/form";
 import { effectiveTemplate, getUserPlan } from "@repo/services/billing";
+import { MAX_FIELDS_PER_FORM } from "../form-field/limits";
 
 import { AiError } from "./errors";
 import {
@@ -13,9 +14,6 @@ import {
   type DraftField,
   type FormDraft,
 } from "./draft";
-
-/** Same ceiling the draft schema uses; a form can never exceed it however it was built. */
-export const HARD_MAX_FIELDS = 100;
 
 function fieldRow(formId: string, f: DraftField, position: number) {
   return {
@@ -40,7 +38,9 @@ function fieldRow(formId: string, f: DraftField, position: number) {
 export async function saveDraftAsForm(userId: string, rawDraft: unknown): Promise<{ id: string }> {
   const parsed = formDraftSchema.safeParse(rawDraft);
   if (!parsed.success) {
-    throw new AiError("INVALID_REQUEST", "Invalid draft", { userMessage: parsed.error.issues[0]?.message });
+    throw new AiError("INVALID_REQUEST", "Invalid draft", {
+      userMessage: parsed.error.issues[0]?.message,
+    });
   }
   // Plan gate: a premium template the user's plan doesn't include is replaced by the plain default.
   const plan = await getUserPlan(userId);
@@ -49,9 +49,11 @@ export async function saveDraftAsForm(userId: string, rawDraft: unknown): Promis
     template: effectiveTemplate(plan.features, parsed.data.template) as FormDraft["template"],
   };
   try {
-    assertDraftConsistent(draft, HARD_MAX_FIELDS);
+    assertDraftConsistent(draft, MAX_FIELDS_PER_FORM);
   } catch (e) {
-    throw new AiError("INVALID_REQUEST", "Inconsistent draft", { userMessage: e instanceof Error ? e.message : undefined });
+    throw new AiError("INVALID_REQUEST", "Inconsistent draft", {
+      userMessage: e instanceof Error ? e.message : undefined,
+    });
   }
   const fields = dedupeLabels(draft.fields);
 
@@ -88,7 +90,9 @@ export async function applyDraftToForm(
 ): Promise<{ added: number; appliedSettings: boolean }> {
   const parsed = formDraftSchema.safeParse(rawDraft);
   if (!parsed.success) {
-    throw new AiError("INVALID_REQUEST", "Invalid draft", { userMessage: parsed.error.issues[0]?.message });
+    throw new AiError("INVALID_REQUEST", "Invalid draft", {
+      userMessage: parsed.error.issues[0]?.message,
+    });
   }
   const plan = await getUserPlan(userId);
   const draft: FormDraft = {
@@ -96,23 +100,40 @@ export async function applyDraftToForm(
     template: effectiveTemplate(plan.features, parsed.data.template) as FormDraft["template"],
   };
   try {
-    assertDraftConsistent(draft, HARD_MAX_FIELDS);
+    assertDraftConsistent(draft, MAX_FIELDS_PER_FORM);
     await assertFormOwnership(formId, userId);
   } catch (e) {
     if (e instanceof Error && e.message === "Form not found") throw new AiError("FORM_NOT_FOUND");
-    throw new AiError("INVALID_REQUEST", "Inconsistent draft", { userMessage: e instanceof Error ? e.message : undefined });
+    throw new AiError("INVALID_REQUEST", "Inconsistent draft", {
+      userMessage: e instanceof Error ? e.message : undefined,
+    });
   }
 
   return db.transaction(async (tx) => {
-    const forms = await tx.select({ title: formsTable.title }).from(formsTable).where(eq(formsTable.id, formId));
+    const forms = await tx
+      .select({ title: formsTable.title })
+      .from(formsTable)
+      .where(eq(formsTable.id, formId))
+      .for("update");
+    const countRows = await tx
+      .select({ fieldCount: count() })
+      .from(formFieldsTable)
+      .where(eq(formFieldsTable.formId, formId));
+    const fieldCount = countRows[0]?.fieldCount;
+    if (fieldCount === undefined)
+      throw new AiError("INTERNAL", "Failed to check the form's field count");
+
     const existing = await tx
       .select({ labelKey: formFieldsTable.labelKey })
       .from(formFieldsTable)
       .where(eq(formFieldsTable.formId, formId));
-
-    if (existing.length + draft.fields.length > HARD_MAX_FIELDS) {
+    const fields = dedupeLabels(
+      draft.fields,
+      existing.map((e) => e.labelKey),
+    );
+    if (fieldCount + fields.length > MAX_FIELDS_PER_FORM) {
       throw new AiError("INVALID_REQUEST", "Too many fields", {
-        userMessage: `A form can have at most ${HARD_MAX_FIELDS} fields.`,
+        userMessage: `A form can have at most ${MAX_FIELDS_PER_FORM} fields.`,
       });
     }
 
@@ -130,14 +151,15 @@ export async function applyDraftToForm(
         .where(eq(formsTable.id, formId));
     }
 
-    const fields = dedupeLabels(draft.fields, existing.map((e) => e.labelKey));
     const top = await tx
       .select({ maxIndex: max(formFieldsTable.index) })
       .from(formFieldsTable)
       .where(eq(formFieldsTable.formId, formId));
     const start = top[0]?.maxIndex ? Number(top[0].maxIndex) : 0;
 
-    await tx.insert(formFieldsTable).values(fields.map((f, i) => fieldRow(formId, f, start + i + 1)));
+    await tx
+      .insert(formFieldsTable)
+      .values(fields.map((f, i) => fieldRow(formId, f, start + i + 1)));
     return { added: fields.length, appliedSettings: emptyCanvas };
   });
 }
