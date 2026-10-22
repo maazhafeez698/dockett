@@ -331,7 +331,13 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
-
+  html:has(.scroll-experience-page) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html:has(.scroll-experience-page)::-webkit-scrollbar {
+    display: none;
+  }
   /* ---- legacy aliases ----
      Older components used a frosted-glass look. The Ticket theme has no
      glass, so these now resolve to flat paper/charcoal surfaces. */

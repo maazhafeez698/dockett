@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowRight, Check } from "lucide-react";
 
 import { Logo, LogoMark } from "~/components/logo";
+import { ScrollExperience } from "~/components/scroll-experience";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { useUser } from "~/hooks/api/auth";
 import {
@@ -354,24 +355,26 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <a
-        href="#product"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-solid focus:px-3 focus:py-2 focus:text-solid-foreground"
-      >
-        Skip to content
-      </a>
-      <Nav />
-      <main>
-        <Hero />
-        <Banners />
-        <FeaturesSection />
-        <StepsSection />
-        <PricingSection />
-        <FaqSection />
-        <FinalCta />
-      </main>
-      <LandingFooter />
-    </div>
+    <ScrollExperience>
+      <div className="min-h-dvh bg-background text-foreground">
+        <a
+          href="#product"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-solid focus:px-3 focus:py-2 focus:text-solid-foreground"
+        >
+          Skip to content
+        </a>
+        <Nav />
+        <main>
+          <Hero />
+          <Banners />
+          <FeaturesSection />
+          <StepsSection />
+          <PricingSection />
+          <FaqSection />
+          <FinalCta />
+        </main>
+        <LandingFooter />
+      </div>
+    </ScrollExperience>
   );
 }
