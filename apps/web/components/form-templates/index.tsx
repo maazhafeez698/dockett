@@ -43,7 +43,10 @@ export function FormTemplateRenderer(
       data-template-typography={props.designSettings?.typography ?? "TEMPLATE"}
       style={{
         "--template-surface": design.surface,
+        "--template-panel": design.panel ?? design.surface,
         "--template-foreground": design.foreground,
+        "--template-muted": design.mutedForeground ?? design.foreground,
+        "--template-border": design.border ?? "rgba(15, 23, 42, 0.16)",
         "--template-radius": design.cornerRadius,
         "--primary": design.accent,
         "--primary-foreground": design.accentForeground,

@@ -465,3 +465,67 @@
   background-color: var(--template-surface) !important;
   color: var(--template-foreground) !important;
 }
+
+/* Dark mode recolors the full template canvas, not just its answer controls.
+   Each template supplies its own surface, panel, text, and border palette so
+   the result keeps its category character (paper, editorial, terminal, etc.). */
+.template-frame[data-template-surface="DARK"] [class~="bg-white"],
+.template-frame[data-template-surface="DARK"] [class~="bg-slate-50"],
+.template-frame[data-template-surface="DARK"] [class~="bg-green-50"],
+.template-frame[data-template-surface="DARK"] [class~="bg-emerald-50"],
+.template-frame[data-template-surface="DARK"] [class~="bg-red-50"],
+.template-frame[data-template-surface="DARK"] [class~="bg-amber-50"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#FFF"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#FBF"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#F3"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#EAF"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#D5"],
+.template-frame[data-template-surface="DARK"] [class*="bg-[#C0"] {
+  background-color: var(--template-panel) !important;
+}
+
+.template-frame[data-template-surface="DARK"] [class*="border-slate-200"],
+.template-frame[data-template-surface="DARK"] [class*="border-slate-300"],
+.template-frame[data-template-surface="DARK"] [class*="border-amber-300"],
+.template-frame[data-template-surface="DARK"] [class*="border-green-900"],
+.template-frame[data-template-surface="DARK"] [class*="border-[#D7"],
+.template-frame[data-template-surface="DARK"] [class*="border-[#D8"],
+.template-frame[data-template-surface="DARK"] [class*="border-[#DC"],
+.template-frame[data-template-surface="DARK"] [class*="border-[#CB"] {
+  border-color: var(--template-border) !important;
+}
+
+.template-frame[data-template-surface="DARK"] [class*="text-slate-900"],
+.template-frame[data-template-surface="DARK"] [class*="text-slate-800"],
+.template-frame[data-template-surface="DARK"] [class*="text-green-900"],
+.template-frame[data-template-surface="DARK"] [class*="text-green-800"],
+.template-frame[data-template-surface="DARK"] [class*="text-amber-800"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#0A246A"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#333"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#3B2A12"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#172335"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#263B58"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#34445A"] {
+  color: var(--template-foreground) !important;
+}
+
+.template-frame[data-template-surface="DARK"] [class*="text-slate-500"],
+.template-frame[data-template-surface="DARK"] [class*="text-slate-400"],
+.template-frame[data-template-surface="DARK"] [class*="text-green-700"],
+.template-frame[data-template-surface="DARK"] [class*="text-amber-800/"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#555"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#52647C"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#617188"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#627188"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#66768D"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#65768E"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#77869B"],
+.template-frame[data-template-surface="DARK"] [class*="text-[#6B5636"] {
+  color: var(--template-muted) !important;
+}
+
+.template-frame[data-template-surface="DARK"] input::placeholder,
+.template-frame[data-template-surface="DARK"] textarea::placeholder {
+  color: var(--template-muted);
+  opacity: 0.75;
+}

@@ -39,6 +39,9 @@ export interface TemplateDesign {
   fontFamily: string;
   cornerRadius: string;
   surface: string;
+  panel?: string;
+  mutedForeground?: string;
+  border?: string;
   foreground: string;
   accentForeground: string;
 }
@@ -161,6 +164,21 @@ export const TEMPLATE_DESIGNS: Record<FormTemplateId, TemplateDesign> = {
   },
 };
 
+const DARK_PALETTES: Record<
+  FormTemplateId,
+  { surface: string; panel: string; field: string; foreground: string; muted: string; border: string }
+> = {
+  CORPORATE: { surface: "#0B1220", panel: "#111B2C", field: "#1A2940", foreground: "#E8EEF7", muted: "#A8B6CA", border: "#34445B" },
+  SURVEY: { surface: "#071B1A", panel: "#0D2927", field: "#153936", foreground: "#E6F7F3", muted: "#A7C8C1", border: "#28514B" },
+  EDUCATION: { surface: "#101B17", panel: "#182720", field: "#22382D", foreground: "#F0F3E8", muted: "#BAC8B1", border: "#405748" },
+  DEVELOPER: { surface: "#080D13", panel: "#111923", field: "#17212D", foreground: "#E5EDF7", muted: "#9AA8B8", border: "#303844" },
+  RETRO: { surface: "#111827", panel: "#1D2638", field: "#151D2B", foreground: "#EEF2FF", muted: "#B3C0DA", border: "#53617A" },
+  INVITATION: { surface: "#1B1712", panel: "#282219", field: "#342B20", foreground: "#F4EBD9", muted: "#CDBB9B", border: "#5D4B31" },
+  TICKET: { surface: "#0D1622", panel: "#162337", field: "#1E3048", foreground: "#E8EFF9", muted: "#A9B8CC", border: "#344A65" },
+  LANDING: { surface: "#180D1E", panel: "#24122D", field: "#321B3E", foreground: "#FAEEFC", muted: "#D0B9D6", border: "#593766" },
+  CLASSIC: { surface: "#171729", panel: "#202036", field: "#292940", foreground: "#F5F5FF", muted: "#B6B6CC", border: "#45455F" },
+};
+
 /** Gallery order — CLASSIC intentionally omitted (see file header). */
 export const GALLERY_TEMPLATE_IDS: FormTemplateId[] = [
   "CORPORATE",
@@ -181,16 +199,20 @@ export function getTemplateDesign(id: string | null | undefined, customization?:
   const rgb = accent.match(/[0-9A-Fa-f]{2}/g)?.map((part) => parseInt(part, 16) / 255) ?? [0, 0, 0];
   const luminance = rgb.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
   const accentForeground = 0.2126 * (luminance[0] ?? 0) + 0.7152 * (luminance[1] ?? 0) + 0.0722 * (luminance[2] ?? 0) > 0.43 ? "#111827" : "#FFFFFF";
+  const darkPalette = DARK_PALETTES[base.id];
   return {
     ...base,
     accent,
     accentGradient: [customization?.accentColor ?? base.accentGradient[0], customization?.accentColor ?? base.accentGradient[1]],
     fontFamily: typography === "SERIF" ? "Georgia, 'Times New Roman', serif" : typography === "MONO" ? "ui-monospace, SFMono-Regular, monospace" : "Arial, Helvetica, sans-serif",
     cornerRadius: customization?.corners === "SHARP" ? "2px" : customization?.corners === "SOFT" ? "18px" : base.cornerRadius,
-    surface: dark ? "#111318" : base.surface,
-    foreground: dark ? "#F4F4F5" : base.foreground,
-    fieldBackground: dark ? "#1D2027" : base.fieldBackground,
-    fieldForeground: dark ? "#F4F4F5" : base.fieldForeground,
+    surface: dark ? darkPalette.surface : base.surface,
+    panel: dark ? darkPalette.panel : base.surface,
+    mutedForeground: dark ? darkPalette.muted : base.foreground,
+    border: dark ? darkPalette.border : "rgba(15, 23, 42, 0.16)",
+    foreground: dark ? darkPalette.foreground : base.foreground,
+    fieldBackground: dark ? darkPalette.field : base.fieldBackground,
+    fieldForeground: dark ? darkPalette.foreground : base.fieldForeground,
     accentForeground,
   };
 }
