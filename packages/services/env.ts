@@ -36,6 +36,36 @@ const envSchema = z.object({
     .describe("SMTP password — for Gmail, a 16-character App Password, not your normal password"),
   // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
   // builder, but uploading reports "not set up" instead of crashing the server. ----
+  // ---- Publishing / auth lifecycle ----
+  FORM_INACTIVITY_CLOSE_DAYS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .default(30)
+    .describe("A published form with no activity for this many days is closed automatically"),
+  FORM_CLOSE_SWEEP_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(10)
+    .default(60)
+    .describe("How often the server sweeps for forms whose automatic closure is due"),
+  EMAIL_VERIFY_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(10080)
+    .default(60)
+    .describe("How long a Dockett sign-up verification link stays valid"),
+  RESPONDENT_LINK_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(1440)
+    .default(15)
+    .describe("How long a respondent's email magic link stays valid"),
+  // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
+  // builder, but uploading reports "not set up" instead of crashing the server. ----
   CLOUDINARY_CLOUD_NAME: z
     .string()
     .min(1)

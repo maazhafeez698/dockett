@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 import { fieldOutputModel } from "../form-field/model";
 
 export const formStatusEnum = z.enum(["DRAFT", "PUBLISHED", "CLOSED"]);
-export const formVisibilityEnum = z.enum(["PUBLIC", "UNLISTED"]);
+export const formRespondentIdentityEnum = z.enum(["ANONYMOUS", "VERIFIED_EMAIL"]);
+export const formAccessModeEnum = z.enum(["ANYONE", "ACCESS_CODE"]);
+export const formClosedReasonEnum = z.enum(["MANUAL", "SCHEDULED", "INACTIVE"]);
 export const formTemplateEnum = z.enum([
   "CORPORATE",
   "SURVEY",
@@ -16,7 +17,8 @@ export const formTemplateEnum = z.enum([
   "CLASSIC",
 ]);
 export const formSubmissionLayoutEnum = z.enum(["ONE_AT_A_TIME", "ALL_AT_ONCE"]);
-export const formSubmissionAccessEnum = z.enum(["ANYONE", "ACCESS_CODE", "AUTHENTICATED_ONLY"]);
+// The API only ever returns ANYONE | ACCESS_CODE (the old sign-in-only mode is treated as ANYONE).
+export const formSubmissionAccessEnum = formAccessModeEnum;
 
 const templateFieldModel = z.object({
   label: z.string().min(1).max(100),
@@ -46,12 +48,18 @@ const templateFieldModel = z.object({
       minValue: z.number().finite().optional(),
       maxValue: z.number().finite().optional(),
       step: z.number().finite().positive().optional(),
-      accept: z
-        .array(z.enum(["pdf", "docx", "jpg", "png"]))
-        .max(4)
-        .optional(),
+      accept: z.array(z.enum(["pdf", "docx", "jpg", "png"])).max(4).optional(),
       maxFiles: z.number().int().min(1).max(5).optional(),
       maxSizeMB: z.number().positive().max(10).optional(),
+      logic: z.object({
+        rules: z.array(z.object({
+          answer: z.string().min(1).max(200),
+          targetFieldId: z.string().min(1).max(64),
+          operator: z.enum(["EQ", "GT", "LT", "GTE", "LTE"]).optional(),
+          conditions: z.array(z.object({ operator: z.enum(["EQ", "GT", "LT", "GTE", "LTE"]), value: z.string().min(1).max(200) })).min(1).max(10).optional(),
+          conditionJoin: z.enum(["AND", "OR"]).optional(),
+        })).max(50),
+      }).optional(),
     })
     .nullable()
     .optional(),
@@ -73,7 +81,7 @@ export const createFormFromTemplateInputModel = z.object({
   description: z.string().max(300).optional(),
   template: formTemplateEnum,
   submissionLayout: formSubmissionLayoutEnum,
-  fields: z.array(templateFieldModel).max(MAX_FIELDS_PER_FORM),
+  fields: z.array(templateFieldModel).max(60),
 });
 
 export const createFormFromTemplateOutputModel = z.object({
@@ -87,8 +95,11 @@ export const listFormsOutputModel = z.array(
     title: z.string().describe("Title of the form"),
     description: z.string().nullable().optional().describe("Description of the form"),
     status: formStatusEnum,
-    visibility: formVisibilityEnum,
+    closedReason: formClosedReasonEnum.nullable().optional(),
     submissionAccess: formSubmissionAccessEnum,
+    respondentIdentity: formRespondentIdentityEnum,
+    oneResponsePerEmail: z.boolean(),
+    closesAt: z.date().nullable().optional(),
     template: formTemplateEnum,
     submissionLayout: formSubmissionLayoutEnum,
     accessCode: z.string().nullable().optional(),
@@ -105,6 +116,10 @@ export const listFormsOutputModel = z.array(
 export const getFormInputModel = z.object({
   formId: z.uuid().describe("UUID of the form to fetch"),
   accessCode: z.string().max(12).optional().describe("Code entered by the visitor, if prompted"),
+  live: z
+    .boolean()
+    .optional()
+    .describe("Owner only: return the live draft (builder) instead of the published version"),
 });
 
 export const getFormOutputModel = z.object({
@@ -112,11 +127,17 @@ export const getFormOutputModel = z.object({
   title: z.string(),
   description: z.string().nullable(),
   status: formStatusEnum,
-  visibility: formVisibilityEnum,
+  closedReason: formClosedReasonEnum.nullable(),
   submissionAccess: formSubmissionAccessEnum,
+  respondentIdentity: formRespondentIdentityEnum,
+  oneResponsePerEmail: z.boolean(),
   template: formTemplateEnum,
   submissionLayout: formSubmissionLayoutEnum,
   accessCode: z.string().nullable(),
+  versionId: z.string().nullable().describe("The published version this content belongs to (null for a live draft)"),
+  version: z.number().nullable().describe("Version number of the current publication"),
+  hasUnpublishedChanges: z.boolean().describe("Owner only: the draft differs from the published version"),
+  closesAt: z.string().nullable().describe("Owner only: scheduled automatic closure"),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   fields: z.array(fieldOutputModel),
@@ -131,7 +152,10 @@ export const getFormAccessInfoOutputModel = z.object({
   title: z.string(),
   description: z.string().nullable(),
   status: formStatusEnum,
+  closedReason: formClosedReasonEnum.nullable(),
   submissionAccess: formSubmissionAccessEnum,
+  respondentIdentity: formRespondentIdentityEnum,
+  oneResponsePerEmail: z.boolean(),
   template: formTemplateEnum,
   planUnavailable: z
     .boolean()
@@ -149,13 +173,37 @@ export const updateFormInputModel = z.object({
   description: z.string().max(300).nullable().optional(),
   template: formTemplateEnum.optional(),
   submissionLayout: formSubmissionLayoutEnum.optional(),
-  status: formStatusEnum.optional(),
-  visibility: formVisibilityEnum.optional(),
-  submissionAccess: formSubmissionAccessEnum.optional(),
 });
 
 export const updateFormOutputModel = z.object({
   id: z.string(),
+});
+
+// Publishing: status, access, respondent identity and automatic closure in one atomic call.
+export const publishFormInputModel = z.object({
+  formId: z.uuid(),
+  status: formStatusEnum,
+  accessMode: formAccessModeEnum,
+  respondentIdentity: formRespondentIdentityEnum,
+  oneResponsePerEmail: z.boolean().default(false),
+  autoClose: z
+    .object({ minutes: z.number().int().min(5).max(30 * 24 * 60) })
+    .nullable()
+    .optional()
+    .describe("undefined = keep the current schedule, null = never, { minutes } = close that long from now (max 30 days)"),
+});
+
+export const publishFormOutputModel = z.object({
+  id: z.string(),
+  status: formStatusEnum,
+  version: z.number().nullable().describe("The live version number (null unless published)"),
+  versionId: z.string().nullable(),
+  createdVersion: z.boolean().describe("True when this publication created a new version"),
+  closesAt: z.string().nullable().describe("Exact scheduled closing time (server clock), if any"),
+  accessCode: z.string().nullable(),
+  submissionAccess: formAccessModeEnum,
+  respondentIdentity: formRespondentIdentityEnum,
+  oneResponsePerEmail: z.boolean(),
 });
 
 export const deleteFormInputModel = z.object({

@@ -23,6 +23,8 @@ import {
   deleteFormOutputModel,
   regenerateAccessCodeInputModel,
   regenerateAccessCodeOutputModel,
+  publishFormInputModel,
+  publishFormOutputModel,
 } from "./model";
 
 const TAGS = ["Form"];
@@ -140,7 +142,7 @@ export const formRouter = router({
         // Best-effort view tracking — never blocks or fails the actual
         // page load; see FormAnalyticsService.recordView.
         void formAnalyticsService.recordView({ formId: input.formId, userAgent: ctx.userAgent });
-        return info;
+        return getFormAccessInfoOutputModel.parse(info);
       } catch (error) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
       }
@@ -158,8 +160,9 @@ export const formRouter = router({
           formId: input.formId,
           accessCode: input.accessCode,
           requesterId: ctx.user?.id,
+          live: input.live,
         });
-        return form;
+        return getFormOutputModel.parse(form);
       } catch (error) {
         throw toGatedError(error);
       }
@@ -179,6 +182,24 @@ export const formRouter = router({
         throw (
           toPlanLimitTrpcError(error) ??
           new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Failed to update form") })
+        );
+      }
+    }),
+
+  publishForm: authenticatedProcedure
+    .meta({
+      openapi: { method: "POST", path: getPath("/publishForm"), tags: TAGS, protect: true },
+    })
+    .input(publishFormInputModel)
+    .output(publishFormOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        return await formService.publishForm({ ...input, userId: ctx.user.id });
+      } catch (error) {
+        // All-or-nothing: on any error the previous publication is exactly as it was.
+        throw (
+          toPlanLimitTrpcError(error) ??
+          new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Failed to publish form") })
         );
       }
     }),

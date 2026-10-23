@@ -8,7 +8,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { formsTable } from "./form";
-import { formFieldsTable } from "./form-field";
 import { formSubmissionsTable } from "./form-submission";
 import { usersTable } from "./user";
 
@@ -30,7 +29,9 @@ export const fileUploadsTable = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
 
     formId: uuid("form_id").references(() => formsTable.id, { onDelete: "set null" }),
-    fieldId: uuid("field_id").references(() => formFieldsTable.id, { onDelete: "set null" }),
+    // Plain id, no FK: a field may be removed from the draft after a version containing it was
+    // published, and files already submitted to that version must stay.
+    fieldId: uuid("field_id"),
     submissionId: uuid("submission_id").references(() => formSubmissionsTable.id, {
       onDelete: "set null",
     }),
