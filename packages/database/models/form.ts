@@ -3,6 +3,11 @@ import { usersTable } from "./user";
 
 export const formStatusEnum = pgEnum("form_status_enum", ["DRAFT", "PUBLISHED", "CLOSED"]);
 
+// Retained for compatibility with databases created before visibility was
+// removed from the product. Keep this column mapped so schema syncs don't drop
+// existing visibility data from production forms.
+export const formVisibilityEnum = pgEnum("form_visibility_enum", ["PUBLIC", "UNLISTED"]);
+
 // ANYONE — anyone with the link. ACCESS_CODE — respondent must also enter the
 // form's shared code before the fields are returned/accepted (owner is exempt).
 // AUTHENTICATED_ONLY is DEPRECATED: Dockett no longer asks respondents to have
@@ -58,6 +63,7 @@ export const formsTable = pgTable(
     description: varchar("decription", { length: 300 }),
 
     status: formStatusEnum("status").default("DRAFT").notNull(),
+    visibility: formVisibilityEnum("visibility").default("PUBLIC").notNull(),
     submissionAccess: formSubmissionAccessEnum("submission_access").default("ANYONE").notNull(),
 
     template: formTemplateEnum("template").default("CLASSIC").notNull(),
