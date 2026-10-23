@@ -9,6 +9,17 @@ export const createSubmissionInputModel = z.object({
   formId: z.uuid().describe("UUID of the form"),
   values: z.array(submissionValueModel).describe("Array of field/value pairs"),
   accessCode: z.string().max(12).optional().describe("Code entered by the respondent, if prompted"),
+  respondentToken: z
+    .string()
+    .max(2048)
+    .optional()
+    .describe("Credential from the email magic link (forms that verify respondents' email)"),
+  idempotencyKey: z
+    .string()
+    .min(8)
+    .max(64)
+    .optional()
+    .describe("Random id of this fill attempt; a retried request returns the original response"),
 });
 
 export const createSubmissionOutputModel = z.object({

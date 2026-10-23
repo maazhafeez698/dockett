@@ -6,13 +6,14 @@
     ".": "./index.ts",
     "./form": "./form/index.ts",
     "./form-field": "./form-field/index.ts",
-    "./form-field/limits": "./form-field/limits.ts",
     "./form-submission": "./form-submission/index.ts",
+    "./form-logic": "./form-logic/index.ts",
     "./form-analytics": "./form-analytics/index.ts",
     "./user": "./user/index.ts",
     "./ai": "./ai/index.ts",
     "./billing": "./billing/index.ts",
-    "./file-upload": "./file-upload/index.ts"
+    "./file-upload": "./file-upload/index.ts",
+    "./form-respondent": "./form-respondent/index.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

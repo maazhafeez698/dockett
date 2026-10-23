@@ -9,6 +9,7 @@ export const createUploadInput = z.object({
   mimeType: z.string().max(100).default("").describe("MIME type reported by the browser"),
   size: z.number().int().positive().describe("Declared size in bytes"),
   accessCode: z.string().max(12).optional().describe("Access code, for ACCESS_CODE forms"),
+  respondentToken: z.string().max(2048).optional().describe("Email magic-link credential, for verified-email forms"),
   requesterId: z.uuid().optional().describe("Signed-in respondent, if any"),
   ip: z.string().max(64).optional().describe("Client IP, for rate limiting"),
 });
@@ -18,7 +19,6 @@ export const createUploadOutput = z.object({
   uploadId: z.string(),
   uploadUrl: z.string(),
   fields: z.record(z.string(), z.string()),
-  fileName: z.string(),
   maxBytes: z.number(),
 });
 

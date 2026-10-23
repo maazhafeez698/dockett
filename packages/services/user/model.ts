@@ -62,3 +62,14 @@ export const signInWithGoogle = z.object({
 });
 
 export type SignInWithGoogleType = z.infer<typeof signInWithGoogle>;
+
+export const resendVerificationEmail = z.object({
+  email: z.email().describe("Email address the account was registered with"),
+  ip: z.string().max(64).optional().describe("Client IP, for rate limiting"),
+});
+export type ResendVerificationEmailType = z.infer<typeof resendVerificationEmail>;
+
+export const verifyEmail = z.object({
+  token: z.string().min(10).max(256).describe("Opaque verification token from the email link"),
+});
+export type VerifyEmailType = z.infer<typeof verifyEmail>;

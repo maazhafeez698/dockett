@@ -22,11 +22,20 @@ import {
   setPasswordOutputModel,
   signInWithGoogleInputModel,
   signInWithGoogleOutputModel,
+  verifyEmailInputModel,
+  verifyEmailOutputModel,
+  resendVerificationEmailInputModel,
+  resendVerificationEmailOutputModel,
 } from "./model";
 
 import { userService } from "../../services";
 import type { Context } from "../../context";
-import type { TokenPair } from "@repo/services/user";
+import {
+  EmailNotVerifiedError,
+  TooManyRequestsError,
+  VerificationLinkError,
+  type TokenPair,
+} from "@repo/services/user";
 
 import {
   ACCESS_TOKEN_COOKIE,
@@ -85,8 +94,8 @@ export const authRouter = router({
           email,
           password,
         });
-        setAuthCookies(ctx, created.tokens);
-        return { id: created.id };
+        // No session yet: the account only becomes usable once the emailed link is opened.
+        return { id: created.id, emailSent: created.emailSent };
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -113,10 +122,50 @@ export const authRouter = router({
         setAuthCookies(ctx, signedIn.tokens);
         return { id: signedIn.id };
       } catch (error) {
+        if (error instanceof EmailNotVerifiedError) {
+          // FORBIDDEN (not UNAUTHORIZED) lets the UI offer "resend verification email".
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: toReadableMessage(error, "Invalid email address or password"),
         });
+      }
+    }),
+
+  verifyEmail: publicProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/verifyEmail"), tags: TAGS } })
+    .input(verifyEmailInputModel)
+    .output(verifyEmailOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const verified = await userService.verifyEmailWithToken({ token: input.token });
+        // Verified: sign the user straight in so they land in the dashboard.
+        setAuthCookies(ctx, verified.tokens);
+        return { status: "OK" as const, id: verified.id };
+      } catch (error) {
+        if (error instanceof VerificationLinkError) return { status: error.reason };
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Couldn't verify your email. Please try again.",
+        });
+      }
+    }),
+
+  resendVerificationEmail: publicProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/resendVerificationEmail"), tags: TAGS } })
+    .input(resendVerificationEmailInputModel)
+    .output(resendVerificationEmailOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        // Same answer whether or not the address is registered / already verified.
+        await userService.resendVerificationEmail({ email: input.email, ip: ctx.ip });
+        return { success: true };
+      } catch (error) {
+        if (error instanceof TooManyRequestsError) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message });
+        }
+        return { success: true };
       }
     }),
 

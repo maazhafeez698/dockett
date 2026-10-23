@@ -18,6 +18,10 @@ import { db, and, eq, inArray, isNull, lt, or, sql } from "@repo/database";
 import { fileUploadsTable } from "@repo/database/models/file-upload";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formsTable } from "@repo/database/models/form";
+import { formVersionsTable } from "@repo/database/models/form-version";
+import { verifyRespondentToken } from "@repo/services/form-respondent";
+import { effectiveState } from "../form/publication";
+import { ensurePublishedVersion } from "../form/ensure-version";
 import { logger } from "@repo/logger";
 import { assertFormOwnership } from "@repo/services/form";
 import { isFormSuspended } from "@repo/services/billing";
@@ -151,17 +155,23 @@ export default class FileUploadService {
           status: formsTable.status,
           submissionAccess: formsTable.submissionAccess,
           accessCode: formsTable.accessCode,
+          respondentIdentity: formsTable.respondentIdentity,
+          publishedVersionId: formsTable.publishedVersionId,
+          closesAt: formsTable.closesAt,
+          lastActivityAt: formsTable.lastActivityAt,
+          closedReason: formsTable.closedReason,
           createdBy: formsTable.createdBy,
         })
         .from(formsTable)
         .where(eq(formsTable.id, input.formId))
     )[0];
     if (!form) throw new UploadError("NOT_FOUND", "Form not found.");
+    const eff = effectiveState(form);
 
     const isOwner = !!input.requesterId && input.requesterId === form.createdBy;
 
     // Same gates as submitting: a visitor can't upload to a form they couldn't submit.
-    if (!isOwner && form.status !== "PUBLISHED") {
+    if (!isOwner && eff.status !== "PUBLISHED") {
       throw new UploadError("FORBIDDEN", "This form isn't accepting responses right now.");
     }
     if (!isOwner && form.submissionAccess === "ACCESS_CODE") {
@@ -170,19 +180,18 @@ export default class FileUploadService {
         throw new UploadError("FORBIDDEN", "A valid access code is required.");
       }
     }
-    if (!isOwner && form.submissionAccess === "AUTHENTICATED_ONLY" && !input.requesterId) {
-      throw new UploadError("FORBIDDEN", "Sign in to upload files to this form.");
+    if (form.respondentIdentity === "VERIFIED_EMAIL" && !verifyRespondentToken(input.respondentToken, form.id)) {
+      throw new UploadError("FORBIDDEN", "Verify your email address before uploading files.");
     }
-    if (form.status === "PUBLISHED" && (await isFormSuspended(form.id, form.createdBy))) {
+    if (eff.status === "PUBLISHED" && (await isFormSuspended(form.id, form.createdBy))) {
       throw new UploadError("FORBIDDEN", "This form is temporarily unavailable.");
     }
 
-    const field = (
-      await db
-        .select({ id: formFieldsTable.id, type: formFieldsTable.type, config: formFieldsTable.config })
-        .from(formFieldsTable)
-        .where(and(eq(formFieldsTable.id, input.fieldId), eq(formFieldsTable.formId, form.id)))
-    )[0];
+    // Respondents upload to the PUBLISHED version of the field, exactly what they were shown.
+    if (eff.status === "PUBLISHED" && !form.publishedVersionId) {
+      form.publishedVersionId = await ensurePublishedVersion(form.id);
+    }
+    const field = await this.resolveFileField(form.id, form.publishedVersionId, input.fieldId);
     if (!field || field.type !== "FILE_UPLOAD") {
       throw new UploadError("NOT_FOUND", "That upload field doesn't exist.");
     }
@@ -235,11 +244,11 @@ export default class FileUploadService {
       .from(fileUploadsTable)
       .where(
         and(
-        form.createdBy
-          ? eq(fileUploadsTable.ownerId, form.createdBy)
-          : isNull(fileUploadsTable.ownerId),
-        inArray(fileUploadsTable.status, ["CONFIRMED", "ATTACHED"]),
-      ),
+          form.createdBy
+            ? eq(fileUploadsTable.ownerId, form.createdBy)
+            : isNull(fileUploadsTable.ownerId),
+          inArray(fileUploadsTable.status, ["CONFIRMED", "ATTACHED"]),
+        ),
       );
     if (Number(used) + input.size > env.UPLOAD_OWNER_STORAGE_MB * MB) {
       throw new UploadError("QUOTA", "This form's upload storage is full. Please contact the form owner.");
@@ -269,7 +278,6 @@ export default class FileUploadService {
       uploadId: row.id,
       uploadUrl: signed.url,
       fields: signed.fields,
-      fileName: signed.fileName,
       maxBytes: rules.maxBytes,
     };
   }
@@ -283,14 +291,18 @@ export default class FileUploadService {
     if (!row) throw new UploadError("NOT_FOUND", "That upload doesn't exist any more.");
     if (row.status === "CONFIRMED" || row.status === "ATTACHED") return this.toConfirmed(row);
 
-    const field = row.fieldId
-      ? (
-          await db
-            .select({ config: formFieldsTable.config })
-            .from(formFieldsTable)
-            .where(eq(formFieldsTable.id, row.fieldId))
-        )[0]
-      : undefined;
+    const field =
+      row.fieldId && row.formId
+        ? await (async () => {
+            const f = (
+              await db
+                .select({ publishedVersionId: formsTable.publishedVersionId })
+                .from(formsTable)
+                .where(eq(formsTable.id, row.formId!))
+            )[0];
+            return f ? this.resolveFileField(row.formId!, f.publishedVersionId, row.fieldId!) : null;
+          })()
+        : null;
     if (!field) {
       await this.destroy(row.id, row.storageKey);
       throw new UploadError("NOT_FOUND", "That upload field no longer exists.");
@@ -324,14 +336,7 @@ export default class FileUploadService {
       .where(and(eq(fileUploadsTable.id, row.id), eq(fileUploadsTable.status, "PENDING")))
       .returning();
 
-    const confirmed =
-      updated[0] ?? {
-        id: row.id,
-        displayName: row.displayName,
-        bytes: info.bytes,
-        kind: row.kind,
-      };
-    return this.toConfirmed(confirmed);
+    return this.toConfirmed(updated[0] ?? { ...row, bytes: info.bytes });
   }
 
   /** A respondent removed a file before submitting. The (unguessable) id is the capability. */
@@ -406,17 +411,15 @@ export default class FileUploadService {
           // its form / field was deleted before the submission happened
           and(
             eq(fileUploadsTable.status, "CONFIRMED"),
-            or(isNull(fileUploadsTable.formId), isNull(fileUploadsTable.fieldId)),
+            isNull(fileUploadsTable.formId),
             lt(fileUploadsTable.createdAt, ago(5 * MIN)),
           ),
           // attached, but the form / field / submission was deleted afterwards
           and(
             eq(fileUploadsTable.status, "ATTACHED"),
-            or(
-              isNull(fileUploadsTable.submissionId),
-              isNull(fileUploadsTable.formId),
-              isNull(fileUploadsTable.fieldId),
-            ),
+            // A field removed from the draft later must NOT delete files already submitted to
+            // an earlier version — only a deleted form / submission orphans them.
+            or(isNull(fileUploadsTable.submissionId), isNull(fileUploadsTable.formId)),
             lt(fileUploadsTable.attachedAt, ago(10 * MIN)),
           ),
         ),
@@ -472,6 +475,27 @@ export default class FileUploadService {
   }
 
   // ---- internals ----
+
+  /** The field as a respondent sees it: from the published version, else (unpublished draft) the live field. */
+  private async resolveFileField(formId: string, publishedVersionId: string | null, fieldId: string) {
+    if (publishedVersionId) {
+      const v = (
+        await db
+          .select({ snapshot: formVersionsTable.snapshot })
+          .from(formVersionsTable)
+          .where(eq(formVersionsTable.id, publishedVersionId))
+      )[0];
+      const f = v?.snapshot.fields.find((x) => x.id === fieldId);
+      return f ? { id: f.id, type: f.type, config: f.config } : null;
+    }
+    const live = (
+      await db
+        .select({ id: formFieldsTable.id, type: formFieldsTable.type, config: formFieldsTable.config })
+        .from(formFieldsTable)
+        .where(and(eq(formFieldsTable.id, fieldId), eq(formFieldsTable.formId, formId)))
+    )[0];
+    return live ?? null;
+  }
 
   private async getRow(id: string) {
     return (await db.select().from(fileUploadsTable).where(eq(fileUploadsTable.id, id)))[0];

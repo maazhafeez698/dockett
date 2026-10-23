@@ -30,6 +30,15 @@ export const fieldConfigModel = z
       .optional(),
     maxFiles: z.number().int().min(1).max(5).optional(),
     maxSizeMB: z.number().positive().max(10).optional(),
+    logic: z.object({
+      rules: z.array(z.object({
+        answer: z.string().min(1).max(200),
+        targetFieldId: z.string().min(1).max(64),
+        operator: z.enum(["EQ", "GT", "LT", "GTE", "LTE"]).optional(),
+        conditions: z.array(z.object({ operator: z.enum(["EQ", "GT", "LT", "GTE", "LTE"]), value: z.string().min(1).max(200) })).min(1).max(10).optional(),
+        conditionJoin: z.enum(["AND", "OR"]).optional(),
+      })).max(50),
+    }).optional(),
   })
   .nullable()
   .optional();

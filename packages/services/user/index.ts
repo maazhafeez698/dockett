@@ -1,17 +1,19 @@
-import { db, eq, and, isNull } from "@repo/database";
+import { db, eq, and, gt, gte, isNull, desc } from "@repo/database";
 import { usersTable } from "@repo/database/models/user";
 import { refreshTokensTable } from "@repo/database/models/refresh-token";
 import { passwordResetTokensTable } from "@repo/database/models/password-reset-token";
+import { emailVerificationTokensTable } from "@repo/database/models/email-verification-token";
 import { oauthAccountsTable } from "@repo/database/models/oauth-account";
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
-import { logger } from "@repo/logger";
 
 import { env } from "../env";
 import { generateOpaqueToken, hashToken } from "./token-utils";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
+import { EmailNotVerifiedError, TooManyRequestsError, VerificationLinkError } from "./errors";
+import { SlidingWindowLimiter } from "../file-upload/rate-limit";
 
 import {
   createUserWithEmailAndPassword,
@@ -28,10 +30,25 @@ import {
   type SetPasswordType,
   signInWithGoogle,
   type SignInWithGoogleType,
+  resendVerificationEmail,
+  type ResendVerificationEmailType,
+  verifyEmail,
+  type VerifyEmailType,
 } from "./model";
+
+export { EmailNotVerifiedError, TooManyRequestsError, VerificationLinkError } from "./errors";
 
 const INVALID_CREDENTIALS_MESSAGE = "Invalid email address or password";
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+
+const HOUR = 60 * 60 * 1000;
+// Resend-verification protection. These in-memory windows apply to everyone equally (whether or not
+// the address is registered), so they can't be used to probe accounts; the per-user cooldown in the
+// database (below) additionally holds across API instances.
+const resendIpLimiter = new SlidingWindowLimiter(10, HOUR);
+const resendEmailLimiter = new SlidingWindowLimiter(5, HOUR);
+const RESEND_COOLDOWN_MS = 60 * 1000;
+const MAX_VERIFICATION_EMAILS_PER_HOUR = 5;
 
 export interface TokenPair {
   accessToken: string;
@@ -81,25 +98,132 @@ export default class UserService {
     return { accessToken, refreshToken, refreshTokenExpiresAt };
   }
 
+  /**
+   * Sends a fresh verification link (older unused links stop working). Throttled per user, in the
+   * database: at most one email a minute and five an hour. Returns whether an email actually went out.
+   */
+  private async sendVerificationLink(userId: string, email: string): Promise<boolean> {
+    const recent = await db
+      .select({ createdAt: emailVerificationTokensTable.createdAt })
+      .from(emailVerificationTokensTable)
+      .where(
+        and(
+          eq(emailVerificationTokensTable.userId, userId),
+          gte(emailVerificationTokensTable.createdAt, new Date(Date.now() - HOUR)),
+        ),
+      )
+      .orderBy(desc(emailVerificationTokensTable.createdAt));
+    if (recent.length >= MAX_VERIFICATION_EMAILS_PER_HOUR) return false;
+    if (recent[0] && Date.now() - recent[0].createdAt.getTime() < RESEND_COOLDOWN_MS) return false;
+
+    // One live link at a time.
+    await db
+      .update(emailVerificationTokensTable)
+      .set({ usedAt: new Date() })
+      .where(and(eq(emailVerificationTokensTable.userId, userId), isNull(emailVerificationTokensTable.usedAt)));
+
+    const rawToken = generateOpaqueToken();
+    await db.insert(emailVerificationTokensTable).values({
+      userId,
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + env.EMAIL_VERIFY_TTL_MINUTES * 60 * 1000),
+    });
+
+    try {
+      await sendVerificationEmail(email, `${env.WEB_URL}/verify-email?token=${rawToken}`);
+      return true;
+    } catch (error) {
+      console.error("Failed to send verification email", error);
+      return false;
+    }
+  }
+
+  /**
+   * Registers an account that CANNOT sign in until its email is verified: no session is issued here.
+   * An unverified address that registers again simply replaces the earlier attempt (last registrant
+   * wins), so nobody can squat on someone else's address.
+   */
   public async createUserWithEmailAndPassword(payload: CreateUserWithEmailAndPasswordType) {
     const { fullName, email, password } = await createUserWithEmailAndPassword.parseAsync(payload);
 
     const existingUser = await this.getUserByEmail(email);
 
-    if (existingUser) throw new Error("User with this email already exists");
+    if (existingUser?.emailVerified) throw new Error("User with this email already exists");
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const result = await db
-      .insert(usersTable)
-      .values({ fullName, email, passwordHash })
-      .returning({ id: usersTable.id });
+    let userId: string;
+    if (existingUser) {
+      await db.update(usersTable).set({ fullName, passwordHash }).where(eq(usersTable.id, existingUser.id));
+      userId = existingUser.id;
+    } else {
+      const result = await db
+        .insert(usersTable)
+        .values({ fullName, email, passwordHash, emailVerified: false })
+        .returning({ id: usersTable.id });
+      if (!result || result.length === 0 || !result[0]?.id) throw new Error("Failed to create user");
+      userId = result[0].id;
+    }
 
-    if (!result || result.length === 0 || !result[0]?.id) throw new Error("Failed to create user");
+    const emailSent = await this.sendVerificationLink(userId, email);
+    return { id: userId, emailSent };
+  }
 
-    const tokens = await this.issueTokenPair(result[0].id);
+  /** Always resolves the same way for known / unknown / already-verified addresses. */
+  public async resendVerificationEmail(payload: ResendVerificationEmailType) {
+    const { email, ip } = await resendVerificationEmail.parseAsync(payload);
 
-    return { id: result[0].id, tokens };
+    const ipCheck = resendIpLimiter.hit(ip ?? "unknown");
+    const emailCheck = resendEmailLimiter.hit(email.toLowerCase());
+    if (!ipCheck.ok || !emailCheck.ok) {
+      throw new TooManyRequestsError(Math.max(ipCheck.retryAfterSec, emailCheck.retryAfterSec));
+    }
+
+    const user = await this.getUserByEmail(email);
+    if (!user || user.emailVerified) return;
+    await this.sendVerificationLink(user.id, user.email);
+  }
+
+  /**
+   * Consumes a verification link: single-use, expiring, atomic. On success the account is verified
+   * and a session is issued, so the user lands in the dashboard without signing in again.
+   */
+  public async verifyEmailWithToken(payload: VerifyEmailType) {
+    const { token } = await verifyEmail.parseAsync(payload);
+    const tokenHash = hashToken(token);
+
+    // The single UPDATE ... WHERE is the lock: two tabs racing on the same link, only one wins.
+    const claimed = await db
+      .update(emailVerificationTokensTable)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(emailVerificationTokensTable.tokenHash, tokenHash),
+          isNull(emailVerificationTokensTable.usedAt),
+          gt(emailVerificationTokensTable.expiresAt, new Date()),
+        ),
+      )
+      .returning({ userId: emailVerificationTokensTable.userId });
+
+    const userId = claimed[0]?.userId;
+    if (!userId) {
+      const rows = await db
+        .select({ usedAt: emailVerificationTokensTable.usedAt })
+        .from(emailVerificationTokensTable)
+        .where(eq(emailVerificationTokensTable.tokenHash, tokenHash));
+      const record = rows[0];
+      throw new VerificationLinkError(!record ? "INVALID" : record.usedAt ? "USED" : "EXPIRED");
+    }
+
+    await db.update(usersTable).set({ emailVerified: true }).where(eq(usersTable.id, userId));
+    // Any other outstanding links are now moot.
+    await db
+      .update(emailVerificationTokensTable)
+      .set({ usedAt: new Date() })
+      .where(and(eq(emailVerificationTokensTable.userId, userId), isNull(emailVerificationTokensTable.usedAt)));
+
+    const tokens = await this.issueTokenPair(userId);
+    return { id: userId, tokens };
   }
 
   public async singInUserWithEmailAndPassword(payload: SingInUserWithEmailAndPasswordType) {
@@ -115,6 +239,9 @@ export default class UserService {
 
     const isValid = await bcrypt.compare(password, existingUser.passwordHash);
     if (!isValid) throw new Error(INVALID_CREDENTIALS_MESSAGE);
+
+    // Only reachable with the right password, so it doesn't reveal anything to a stranger.
+    if (!existingUser.emailVerified) throw new EmailNotVerifiedError();
 
     const tokens = await this.issueTokenPair(existingUser.id);
 
@@ -176,6 +303,10 @@ export default class UserService {
       throw new Error("Refresh token has expired, please sign in again");
     }
 
+    // Defence in depth: an unverified account never holds a session.
+    const owner = await this.getUserById(record.userId);
+    if (!owner?.emailVerified) throw new Error("Invalid refresh token");
+
     await db
       .update(refreshTokensTable)
       .set({ revokedAt: new Date() })
@@ -234,9 +365,7 @@ export default class UserService {
       await sendPasswordResetEmail(existingUser.email, resetUrl);
     } catch (error) {
       // Deliberately swallowed — see doc comment above.
-      logger.error("password_reset.email_failed", {
-        message: error instanceof Error ? error.message : "unknown",
-      });
+      console.error("Failed to send password reset email", error);
     }
   }
 
@@ -266,7 +395,11 @@ export default class UserService {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, record.userId));
+    // Clicking the emailed reset link proves control of the mailbox, so it also verifies the address.
+    await db
+      .update(usersTable)
+      .set({ passwordHash, emailVerified: true })
+      .where(eq(usersTable.id, record.userId));
 
     await db
       .update(passwordResetTokensTable)
@@ -313,6 +446,11 @@ export default class UserService {
       throw new Error("Invalid Google token");
     }
 
+    // Google must vouch for the address, otherwise we'd be linking accounts on an unproven claim.
+    if (googlePayload.email_verified === false) {
+      throw new Error("Your Google account's email address isn't verified");
+    }
+
     const { sub: googleAccountId, email, name } = googlePayload;
 
     const existingLink = await db
@@ -334,12 +472,23 @@ export default class UserService {
     // email/password user, or create a brand new account.
     const existingUser = await this.getUserByEmail(email);
 
+    if (existingUser && !existingUser.emailVerified) {
+      // Someone registered this address with a password but never proved they own it. Google just
+      // proved the real owner does — so verify it AND drop that unproven password, otherwise whoever
+      // registered it first could keep signing in to the real owner's account.
+      await db
+        .update(usersTable)
+        .set({ emailVerified: true, passwordHash: null })
+        .where(eq(usersTable.id, existingUser.id));
+      await this.revokeAllRefreshTokensForUser(existingUser.id);
+    }
+
     const userId =
       existingUser?.id ??
       (
         await db
           .insert(usersTable)
-          .values({ fullName: name ?? email.split("@")[0]!, email, passwordHash: null })
+          .values({ fullName: name ?? email.split("@")[0]!, email, passwordHash: null, emailVerified: true })
           .returning({ id: usersTable.id })
       )[0]?.id;
 

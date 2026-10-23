@@ -9,7 +9,8 @@ import { analyticsRouter } from "./routes/analytics/route";
 import { aiRouter } from "./routes/ai/route";
 import { billingRouter } from "./routes/billing/route";
 import { fileUploadRouter } from "./routes/file-upload/route";
-import { fileUploadService } from "./services";
+import { formRespondentRouter } from "./routes/form-respondent/route";
+import { fileUploadService, formService } from "./services";
 
 export const serverRouter = router({
   health: healthRouter,
@@ -21,6 +22,7 @@ export const serverRouter = router({
   ai: aiRouter,
   billing: billingRouter,
   fileUpload: fileUploadRouter,
+  formRespondent: formRespondentRouter,
 });
 
 export { createContext } from "./context";
@@ -28,4 +30,6 @@ export { aiStreamHandler } from "./routes/ai/stream-handler";
 export { paddleWebhookHandler } from "./routes/billing/webhook-handler";
 /** Starts the abandoned-upload cleanup timer; returns a stop function. */
 export const startUploadCleanup = () => fileUploadService.startCleanup();
+/** Starts the sweep that closes forms whose automatic closure is due (or that went idle); returns a stop function. */
+export const startFormLifecycle = () => formService.startLifecycle();
 export type ServerRouter = typeof serverRouter;

@@ -9,13 +9,13 @@ export const createUploadInputModel = z.object({
   mimeType: z.string().max(100).default("").describe("MIME type reported by the browser"),
   size: z.number().int().positive().describe("File size in bytes"),
   accessCode: z.string().max(12).optional().describe("Access code, if the form needs one"),
+  respondentToken: z.string().max(2048).optional().describe("Email magic-link credential, for verified-email forms"),
 });
 
 export const createUploadOutputModel = z.object({
   uploadId: z.string().describe("ID to confirm / submit after the upload finishes"),
   uploadUrl: z.string().describe("Storage URL to POST the file to"),
   fields: z.record(z.string(), z.string()).describe("Form fields to send with the file, as given"),
-  fileName: z.string().describe("Generated filename with the canonical storage extension"),
   maxBytes: z.number().describe("Largest file the field accepts, in bytes"),
 });
 

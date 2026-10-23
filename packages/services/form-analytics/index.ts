@@ -1,8 +1,9 @@
 // packages/services/form-analytics/index.ts
 
-import { db, eq } from "@repo/database";
+import { db, desc, eq } from "@repo/database";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
+import { formVersionsTable } from "@repo/database/models/form-version";
 import { formViewsTable } from "@repo/database/models/form-view";
 import { assertFormOwnership } from "@repo/services/form";
 
@@ -145,17 +146,32 @@ export default class FormAnalyticsService {
     const { formId, userId } = await getFormAnalyticsInput.parseAsync(payload);
     await assertFormOwnership(formId, userId);
 
-    const fields = await db
+    // Columns = every field of every published version (newest wording wins), plus any live fields
+    // that older, pre-versioning responses may refer to — so no response loses a column.
+    const versions = await db
+      .select({ id: formVersionsTable.id, version: formVersionsTable.version, snapshot: formVersionsTable.snapshot })
+      .from(formVersionsTable)
+      .where(eq(formVersionsTable.formId, formId))
+      .orderBy(desc(formVersionsTable.version));
+    const columns = new Map<string, { id: string; label: string; type: string }>();
+    for (const v of versions) {
+      for (const f of v.snapshot.fields) if (!columns.has(f.id)) columns.set(f.id, { id: f.id, label: f.label, type: f.type });
+    }
+    const liveFields = await db
       .select({ id: formFieldsTable.id, label: formFieldsTable.label, type: formFieldsTable.type })
       .from(formFieldsTable)
       .where(eq(formFieldsTable.formId, formId))
       .orderBy(formFieldsTable.index);
+    for (const f of liveFields) if (!columns.has(f.id)) columns.set(f.id, f);
+    const versionNumber = new Map(versions.map((v) => [v.id, v.version]));
 
     const submissions = await db
       .select({
         id: formSubmissionsTable.id,
         values: formSubmissionsTable.values,
         submittedBy: formSubmissionsTable.submittedBy,
+        versionId: formSubmissionsTable.versionId,
+        respondentEmail: formSubmissionsTable.respondentEmail,
         createdAt: formSubmissionsTable.createdAt,
       })
       .from(formSubmissionsTable)
@@ -163,11 +179,13 @@ export default class FormAnalyticsService {
       .orderBy(formSubmissionsTable.createdAt);
 
     return {
-      fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type })),
+      fields: [...columns.values()],
       submissions: submissions.map((s) => ({
         id: s.id,
         createdAt: s.createdAt ? s.createdAt.toISOString() : null,
         isAuthenticated: !!s.submittedBy,
+        respondentEmail: s.respondentEmail ?? null,
+        version: s.versionId ? (versionNumber.get(s.versionId) ?? null) : null,
         values: s.values ?? [],
       })),
     };
@@ -182,6 +200,8 @@ export default class FormAnalyticsService {
         formId: formSubmissionsTable.formId,
         values: formSubmissionsTable.values,
         submittedBy: formSubmissionsTable.submittedBy,
+        versionId: formSubmissionsTable.versionId,
+        respondentEmail: formSubmissionsTable.respondentEmail,
         createdAt: formSubmissionsTable.createdAt,
       })
       .from(formSubmissionsTable)
@@ -192,16 +212,28 @@ export default class FormAnalyticsService {
 
     await assertFormOwnership(submission.formId, userId);
 
-    const fields = await db
-      .select({
-        id: formFieldsTable.id,
-        label: formFieldsTable.label,
-        type: formFieldsTable.type,
-        index: formFieldsTable.index,
-      })
-      .from(formFieldsTable)
-      .where(eq(formFieldsTable.formId, submission.formId))
-      .orderBy(formFieldsTable.index);
+    // Read the response against the version it was submitted to (its labels, its fields).
+    let versionNo: number | null = null;
+    let fields: { id: string; label: string; type: string }[];
+    const ver = submission.versionId
+      ? (
+          await db
+            .select({ version: formVersionsTable.version, snapshot: formVersionsTable.snapshot })
+            .from(formVersionsTable)
+            .where(eq(formVersionsTable.id, submission.versionId))
+        )[0]
+      : undefined;
+    if (ver) {
+      versionNo = ver.version;
+      fields = ver.snapshot.fields.map((f) => ({ id: f.id, label: f.label, type: f.type }));
+    } else {
+      // Responses collected before versioning existed: the live fields are all there is.
+      fields = await db
+        .select({ id: formFieldsTable.id, label: formFieldsTable.label, type: formFieldsTable.type })
+        .from(formFieldsTable)
+        .where(eq(formFieldsTable.formId, submission.formId))
+        .orderBy(formFieldsTable.index);
+    }
 
     const valueByFieldId = new Map((submission.values ?? []).map((v) => [v.fieldId, v.value]));
 
@@ -216,6 +248,8 @@ export default class FormAnalyticsService {
       id: submission.id,
       formId: submission.formId,
       isAuthenticated: !!submission.submittedBy,
+      respondentEmail: submission.respondentEmail ?? null,
+      version: versionNo,
       createdAt: submission.createdAt ? submission.createdAt.toISOString() : null,
       answers,
     };

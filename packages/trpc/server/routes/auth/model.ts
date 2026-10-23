@@ -8,6 +8,24 @@ export const createUserWithEmailAndPasswordInputModel = z.object({
 
 export const createUserWithEmailAndPasswordOutputModel = z.object({
   id: z.string().describe("ID of the user"),
+  emailSent: z
+    .boolean()
+    .describe("Whether a verification email went out (false: ask the user to use 'Resend')"),
+});
+
+export const verifyEmailInputModel = z.object({
+  token: z.string().min(10).max(256).describe("Token from the verification email link"),
+});
+export const verifyEmailOutputModel = z.object({
+  status: z.enum(["OK", "EXPIRED", "USED", "INVALID"]),
+  id: z.string().optional().describe("ID of the verified user (status OK)"),
+});
+
+export const resendVerificationEmailInputModel = z.object({
+  email: z.email().describe("Email address the account was registered with"),
+});
+export const resendVerificationEmailOutputModel = z.object({
+  success: z.boolean(),
 });
 
 export const signInUserWithEmailAndPasswordInputModel = z.object({
