@@ -97,9 +97,18 @@ export const authRouter = router({
         // No session yet: the account only becomes usable once the emailed link is opened.
         return { id: created.id, emailSent: created.emailSent };
       } catch (error) {
+        if (error instanceof Error && error.message === "User with this email already exists") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "An account with this email already exists. Sign in or reset your password.",
+          });
+        }
+        if (error instanceof ZodError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Check your details and try again.") });
+        }
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: toReadableMessage(error, "Failed to create account"),
+          code: "INTERNAL_SERVER_ERROR",
+          message: "We couldn't create your account right now. Please try again.",
         });
       }
     }),
@@ -126,9 +135,15 @@ export const authRouter = router({
           // FORBIDDEN (not UNAUTHORIZED) lets the UI offer "resend verification email".
           throw new TRPCError({ code: "FORBIDDEN", message: error.message });
         }
+        if (error instanceof Error && error.message === "Invalid email address or password") {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email address or password" });
+        }
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: toReadableMessage(error, "Invalid email address or password"),
+          code: error instanceof ZodError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof ZodError
+              ? toReadableMessage(error, "Check your details and try again.")
+              : "We couldn't sign you in right now. Please try again.",
         });
       }
     }),
@@ -187,7 +202,7 @@ export const authRouter = router({
       } catch (error) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: toReadableMessage(error, "Google sign-in failed"),
+          message: "Google sign-in couldn't be completed. Please try again.",
         });
       }
     }),
@@ -215,9 +230,14 @@ export const authRouter = router({
         return { id: rotated.id };
       } catch (error) {
         clearAuthCookies(ctx);
+        const knownSessionError =
+          error instanceof Error &&
+          ["Invalid refresh token", "Refresh token has expired, please sign in again"].includes(error.message);
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: toReadableMessage(error, "Session expired, please sign in again"),
+          code: knownSessionError ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
+          message: knownSessionError
+            ? "Your session has expired. Please sign in again."
+            : "We couldn't refresh your session. Please sign in again.",
         });
       }
     }),
@@ -284,9 +304,21 @@ export const authRouter = router({
         clearAuthCookies(ctx);
         return { success: true };
       } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        const knownMessages = [
+          "This password reset link is invalid or has expired",
+          "This account doesn't use a password — sign in with Google instead",
+        ];
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: toReadableMessage(error, "Failed to reset password"),
+          code: knownMessages.includes(message) || error instanceof ZodError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof ZodError
+              ? toReadableMessage(error, "Check your password and try again.")
+              : message === knownMessages[0]
+                ? "This reset link is invalid or has expired. Request a new one and try again."
+                : message === knownMessages[1]
+                  ? "This account uses Google sign-in. Continue with Google instead."
+                  : "We couldn't reset your password right now. Please try again.",
         });
       }
     }),
@@ -311,9 +343,20 @@ export const authRouter = router({
         });
         return { success: true };
       } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        const knownMessages = [
+          "This account uses Google sign-in and doesn't support setting a password",
+          "Current password is required to set a new one",
+          "Current password is incorrect",
+        ];
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: toReadableMessage(error, "Failed to update password"),
+          code: knownMessages.includes(message) || error instanceof ZodError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof ZodError
+              ? toReadableMessage(error, "Check your password and try again.")
+              : knownMessages.includes(message)
+                ? message
+                : "We couldn't update your password right now. Please try again.",
         });
       }
     }),

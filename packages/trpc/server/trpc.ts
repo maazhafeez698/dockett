@@ -5,6 +5,16 @@ import { createContext } from "./context";
 import { userService } from "./services";
 import { ACCESS_TOKEN_COOKIE } from "./utils/cookie";
 
+const GENERIC_ERROR_MESSAGE =
+  "We couldn't complete that request. Please try again. If the problem continues, contact support.";
+
+const TECHNICAL_ERROR_PATTERN =
+  /failed query:|\bparams:|sqlstate|postgres|drizzle|duplicate key|foreign key|(?:not-null|check) constraint|violates .* constraint|invalid input (?:syntax for type|value for enum)|relation .* does not exist|column .* does not exist|\b(?:type|reference|syntax|range)error:|cannot (?:read|set) properties|is not a function|\bat\s+.{1,120}\([^)]*\)|(?:[a-z]:\\|\/app\/|\/home\/)|econn(?:refused|reset)|etimedout|socket hang up|\bea?uth\b.*(?:invalid login|535|authentication failed)|\b(?:query|database|db)\s+(?:failed|error)|\b(?:internal|unexpected)\s+(?:server\s+)?error\b/i;
+
+export function isTechnicalErrorMessage(message: string | undefined): boolean {
+  return Boolean(message && TECHNICAL_ERROR_PATTERN.test(message));
+}
+
 export const tRPCContext = initTRPC
   .meta<OpenApiMeta>()
   .context<typeof createContext>()
@@ -12,7 +22,16 @@ export const tRPCContext = initTRPC
     // Lets the web app tell "you hit a plan limit" (offer an upgrade) apart from any other FORBIDDEN error.
     errorFormatter({ shape, error }) {
       const planLimit = (error.cause as { planLimit?: string } | undefined)?.planLimit ?? null;
-      return { ...shape, data: { ...shape.data, planLimit } };
+      const message =
+        error.code === "INTERNAL_SERVER_ERROR" || isTechnicalErrorMessage(shape.message)
+          ? GENERIC_ERROR_MESSAGE
+          : shape.message;
+
+      return {
+        ...shape,
+        message,
+        data: { ...shape.data, stack: undefined, planLimit },
+      };
     },
   });
 

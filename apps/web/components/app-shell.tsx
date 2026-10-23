@@ -160,7 +160,7 @@ export function AppShell({ children, docLabel = "WORKSPACE", scroll = true }: Ap
         <main
           className={
             scroll
-              ? "min-h-0 flex-1 overflow-y-auto"
+              ? "scrollbar-none min-h-0 flex-1 overflow-y-auto"
               : "flex min-h-0 flex-1 flex-col overflow-hidden"
           }
         >

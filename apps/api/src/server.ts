@@ -99,7 +99,52 @@ app.use(
   trpcExpress.createExpressMiddleware({
     router: serverRouter,
     createContext,
+    onError({ error, path }) {
+      if (
+        error.code === "INTERNAL_SERVER_ERROR" ||
+        /failed query:|sqlstate|drizzle|postgres|constraint|econn|etimedout|cannot (?:read|set) properties/i.test(
+          error.message,
+        )
+      ) {
+        logger.error("tRPC request failed", {
+          path,
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+        });
+      }
+    },
   }),
+);
+
+// Keep parser and other Express-level failures on the same safe, predictable
+// JSON contract as tRPC. Express's default handler can include implementation
+// details in development and is not suitable as a public API response.
+app.use(
+  (
+    error: { status?: number; type?: string },
+    _req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (res.headersSent) return next(error);
+
+    const status = error.status === 400 ? 400 : error.status === 413 ? 413 : 500;
+    if (status === 500) {
+      logger.error("Unhandled HTTP request failure", { error });
+    }
+
+    return res.status(status).json({
+      error: {
+        message:
+          status === 413
+            ? "That request is too large."
+            : status === 400
+              ? "We couldn't process that request. Please check it and try again."
+              : "We couldn't complete that request. Please try again.",
+      },
+    });
+  },
 );
 
 export default app;
