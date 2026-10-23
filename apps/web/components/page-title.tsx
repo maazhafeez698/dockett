@@ -4,11 +4,16 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const TITLES: Record<string, string> = {
-  "/": "",
+  "/": "Dockett",
   "/signin": "Sign in",
   "/signup": "Create account",
   "/forgot-password": "Forgot password",
   "/reset-password": "Reset password",
+  "/verify-email": "Verify email",
+  "/about": "About",
+  "/contact": "Contact",
+  "/privacy": "Privacy policy",
+  "/terms": "Terms of service",
   "/dashboard": "Create form",
   "/dashboard/forms": "Forms",
   "/dashboard/analytics": "Analytics",
@@ -27,7 +32,8 @@ export function PageTitle() {
   const pathname = usePathname();
 
   useEffect(() => {
-    document.title = `${titleForPath(pathname)} · Dockett`;
+    const title = titleForPath(pathname);
+    document.title = title === "Dockett" ? title : `${title} · Dockett`;
   }, [pathname]);
 
   return null;

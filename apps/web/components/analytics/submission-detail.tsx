@@ -78,10 +78,11 @@ export function SubmissionDetail({
             </div>
             <div>
               <p className="text-sm font-medium">
-                Response {detail.isAuthenticated ? "· signed in" : "· anonymous"}
+                Response {detail.respondentEmail ? `· ${detail.respondentEmail}` : "· anonymous"}
               </p>
               <p className="text-xs text-muted-foreground">
                 {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : "—"}
+                {detail.version ? ` · answered version ${detail.version}` : ""}
               </p>
             </div>
           </div>

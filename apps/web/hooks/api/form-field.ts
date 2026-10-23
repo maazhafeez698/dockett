@@ -14,7 +14,10 @@ export function useCreateField(formId: string) {
     status,
   } = trpc.formField.createField.useMutation({
     onSuccess: async () => {
-      await utils.formField.getFields.invalidate({ formId });
+      await Promise.all([
+        utils.formField.getFields.invalidate({ formId }),
+        utils.form.getFormWithFields.invalidate({ formId }),
+      ]);
     },
   });
 
@@ -61,7 +64,10 @@ export function useUpdateField(formId: string) {
     isPending,
   } = trpc.formField.updateField.useMutation({
     onSuccess: async () => {
-      await utils.formField.getFields.invalidate({ formId });
+      await Promise.all([
+        utils.formField.getFields.invalidate({ formId }),
+        utils.form.getFormWithFields.invalidate({ formId }),
+      ]);
     },
   });
 
@@ -79,7 +85,10 @@ export function useDeleteField(formId: string) {
     isPending,
   } = trpc.formField.deleteField.useMutation({
     onSuccess: async () => {
-      await utils.formField.getFields.invalidate({ formId });
+      await Promise.all([
+        utils.formField.getFields.invalidate({ formId }),
+        utils.form.getFormWithFields.invalidate({ formId }),
+      ]);
     },
   });
 
@@ -96,7 +105,10 @@ export function useReorderFields(formId: string) {
     isPending,
   } = trpc.formField.reorderFields.useMutation({
     onSuccess: async () => {
-      await utils.formField.getFields.invalidate({ formId });
+      await Promise.all([
+        utils.formField.getFields.invalidate({ formId }),
+        utils.form.getFormWithFields.invalidate({ formId }),
+      ]);
     },
   });
 

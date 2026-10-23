@@ -13,6 +13,7 @@ import { AuthShell, OrDivider, safeNext } from "~/components/auth-shell";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { VerifyEmailPanel } from "~/components/verify-email-panel";
 
 export default function SigninPage() {
   const router = useRouter();
@@ -25,6 +26,9 @@ export default function SigninPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // The server answers FORBIDDEN (correct password, address not verified yet).
+  const unverified = (error as { data?: { code?: string } } | null)?.data?.code === "FORBIDDEN";
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,7 +91,13 @@ export default function SigninPage() {
             />
           </div>
 
-          {error ? <p role="alert" className="text-xs text-destructive">{error.message}</p> : null}
+          {unverified ? (
+            <VerifyEmailPanel email={email} variant="inline" />
+          ) : error ? (
+            <p role="alert" className="text-xs text-destructive">
+              {error.message}
+            </p>
+          ) : null}
           {googleError ? <p role="alert" className="text-xs text-destructive">{googleError.message}</p> : null}
           {isSuccess ? (
             <p className="text-xs text-success">Signed in.</p>

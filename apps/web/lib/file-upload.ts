@@ -45,6 +45,8 @@ function storageErrorMessage(xhr: XMLHttpRequest): string {
   } catch {
     message = xhr.responseText?.slice(0, 200) ?? "";
   }
+  // eslint-disable-next-line no-console
+  console.error("[upload] storage rejected the upload", { status: xhr.status, message, response: xhr.responseText });
   const base = `Storage rejected the upload (HTTP ${xhr.status})`;
   return message ? `${base}: ${message}` : base;
 }
@@ -53,7 +55,6 @@ function postToStorage(
   url: string,
   fields: Record<string, string>,
   file: File,
-  fileName: string,
   onProgress: (fraction: number) => void,
   signal: AbortSignal,
 ): Promise<void> {
@@ -61,7 +62,7 @@ function postToStorage(
     const xhr = new XMLHttpRequest();
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
-    form.append("file", file, fileName); // must be last; keeps Cloudinary's raw asset extension canonical
+    form.append("file", file); // must be last
 
     xhr.open("POST", url);
     xhr.upload.onprogress = (e) => {
@@ -85,6 +86,7 @@ interface UploaderContext {
   formId: string;
   fieldId: string;
   accessCode?: string;
+  respondentToken?: string;
 }
 
 /** Returns the `upload` / `discard` functions for one FILE_UPLOAD field. */
@@ -116,6 +118,7 @@ export function useFileFieldUploader(ctx: UploaderContext) {
           mimeType: real.type ?? "",
           size: real.size,
           accessCode: ctx.accessCode,
+          respondentToken: ctx.respondentToken,
         });
         uploadId = sig.uploadId;
 
@@ -123,7 +126,6 @@ export function useFileFieldUploader(ctx: UploaderContext) {
           sig.uploadUrl,
           sig.fields,
           real,
-          sig.fileName,
           (f) => onProgress(Math.min(0.9, f * 0.9)),
           controller.current?.signal ?? new AbortController().signal,
         );

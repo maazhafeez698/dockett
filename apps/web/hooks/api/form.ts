@@ -52,7 +52,11 @@ export function useListForms() {
   };
 }
 
-export const useGetFormWithFields = (formId: string, accessCode?: string, enabled = true) => {
+/**
+ * @param live owner-only: load the editable draft (the builder). Everyone else — and the owner on the
+ * public page — gets the published version.
+ */
+export const useGetFormWithFields = (formId: string, accessCode?: string, enabled = true, live = false) => {
   const {
     data: form,
     error,
@@ -62,7 +66,7 @@ export const useGetFormWithFields = (formId: string, accessCode?: string, enable
     status,
     refetch,
   } = trpc.form.getFormWithFields.useQuery(
-    { formId, accessCode },
+    { formId, accessCode, live: live || undefined },
     { enabled: !!formId && enabled, retry: false },
   );
 
@@ -147,6 +151,29 @@ export function useUpdateForm() {
   });
 
   return { updateFormAsync, error, isError, isSuccess, isPending };
+}
+
+/** Status, access, respondent identity and automatic closure in one atomic call. */
+export function usePublishForm() {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: publishFormAsync,
+    error,
+    isError,
+    isSuccess,
+    isPending,
+  } = trpc.form.publishForm.useMutation({
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        utils.form.listForms.invalidate(),
+        utils.form.getFormWithFields.invalidate({ formId: variables.formId }),
+        utils.billing.invalidate(),
+      ]);
+    },
+  });
+
+  return { publishFormAsync, error, isError, isSuccess, isPending };
 }
 
 export function useDeleteForm() {

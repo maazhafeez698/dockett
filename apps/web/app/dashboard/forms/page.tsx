@@ -48,8 +48,6 @@ export default function DashboardForms() {
   }, [forms, query, filter]);
 
   const handleDeleteForm = async (formId: string) => {
-    if (!confirm("Delete this form and all of its fields and submissions? This can't be undone."))
-      return;
     try {
       await deleteFormAsync({ formId });
     } catch (err) {

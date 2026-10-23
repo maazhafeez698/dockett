@@ -99,25 +99,25 @@ function downloadSubmissionsCsv(
       id: string;
       createdAt: string | null;
       isAuthenticated: boolean;
+      respondentEmail?: string | null;
+      version?: number | null;
       values: { fieldId: string; value: string }[];
     }[];
   },
 ) {
-  const header = ["#", "Submitted At", ...data.fields.map((f) => f.label)];
+  const header = ["#", "Submitted At", "Email", "Version", ...data.fields.map((f) => f.label)];
 
   const rows = data.submissions.map((s, i) => {
     const byField = new Map(s.values.map((v) => [v.fieldId, v.value]));
     return [
       String(i + 1),
       formatCsvTimestamp(s.createdAt),
+      s.respondentEmail ?? "",
+      s.version ? String(s.version) : "",
       ...data.fields.map((f) => {
         const raw = byField.get(f.id) ?? "";
         // file answers are stored as references; the export lists file names
-        return f.type === "FILE_UPLOAD"
-          ? parseStoredFiles(raw)
-              .map((x) => x.name)
-              .join("; ")
-          : raw;
+        return f.type === "FILE_UPLOAD" ? parseStoredFiles(raw).map((x) => x.name).join("; ") : raw;
       }),
     ];
   });
@@ -277,11 +277,7 @@ export default function AnalyticsPage() {
                 <>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <StatCard label="Total responses" value={analytics.totalResponses} />
-                    <StatCard
-                      label="Completion rate"
-                      value={`${analytics.completionRate}%`}
-                      accent
-                    />
+                    <StatCard label="Completion rate" value={`${analytics.completionRate}%`} accent />
                     <StatCard label="Total views" value={analytics.totalViews} />
                   </div>
 
@@ -304,22 +300,14 @@ export default function AnalyticsPage() {
                                   month: "short",
                                 })
                               }
-                              tick={{
-                                fontSize: 10,
-                                fill: "var(--muted-foreground)",
-                                fontFamily: "var(--font-mono)",
-                              }}
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
                               axisLine={false}
                               tickLine={false}
                               interval="preserveStartEnd"
                             />
                             <YAxis
                               allowDecimals={false}
-                              tick={{
-                                fontSize: 10,
-                                fill: "var(--muted-foreground)",
-                                fontFamily: "var(--font-mono)",
-                              }}
+                              tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" }}
                               axisLine={false}
                               tickLine={false}
                               width={24}
@@ -395,10 +383,7 @@ export default function AnalyticsPage() {
                     {submissionsLoading ? (
                       <div className="mt-3 space-y-2">
                         {[0, 1, 2].map((i) => (
-                          <div
-                            key={i}
-                            className="h-12 animate-pulse border border-border bg-muted"
-                          />
+                          <div key={i} className="h-12 animate-pulse border border-border bg-muted" />
                         ))}
                       </div>
                     ) : latest.length === 0 ? (

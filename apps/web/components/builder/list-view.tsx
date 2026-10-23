@@ -301,7 +301,6 @@ export function ListView(props: ListViewProps) {
 
   const [tab, setTab] = useState<"fields" | "pages">("fields");
   const [search, setSearch] = useState("");
-  const [zoom, setZoom] = useState(1);
   const [drag, setDrag] = useState<DragState>(null);
   const [over, setOver] = useState<number | null>(null);
   // optimistic order, cleared as soon as the server list changes
@@ -491,7 +490,6 @@ export function ListView(props: ListViewProps) {
         >
           <div
             className="mx-auto w-full max-w-[540px] space-y-2.5 px-3 py-5 pb-24 sm:px-5"
-            style={{ zoom }}
             onClick={(e) => e.stopPropagation()}
             onDragOver={(e) => {
               if (drag && e.target === e.currentTarget) {
@@ -709,37 +707,6 @@ export function ListView(props: ListViewProps) {
           </div>
         </div>
 
-        {/* zoom */}
-        <div className="absolute bottom-3 left-3 flex items-center border border-border bg-card p-0.5 shadow-[2px_2px_0_0_var(--hard-shadow)]">
-          <button
-            type="button"
-            aria-label="Zoom out"
-            onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}
-            className="flex size-7 items-center justify-center font-mono text-sm text-muted-foreground hover:text-foreground"
-          >
-            –
-          </button>
-          <span className="w-11 text-center font-mono text-[10px] tabular-nums" aria-live="polite">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(2)))}
-            className="flex size-7 items-center justify-center font-mono text-sm text-muted-foreground hover:text-foreground"
-          >
-            +
-          </button>
-          <span className="mx-1 h-4 w-px bg-border" />
-          <button
-            type="button"
-            aria-label="Reset zoom"
-            onClick={() => setZoom(1)}
-            className="mono-label-sm px-2 py-2 text-muted-foreground hover:text-foreground"
-          >
-            Fit
-          </button>
-        </div>
       </section>
     </>
   );

@@ -46,8 +46,8 @@ export function LogoutConfirm({ children }: LogoutConfirmProps) {
         <AlertDialogFooter className="flex-row justify-end gap-2">
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
+            onClick={(event) => {
+              event.preventDefault();
               void handleConfirm();
             }}
             disabled={isPending}

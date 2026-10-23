@@ -24,6 +24,7 @@ import {
   getOptions,
   typeLabel,
   type BuilderField,
+  type FieldConfig,
   type FieldType,
 } from "~/components/builder/field-types";
 import {
@@ -43,7 +44,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Sheet, SheetContent, SheetTitle } from "~/components/ui/sheet";
 import { ShareFormDialog } from "~/components/share-form-dialog";
-import { PublishFormDialog } from "~/components/publish-form-dialog";
+import { PublishFormDialog, type PublishResult } from "~/components/publish-form-dialog";
 import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
 import { FormTemplateRenderer } from "~/components/form-templates";
 import { FormUploadProvider } from "~/components/form-upload-context";
@@ -69,7 +70,12 @@ export default function FormBuilder() {
   const [aiOpen, setAiOpen] = useState(false);
   const formId = params?.id as string | undefined;
 
-  const { form } = useGetFormWithFields(formId ?? "");
+  // live: the builder edits the draft; respondents (and this page for them) see the published version
+  const { form } = useGetFormWithFields(formId ?? "", undefined, true, true);
+
+  // The Share dialog opens by itself right after a publication succeeds (never on failure).
+  const [shareOpen, setShareOpen] = useState(false);
+  const [justPublished, setJustPublished] = useState<PublishResult | null>(null);
   const { fields, isLoading: fieldsLoading } = useGetFields(formId ?? "");
 
   const { createFieldAsync } = useCreateField(formId ?? "");
@@ -89,9 +95,7 @@ export default function FormBuilder() {
   const previewFlow = useSubmissionFlow(fields ?? [], form?.submissionLayout ?? "ONE_AT_A_TIME");
 
   const selectedField = fields?.find((f) => f.id === selectedFieldId) ?? null;
-  const selectedIndex = selectedField
-    ? (fields ?? []).findIndex((f) => f.id === selectedField.id)
-    : -1;
+  const selectedIndex = selectedField ? (fields ?? []).findIndex((f) => f.id === selectedField.id) : -1;
 
   // a deleted/missing field can't stay selected
   useEffect(() => {
@@ -108,13 +112,7 @@ export default function FormBuilder() {
   /* ----------------------------- actions ----------------------------- */
 
   const handleAddField = async (type: FieldType) => {
-    if (!formId || !fields || fieldsLoading) return;
-    if (fields && fields.length >= MAX_FIELDS_PER_FORM) {
-      toast.error(
-        `A form can have at most ${MAX_FIELDS_PER_FORM} fields. Delete a field to add another.`,
-      );
-      return;
-    }
+    if (!formId) return;
     try {
       const created = await createFieldAsync({
         label: FIELD_TYPE_LABELS[type],
@@ -132,12 +130,6 @@ export default function FormBuilder() {
   // reorder if it didn't land at the end (createField always appends).
   const handleDropNewField = async (type: string, afterFieldId: string | undefined) => {
     if (!formId || !fields) return;
-    if (fields.length >= MAX_FIELDS_PER_FORM) {
-      toast.error(
-        `A form can have at most ${MAX_FIELDS_PER_FORM} fields. Delete a field to add another.`,
-      );
-      return;
-    }
     const fieldType = type as FieldType;
     if (!FIELD_TYPE_LABELS[fieldType]) return;
 
@@ -178,16 +170,23 @@ export default function FormBuilder() {
   const handleRemoveOption = async (fieldId: string, index: number) => {
     const field = fields?.find((f) => f.id === fieldId);
     if (!field) return;
+    const config = (field.config ?? {}) as FieldConfig;
     const options = getOptions(field as BuilderField).filter((_, i) => i !== index);
+    const nextConfig = {
+      ...config,
+      options,
+      ...(config.logic
+        ? { logic: { rules: config.logic.rules.filter((rule) => options.includes(rule.answer)) } }
+        : {}),
+    };
     try {
-      await updateFieldAsync({ fieldId, config: { options } });
+      await updateFieldAsync({ fieldId, config: nextConfig });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove option");
     }
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (!confirm("Delete this field?")) return;
     try {
       await deleteFieldAsync({ fieldId });
       if (selectedFieldId === fieldId) setSelectedFieldId(null);
@@ -243,8 +242,6 @@ export default function FormBuilder() {
 
   const handleDeleteForm = async () => {
     if (!formId) return;
-    if (!confirm("Delete this form and all of its fields and submissions? This can't be undone."))
-      return;
     try {
       await deleteFormAsync({ formId });
       router.push("/dashboard/forms");
@@ -259,6 +256,7 @@ export default function FormBuilder() {
     <FieldInspector
       mode={view}
       field={selectedField as BuilderField | null}
+      allFields={builderFields}
       position={selectedIndex >= 0 ? selectedIndex + 1 : undefined}
       form={form}
       premiumUnlocked={premiumUnlocked}
@@ -280,7 +278,7 @@ export default function FormBuilder() {
 
   return (
     <AppShell docLabel="Create form" scroll={false}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
         {/* --- toolbar --- */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
           <Link
@@ -297,10 +295,21 @@ export default function FormBuilder() {
             onBlur={handleTitleBlur}
             onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             aria-label="Form title"
-            className="font-display min-w-0 max-w-none flex-1 bg-transparent text-lg font-extrabold tracking-[-0.03em] outline-none focus-visible:underline decoration-primary underline-offset-4 sm:max-w-[16rem] sm:flex-none sm:text-xl"
+            className="font-display min-w-0 max-w-[16rem] flex-1 bg-transparent text-lg font-extrabold tracking-[-0.03em] outline-none focus-visible:underline decoration-primary underline-offset-4 sm:flex-none sm:text-xl"
           />
 
           {form ? <Badge variant={statusVariant}>{form.status}</Badge> : null}
+          {form?.status === "CLOSED" && form.closedReason ? (
+            <Badge variant="outline">
+              {form.closedReason === "SCHEDULED"
+                ? "Closed on schedule"
+                : form.closedReason === "INACTIVE"
+                  ? "Closed: no responses in 30 days"
+                  : "Closed manually"}
+            </Badge>
+          ) : null}
+          {form?.version ? <Badge variant="outline">v{form.version}</Badge> : null}
+          {form?.hasUnpublishedChanges && form.version ? <Badge variant="ember">Unpublished changes</Badge> : null}
 
           {/* view switch */}
           <div
@@ -332,18 +341,8 @@ export default function FormBuilder() {
 
           <div className="hidden flex-1 md:block" />
 
-          <div className="flex w-full flex-wrap items-center gap-1.5 md:ml-0 md:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAiOpen(true)}
-              disabled={!formId || fieldsLoading || (fields?.length ?? 0) >= MAX_FIELDS_PER_FORM}
-              title={
-                (fields?.length ?? 0) >= MAX_FIELDS_PER_FORM
-                  ? "Delete a field to make room for AI-generated fields."
-                  : undefined
-              }
-            >
+          <div className="ml-auto flex flex-wrap items-center gap-1.5 md:ml-0">
+            <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} disabled={!formId}>
               <Sparkles /> AI Generate
             </Button>
 
@@ -359,8 +358,18 @@ export default function FormBuilder() {
             {formId && form ? (
               <ShareFormDialog
                 formId={formId}
+                open={shareOpen}
+                onOpenChange={(o) => {
+                  setShareOpen(o);
+                  if (!o) setJustPublished(null);
+                }}
                 submissionAccess={form.submissionAccess}
-                accessCode={form.accessCode}
+                accessCode={justPublished?.accessCode ?? form.accessCode}
+                respondentIdentity={form.respondentIdentity}
+                oneResponsePerEmail={form.oneResponsePerEmail}
+                version={justPublished?.version ?? form.version}
+                closesAt={justPublished ? justPublished.closesAt : form.closesAt}
+                justPublished={!!justPublished}
               >
                 <Button variant="outline" size="sm">
                   <Share2 /> Share
@@ -371,10 +380,21 @@ export default function FormBuilder() {
             {formId && form ? (
               <PublishFormDialog
                 formId={formId}
-                currentStatus={form.status}
-                currentVisibility={form.visibility}
-                currentSubmissionAccess={form.submissionAccess}
-                currentAccessCode={form.accessCode}
+                form={{
+                  status: form.status,
+                  closedReason: form.closedReason,
+                  submissionAccess: form.submissionAccess,
+                  accessCode: form.accessCode,
+                  respondentIdentity: form.respondentIdentity,
+                  oneResponsePerEmail: form.oneResponsePerEmail,
+                  closesAt: form.closesAt,
+                  version: form.version,
+                  hasUnpublishedChanges: form.hasUnpublishedChanges,
+                }}
+                onPublished={(result) => {
+                  setJustPublished(result);
+                  setShareOpen(true);
+                }}
               >
                 <Button size="sm">
                   <Rocket /> Publish
@@ -412,38 +432,50 @@ export default function FormBuilder() {
                   Loading fields...
                 </div>
               ) : fields && fields.length > 0 ? (
+                <>
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border border-border bg-card px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="mono-label-sm text-muted-foreground">TEST PATH</p>
+                    <p className="mt-1 text-xs leading-relaxed">
+                      {previewFlow.activePath.map((fieldId) => fields.find((field) => field.id === fieldId)?.label ?? "Question").join(" → ")}
+                    </p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => {
+                    previewFlow.setValues({});
+                    previewFlow.setStep(0);
+                  }}>
+                    Reset preview
+                  </Button>
+                </div>
                 <FormUploadProvider formId={formId ?? null} isPreview>
-                  <FormTemplateRenderer
-                    template={form?.template}
-                    title={form?.title ?? ""}
-                    description={form?.description}
-                    fields={fields}
-                    visibleFields={previewFlow.visibleFields}
-                    values={previewFlow.values}
-                    onChange={previewFlow.onChange}
-                    missingFieldIds={previewFlow.missingFieldIds}
-                    layout={form?.submissionLayout ?? "ONE_AT_A_TIME"}
-                    stepIndex={previewFlow.step}
-                    stepCount={previewFlow.stepCount}
-                    stepStartIndex={previewFlow.stepStartIndex}
-                    isFirstStep={previewFlow.isFirstStep}
-                    isLastStep={previewFlow.isLastStep}
-                    onNext={previewFlow.onNext}
-                    onBack={previewFlow.onBack}
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (form?.submissionLayout === "ALL_AT_ONCE" && !previewFlow.isLastStep) {
-                        previewFlow.onNext();
-                        return;
-                      }
-                      if (!previewFlow.validateAll()) return;
-                      toast.info("This is a preview — publish the form to collect real responses.");
-                    }}
-                    submitting={false}
-                    submitted={false}
-                    isPreview
-                  />
+                <FormTemplateRenderer
+                  template={form?.template}
+                  title={form?.title ?? ""}
+                  description={form?.description}
+                  fields={previewFlow.activeFields}
+                  visibleFields={previewFlow.visibleFields}
+                  values={previewFlow.values}
+                  onChange={previewFlow.onChange}
+                  missingFieldIds={previewFlow.missingFieldIds}
+                  layout={form?.submissionLayout ?? "ONE_AT_A_TIME"}
+                  stepIndex={previewFlow.step}
+                  stepCount={previewFlow.stepCount}
+                  stepStartIndex={previewFlow.stepStartIndex}
+                  isFirstStep={previewFlow.isFirstStep}
+                  isLastStep={previewFlow.isLastStep}
+                  onNext={previewFlow.onNext}
+                  onBack={previewFlow.onBack}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!previewFlow.validateAll()) return;
+                    toast.info("This is a preview — publish the form to collect real responses.");
+                  }}
+                  submitting={false}
+                  submitted={false}
+                  isPreview
+                />
                 </FormUploadProvider>
+                </>
               ) : (
                 <div className="border border-dashed border-foreground/40 bg-card p-10 text-center text-sm text-muted-foreground">
                   No fields yet.
@@ -452,7 +484,7 @@ export default function FormBuilder() {
             </div>
           </div>
         ) : view === "list" ? (
-          <div className="grid min-h-0 min-w-0 flex-1 gap-3 lg:grid-cols-[212px_minmax(0,1fr)] xl:grid-cols-[212px_minmax(0,1fr)_300px]">
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[212px_minmax(0,1fr)] xl:grid-cols-[212px_minmax(0,1fr)_300px]">
             <ListView
               fields={builderFields}
               loading={fieldsLoading}
@@ -472,15 +504,13 @@ export default function FormBuilder() {
               layout={form?.submissionLayout === "ALL_AT_ONCE" ? "ALL_AT_ONCE" : "ONE_AT_A_TIME"}
             />
             {isWide ? (
-              <aside className="flex min-h-0 flex-col border border-border bg-card">
-                {inspector}
-              </aside>
+              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
             ) : null}
           </div>
         ) : (
-          <div className="grid min-h-0 min-w-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
             <section
-              className="relative min-h-[360px] min-w-0 overflow-hidden border border-border bg-card/40"
+              className="relative min-h-[360px] overflow-hidden border border-border bg-card/40"
               aria-label="Form canvas"
             >
               {fieldsLoading ? (
@@ -506,14 +536,12 @@ export default function FormBuilder() {
                   onDeleteField={handleDeleteField}
                   onDropNewField={handleDropNewField}
                   onAddField={handleAddField}
-                  canAddFields={!fieldsLoading && (fields?.length ?? 0) < MAX_FIELDS_PER_FORM}
+                  canAddFields={fields.length < MAX_FIELDS_PER_FORM}
                 />
               ) : null}
             </section>
             {isWide ? (
-              <aside className="flex min-h-0 flex-col border border-border bg-card">
-                {inspector}
-              </aside>
+              <aside className="flex min-h-0 flex-col border border-border bg-card">{inspector}</aside>
             ) : null}
           </div>
         )}

@@ -47,6 +47,13 @@ export interface FieldConfig {
   accept?: AcceptedFileKind[];
   maxFiles?: number;
   maxSizeMB?: number;
+  logic?: { rules: {
+    answer: string;
+    targetFieldId: string;
+    operator?: "EQ" | "GT" | "LT" | "GTE" | "LTE";
+    conditions?: { operator: "EQ" | "GT" | "LT" | "GTE" | "LTE"; value: string }[];
+    conditionJoin?: "AND" | "OR";
+  }[] };
 }
 
 /** A field as both builder views render it. */

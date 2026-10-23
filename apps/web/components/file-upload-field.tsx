@@ -44,23 +44,6 @@ export interface FileFieldConfig {
 
 export const DEFAULT_MAX_FILE_MB = 5;
 
-const UPLOAD_WIDGET_THEME = {
-  bg: "var(--background)",
-  ink: "var(--foreground)",
-  muted: "var(--muted-foreground)",
-  faint: "var(--muted-foreground)",
-  surface: "var(--card)",
-  dash: "var(--border)",
-  accent: "var(--primary)",
-  accentSoft: "color-mix(in srgb, var(--primary) 12%, var(--card))",
-  net: "var(--muted-foreground)",
-  ok: "var(--success)",
-  track: "var(--secondary)",
-  pill: "var(--secondary)",
-  badge: "var(--primary)",
-  font: "var(--font-sans), sans-serif",
-};
-
 export function fileFieldSettings(config: unknown) {
   const cfg = (config ?? {}) as FileFieldConfig;
   const kinds = (cfg.accept ?? []).filter((k) => (ALL_KINDS as readonly string[]).includes(k));
@@ -72,15 +55,7 @@ export function fileFieldSettings(config: unknown) {
 
 function BallIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      className={className}
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={className} aria-hidden="true">
       <circle cx="12" cy="12" r="9" />
       <path d="M3 12h18M12 3v18M5.6 5.6c3.2 3.2 3.2 9.6 0 12.8M18.4 5.6c-3.2 3.2-3.2 9.6 0 12.8" />
     </svg>
@@ -93,6 +68,8 @@ interface FileUploadFieldProps {
   config: unknown;
   value: string;
   onChange: (value: string) => void;
+  /** Follow the app's dark theme (Dockett respondent form). */
+  adaptive?: boolean;
   isMissing?: boolean;
 }
 
@@ -102,11 +79,12 @@ export function FileUploadField({
   config,
   value,
   onChange,
+  adaptive,
   isMissing,
 }: FileUploadFieldProps) {
-  const { formId, accessCode, isPreview } = useFormUpload();
+  const { formId, accessCode, respondentToken, isPreview } = useFormUpload();
   const { accept, maxFiles, maxSizeMB } = fileFieldSettings(config);
-  const { upload, discard } = useFileFieldUploader({ formId: formId ?? "", fieldId, accessCode });
+  const { upload, discard } = useFileFieldUploader({ formId: formId ?? "", fieldId, accessCode, respondentToken });
 
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -204,26 +182,24 @@ export function FileUploadField({
       ) : null}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="min-w-0 max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[480px] gap-3 overflow-x-hidden overflow-y-auto p-2 sm:max-h-[94dvh] sm:w-[calc(100vw-2rem)] sm:p-3">
+        <DialogContent className="max-h-[94dvh] w-[calc(100vw-1.5rem)] max-w-[480px] gap-3 overflow-y-auto p-3 sm:max-w-[480px]">
           <DialogHeader className="sr-only">
             <DialogTitle>Upload files</DialogTitle>
             <DialogDescription>
-              Browse for files or drop them here to upload them right away. Turn on shot mode to
-              score a basket with each file before it uploads.
+              Browse for files or drop them here to upload them right away. Turn on shot mode to score a basket
+              with each file before it uploads.
             </DialogDescription>
           </DialogHeader>
 
           <div
-            className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-2.5 py-2.5 transition-colors sm:px-3 ${
+            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition-colors ${
               shotOn ? "border-primary bg-primary/10" : "border-border bg-card"
             }`}
           >
             <label htmlFor={shotId} className="flex min-w-0 cursor-pointer items-center gap-2.5">
               <span
                 className={`flex size-8 shrink-0 items-center justify-center rounded-[3px] transition-colors ${
-                  shotOn
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground"
+                  shotOn ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
                 }`}
               >
                 <BallIcon className="size-5" />
@@ -235,24 +211,17 @@ export function FileUploadField({
                 </span>
               </span>
             </label>
-            <Switch
-              id={shotId}
-              checked={shotOn}
-              onCheckedChange={setShotOn}
-              aria-label="Shot mode"
-            />
+            <Switch id={shotId} checked={shotOn} onCheckedChange={setShotOn} aria-label="Shot mode" />
           </div>
 
           <HoopUpload
             // limits are read once at mount: re-mount if the field's settings change
             key={`${acceptAttr}|${maxFiles}|${maxSizeMB}|${isPreview}`}
-            className="min-w-0 w-full"
-            theme={UPLOAD_WIDGET_THEME}
             accept={acceptAttr}
             multiple={maxFiles > 1}
             maxFiles={maxFiles}
             maxSize={Math.floor(maxSizeMB * 1024 * 1024)}
-            adaptive
+            adaptive={adaptive}
             shotMode={shotOn}
             disabled={isPreview || !formId}
             initialFiles={initialFiles}
@@ -260,8 +229,7 @@ export function FileUploadField({
             upload={upload}
             onUploaded={(_file, result) => {
               const r = result as UploadedFile;
-              if (!idsRef.current.includes(r.uploadId))
-                setAnswerIds([...idsRef.current, r.uploadId]);
+              if (!idsRef.current.includes(r.uploadId)) setAnswerIds([...idsRef.current, r.uploadId]);
               push();
             }}
             onRemove={(_file, result) => {
@@ -281,9 +249,7 @@ export function FileUploadField({
 
           <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between">
             <span className="font-mono text-[10px] text-muted-foreground">
-              {uploading
-                ? "Uploading…"
-                : `${ids.length} of ${maxFiles} file${maxFiles === 1 ? "" : "s"} attached`}
+              {uploading ? "Uploading…" : `${ids.length} of ${maxFiles} file${maxFiles === 1 ? "" : "s"} attached`}
             </span>
             <Button type="button" onClick={() => handleOpenChange(false)} disabled={uploading}>
               Done

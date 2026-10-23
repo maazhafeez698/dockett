@@ -3,7 +3,8 @@
   "compilerOptions": {
     "paths": {
       "~/*": ["./*"],
-      "@repo/services/form-field/limits": ["../../packages/services/form-field/limits.ts"]
+      "@repo/services/form-field/limits": ["../../packages/services/form-field/limits.ts"],
+      "@repo/services/form-logic": ["../../packages/services/form-logic/index.ts"]
     },
     "plugins": [
       {

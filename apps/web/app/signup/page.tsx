@@ -13,10 +13,11 @@ import { AuthShell, OrDivider, safeNext } from "~/components/auth-shell";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { VerifyEmailPanel } from "~/components/verify-email-panel";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { createUserWithEmailAndPasswordAsync, isPending, isSuccess, error } = useSignup();
+  const { createUserWithEmailAndPasswordAsync, isPending, error } = useSignup();
   const {
     signInWithGoogleAsync,
     isPending: isGooglePending,
@@ -26,13 +27,15 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // After registering the account is NOT usable yet: it waits for the emailed link.
+  const [registered, setRegistered] = useState<{ email: string; emailSent: boolean } | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      await createUserWithEmailAndPasswordAsync({ fullName, email, password });
-      router.push(safeNext());
+      const created = await createUserWithEmailAndPasswordAsync({ fullName, email, password });
+      setRegistered({ email, emailSent: created.emailSent });
     } catch {
       // error is surfaced via the `error` state below
     }
@@ -46,6 +49,19 @@ export default function SignupPage() {
       toast.error("Google sign-in failed. Please try again.");
     }
   };
+
+  if (registered) {
+    return (
+      <AuthShell title="Check your email" subtitle="One more step before you can sign in.">
+        <VerifyEmailPanel
+          email={registered.email}
+          initiallySent={registered.emailSent}
+          onBack={() => setRegistered(null)}
+          backLabel="Use a different email"
+        />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
@@ -95,9 +111,6 @@ export default function SignupPage() {
 
           {error ? <p role="alert" className="text-xs text-destructive">{error.message}</p> : null}
           {googleError ? <p role="alert" className="text-xs text-destructive">{googleError.message}</p> : null}
-          {isSuccess ? (
-            <p className="text-xs text-success">Account created.</p>
-          ) : null}
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? "Registering..." : "Register"}

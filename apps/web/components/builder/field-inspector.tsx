@@ -7,7 +7,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -16,6 +16,12 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { GALLERY_TEMPLATE_IDS, getTemplateDesign } from "~/lib/template-designs";
+import {
+  analyzeConditionalLogic,
+  END_FORM,
+  logicChoices,
+  NEXT_QUESTION,
+} from "@repo/services/form-logic";
 import {
   OPTION_TYPES,
   typeLabel,
@@ -31,6 +37,23 @@ const FILE_KIND_OPTIONS = [
   { value: "jpg", label: "JPEG" },
   { value: "png", label: "PNG" },
 ] as const satisfies readonly { value: AcceptedFileKind; label: string }[];
+
+const NUMBER_LOGIC_OPERATORS = [
+  { value: "EQ", label: "=" },
+  { value: "GT", label: ">" },
+  { value: "LT", label: "<" },
+  { value: "GTE", label: ">=" },
+  { value: "LTE", label: "<=" },
+] as const;
+
+type LogicRuleConfig = NonNullable<FieldConfig["logic"]>["rules"][number];
+type LogicCondition = NonNullable<LogicRuleConfig["conditions"]>[number];
+
+function conditionsForNumberRule(rule: LogicRuleConfig): LogicCondition[] {
+  return rule.conditions?.length
+    ? rule.conditions
+    : [{ operator: rule.operator ?? "EQ", value: rule.answer }];
+}
 
 export interface FieldPatch {
   label: string;
@@ -49,6 +72,7 @@ interface FormSettings {
 interface FieldInspectorProps {
   mode: "list" | "nodes";
   field: BuilderField | null;
+  allFields: BuilderField[];
   /** 1-based position of the selected field (shown as "NODE 05"). */
   position?: number;
   form: FormSettings | undefined;
@@ -162,6 +186,9 @@ function FormSection({
             </button>
           ))}
         </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Conditional logic works with <span className="font-medium text-foreground">One at a time</span> pacing.
+        </p>
       </div>
 
       {savingForm ? <p className="mono-label-sm text-muted-foreground">Saving…</p> : null}
@@ -171,19 +198,19 @@ function FormSection({
 
 function FieldEditor({
   field,
+  allFields,
+  logicAvailableForLayout,
   mode,
   position,
   saving,
   onSave,
   onDelete,
-  extra,
-}: Pick<FieldInspectorProps, "field" | "mode" | "position" | "saving" | "onSave" | "onDelete"> & {
+}: Pick<FieldInspectorProps, "field" | "allFields" | "mode" | "position" | "saving" | "onSave" | "onDelete"> & {
+  logicAvailableForLayout: boolean;
   field: BuilderField;
-  extra?: React.ReactNode;
 }) {
   const type = field.type as FieldType;
   const cfg = (field.config ?? {}) as FieldConfig;
-
   const [label, setLabel] = useState(field.label);
   const [description, setDescription] = useState(field.description ?? "");
   const [placeholder, setPlaceholder] = useState(field.placeholder ?? "");
@@ -201,11 +228,38 @@ function FieldEditor({
   );
   const [maxFiles, setMaxFiles] = useState(String(cfg.maxFiles ?? 1));
   const [maxSizeMB, setMaxSizeMB] = useState(String(cfg.maxSizeMB ?? 5));
+  const [logicEnabled, setLogicEnabled] = useState(!!cfg.logic);
+  const [logicRules, setLogicRules] = useState(cfg.logic?.rules ?? []);
+  const choices = logicChoices({
+    id: field.id,
+    label,
+    type,
+    isRequired: required,
+    config: { ...cfg, options: OPTION_TYPES.has(type) ? options.map((option) => option.trim()).filter(Boolean) : cfg.options, max: type === "RATING" ? Number(ratingMax) || 5 : cfg.max },
+  });
+  const ruleAnswers = type === "NUMBER" ? logicRules.map((rule) => rule.answer) : choices;
+
+  const withLogic = (base?: FieldConfig): FieldConfig | undefined => {
+    const next = { ...(base ?? {}) };
+    if (logicEnabled && (choices.length > 0 || type === "NUMBER")) {
+      if (type === "NUMBER") {
+        next.logic = { rules: logicRules };
+        return Object.keys(next).length > 0 ? next : undefined;
+      }
+      const existing = new Map(logicRules.map((rule) => [rule.answer, rule.targetFieldId]));
+      next.logic = {
+        rules: choices.map((answer) => ({ answer, targetFieldId: existing.get(answer) ?? NEXT_QUESTION })),
+      };
+    } else {
+      delete next.logic;
+    }
+    return Object.keys(next).length > 0 ? next : undefined;
+  };
 
   const buildConfig = (): FieldConfig | undefined => {
-    if (OPTION_TYPES.has(type)) return { options: options.map((o) => o.trim()).filter(Boolean) };
-    if (type === "LONG_TEXT" && maxLength.trim()) return { maxLength: Number(maxLength) };
-    if (type === "RATING") return { max: ratingMax.trim() ? Number(ratingMax) : 5 };
+    if (OPTION_TYPES.has(type)) return withLogic({ ...cfg, options: options.map((o) => o.trim()).filter(Boolean) });
+    if (type === "LONG_TEXT" && maxLength.trim()) return withLogic({ ...cfg, maxLength: Number(maxLength) });
+    if (type === "RATING") return withLogic({ ...cfg, max: ratingMax.trim() ? Number(ratingMax) : 5 });
     if (type === "NUMBER") {
       const c: FieldConfig = {};
       if (minValue.trim() !== "" && Number.isFinite(Number(minValue)))
@@ -213,16 +267,16 @@ function FieldEditor({
       if (maxValue.trim() !== "" && Number.isFinite(Number(maxValue)))
         c.maxValue = Number(maxValue);
       if (step.trim() !== "" && Number(step) > 0) c.step = Number(step);
-      return Object.keys(c).length > 0 ? c : undefined;
+      return withLogic({ ...cfg, ...c });
     }
     if (type === "FILE_UPLOAD") {
-      return {
+      return withLogic({ ...cfg,
         accept: accept.length > 0 ? accept : FILE_KIND_OPTIONS.map((k) => k.value),
         maxFiles: Math.min(5, Math.max(1, Math.round(Number(maxFiles) || 1))),
         maxSizeMB: Math.min(10, Math.max(0.1, Number(maxSizeMB) || 5)),
-      };
+      });
     }
-    return undefined;
+    return withLogic(cfg);
   };
 
   const handleSave = () =>
@@ -448,14 +502,226 @@ function FieldEditor({
           </div>
         ) : null}
 
+        {choices.length > 0 || type === "NUMBER" ? (
+          <Section title="Conditional logic">
+            {!logicEnabled ? (
+              <div className="space-y-2">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {logicAvailableForLayout
+                    ? "Send people to a different question based on their answer."
+                    : "Conditional logic requires One at a time. Change Field pacing in Form details to use it."}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!logicAvailableForLayout}
+                  onClick={() => {
+                    const existing = new Map(logicRules.map((rule) => [rule.answer, rule.targetFieldId]));
+                    setLogicRules(type === "NUMBER"
+                      ? (logicRules.length > 0
+                        ? logicRules.map((rule) => {
+                          const conditions = conditionsForNumberRule(rule);
+                          return { ...rule, answer: conditions[0]?.value ?? rule.answer, operator: conditions[0]?.operator ?? "EQ", conditions };
+                        })
+                        : [{ answer: "0", operator: "EQ", targetFieldId: NEXT_QUESTION, conditions: [{ operator: "EQ", value: "0" }], conditionJoin: "AND" }])
+                      : choices.map((answer) => ({ answer, targetFieldId: existing.get(answer) ?? NEXT_QUESTION })));
+                    setLogicEnabled(true);
+                  }}
+                >
+                  Add logic
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {!logicAvailableForLayout ? (
+                  <p className="rounded-sm border border-primary/50 bg-primary/5 p-2.5 text-xs leading-relaxed">
+                    These routes need <span className="font-medium">One at a time</span> field pacing. Change it in Form details before publishing.
+                  </p>
+                ) : null}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {type === "NUMBER"
+                    ? "Combine comparisons with AND or OR. Overlapping routes that lead to different questions are flagged."
+                    : "If the answer matches, go to that question. Otherwise, continue to the next question."}
+                </p>
+                {ruleAnswers.map((answer, ruleIndex) => {
+                  const numberRule = logicRules[ruleIndex];
+                  const numberConditions = type === "NUMBER" && numberRule ? conditionsForNumberRule(numberRule) : [];
+                  const conditionJoin = numberRule?.conditionJoin ?? "AND";
+                  const selectedTarget = logicRules.find((rule) => rule.answer === answer)?.targetFieldId ?? NEXT_QUESTION;
+                  const destination = allFields.find((candidate) => candidate.id === selectedTarget);
+                  return (
+                    <div key={`${answer}-${ruleIndex}`} className="space-y-1.5 rounded-sm border border-border p-2.5">
+                      {type === "NUMBER" ? (
+                        <div className="space-y-2">
+                          {numberConditions.length > 1 ? (
+                            <Label className="flex items-center gap-2 text-xs">
+                              Match
+                              <select
+                                value={conditionJoin}
+                                aria-label={`How number conditions combine for route ${ruleIndex + 1}`}
+                                onChange={(event) => setLogicRules((current) => current.map((rule, index) => index === ruleIndex
+                                  ? { ...rule, conditionJoin: event.target.value as "AND" | "OR" }
+                                  : rule))}
+                                className="border-input h-8 rounded-sm border bg-card px-2 font-mono text-xs"
+                              >
+                                <option value="AND">all conditions (AND)</option>
+                                <option value="OR">any condition (OR)</option>
+                              </select>
+                            </Label>
+                          ) : null}
+                          {numberConditions.map((condition, conditionIndex) => (
+                            <div key={`${ruleIndex}-${conditionIndex}`} className="grid grid-cols-[90px_1fr_auto] items-center gap-2">
+                              <select
+                                aria-label={`Number comparison ${conditionIndex + 1} for route ${ruleIndex + 1}`}
+                                value={condition.operator}
+                                onChange={(event) => setLogicRules((current) => current.map((rule, index) => {
+                                  if (index !== ruleIndex) return rule;
+                                  const conditions = conditionsForNumberRule(rule).map((item, i) => i === conditionIndex
+                                    ? { ...item, operator: event.target.value as LogicCondition["operator"] }
+                                    : item);
+                                  return { ...rule, answer: conditions[0]!.value, operator: conditions[0]!.operator, conditions };
+                                }))}
+                                className="border-input h-9 rounded-sm border bg-card px-2 font-mono text-sm"
+                              >
+                                {NUMBER_LOGIC_OPERATORS.map((operator) => (
+                                  <option key={operator.value} value={operator.value}>{operator.label}</option>
+                                ))}
+                              </select>
+                              <Input
+                                type="number"
+                                step="any"
+                                value={condition.value}
+                                aria-label={`Number value ${conditionIndex + 1} for route ${ruleIndex + 1}`}
+                                onChange={(event) => setLogicRules((current) => current.map((rule, index) => {
+                                  if (index !== ruleIndex) return rule;
+                                  const conditions = conditionsForNumberRule(rule).map((item, i) => i === conditionIndex
+                                    ? { ...item, value: event.target.value }
+                                    : item);
+                                  return { ...rule, answer: conditions[0]!.value, conditions };
+                                }))}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={numberConditions.length <= 1}
+                                aria-label={`Remove condition ${conditionIndex + 1}`}
+                                onClick={() => setLogicRules((current) => current.map((rule, index) => {
+                                  if (index !== ruleIndex) return rule;
+                                  const conditions = conditionsForNumberRule(rule).filter((_, i) => i !== conditionIndex);
+                                  return { ...rule, conditions, answer: conditions[0]?.value ?? rule.answer, operator: conditions[0]?.operator ?? rule.operator };
+                                }))}
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLogicRules((current) => current.map((rule, index) => index === ruleIndex
+                              ? { ...rule, conditions: [...conditionsForNumberRule(rule), { operator: "GTE", value: "0" }] }
+                              : rule))}
+                          >
+                            Add condition
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="font-mono text-[11px] font-medium">
+                          If answer is {type === "YES_NO" ? (answer === "true" ? "Yes" : "No") : answer}
+                        </div>
+                      )}
+                      <select
+                        aria-label={`Where to go when the answer is ${answer}`}
+                        value={selectedTarget}
+                        onChange={(event) => {
+                          const targetFieldId = event.target.value;
+                          if (type === "NUMBER") {
+                            setLogicRules((current) => current.map((rule, index) => index === ruleIndex ? { ...rule, targetFieldId } : rule));
+                          } else {
+                            setLogicRules((current) => choices.map((choice) => ({
+                              answer: choice,
+                              targetFieldId: choice === answer
+                                ? targetFieldId
+                                : current.find((rule) => rule.answer === choice)?.targetFieldId ?? NEXT_QUESTION,
+                            })));
+                          }
+                        }}
+                        className="border-input focus-visible:border-primary focus-visible:ring-ring h-9 w-full rounded-sm border bg-card px-2 font-mono text-[11px] outline-none focus-visible:ring-[3px]"
+                      >
+                        <option value={NEXT_QUESTION}>Continue to next question</option>
+                        {allFields.map((candidate, index) => index >= (position ?? 1) ? (
+                          <option key={candidate.id} value={candidate.id}>
+                            {index === (position ?? 1) ? "Go to: " : "Skip ahead to: "}{candidate.label}
+                          </option>
+                        ) : null)}
+                        <option value={END_FORM}>End the form</option>
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        Preview: {type === "NUMBER"
+                          ? numberConditions.map((condition) => `${NUMBER_LOGIC_OPERATORS.find((operator) => operator.value === condition.operator)?.label} ${condition.value}`).join(conditionJoin === "AND" ? " AND " : " OR ")
+                          : type === "YES_NO" ? (answer === "true" ? "Yes" : "No") : answer} -&gt; {selectedTarget === END_FORM ? "End form" : destination?.label ?? "Next question"}
+                      </p>
+                      {type === "NUMBER" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={logicRules.length <= 1}
+                          onClick={() => setLogicRules((current) => current.filter((_, index) => index !== ruleIndex))}
+                        >
+                          Remove this route
+                        </Button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+                {type === "NUMBER" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLogicRules((current) => {
+                      const used = new Set(current.map((rule) => Number(rule.answer)).filter(Number.isFinite));
+                      let suggested = 0;
+                      while (used.has(suggested)) suggested += 1;
+                      const value = String(suggested);
+                      return [...current, { answer: value, operator: "EQ", targetFieldId: NEXT_QUESTION, conditions: [{ operator: "EQ", value }], conditionJoin: "AND" }];
+                    })}
+                  >
+                    Add another number route
+                  </Button>
+                ) : null}
+                {(() => {
+                  const analysis = analyzeConditionalLogic(allFields);
+                  const issues = [...analysis.errors, ...analysis.warnings].filter((issue) => issue.fieldId === field.id);
+                  return issues.length > 0 ? (
+                    <div className="space-y-1.5 rounded-sm border border-primary/50 bg-primary/5 p-2.5 text-xs">
+                      {issues.map((issue, index) => (
+                        <p key={`${issue.message}-${index}`} className="flex gap-1.5 leading-relaxed">
+                          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                          <span>{issue.message}</span>
+                        </p>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+                <Button type="button" variant="ghost" size="sm" onClick={() => setLogicEnabled(false)}>
+                  Remove logic
+                </Button>
+              </div>
+            )}
+          </Section>
+        ) : null}
+
         <div className="flex items-center justify-between border-y border-dashed border-border py-3">
           <Label htmlFor="field-required" className="cursor-pointer">
             Required
           </Label>
           <Switch id="field-required" checked={required} onCheckedChange={setRequired} />
         </div>
-
-        {extra}
       </div>
 
       <div className="border-t border-border p-4">
@@ -477,12 +743,13 @@ export function FieldInspector(props: FieldInspectorProps) {
         <FieldEditor
           key={field.id}
           field={field}
+          allFields={props.allFields}
+          logicAvailableForLayout={props.form?.submissionLayout !== "ALL_AT_ONCE"}
           mode={mode}
           position={props.position}
           saving={props.saving}
           onSave={props.onSave}
           onDelete={props.onDelete}
-          extra={mode === "list" ? <FormSection {...props} showDescription={false} /> : undefined}
         />
       </div>
     );

@@ -22,6 +22,8 @@ backups/
 # Turbo
 .turbo
 
+.pnpm-store
+
 # Vercel
 .vercel
 

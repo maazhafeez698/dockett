@@ -11,19 +11,20 @@
 
 "use client";
 
-import { use, useState } from "react";
-import Link from "next/link";
-import { AlertCircle, KeyRound, Lock, LogIn } from "lucide-react";
+import { use, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, KeyRound, Lock } from "lucide-react";
 
 import { useGetFormAccessInfo, useGetFormWithFields } from "~/hooks/api/form";
 import { useCreateSubmission } from "~/hooks/api/form-submission";
-import { useUser } from "~/hooks/api/auth";
+import { useCheckRespondentSession, useRequestRespondentLink, useVerifyRespondentLink } from "~/hooks/api/form-respondent";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
 import { FormTemplateRenderer } from "~/components/form-templates";
 import { FormUploadProvider } from "~/components/form-upload-context";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { RespondentEmailGate } from "~/components/respondent-email-gate";
 
 function CenteredMessage({
   icon,
@@ -98,32 +99,84 @@ function AccessCodeGate({
 
 export default function PublicFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const {
     accessInfo,
     isLoading: accessInfoLoading,
     error: accessInfoError,
   } = useGetFormAccessInfo(id);
-  const { user, isLoading: userLoading } = useUser();
-
   const [enteredCode, setEnteredCode] = useState<string | undefined>(undefined);
+  const [respondentToken, setRespondentToken] = useState<string | undefined>(undefined);
+  const [respondentTokenLoaded, setRespondentTokenLoaded] = useState(false);
+  const [respondentSessionValid, setRespondentSessionValid] = useState(false);
+  const [checkingRespondentSession, setCheckingRespondentSession] = useState(false);
+  const [alreadyResponded, setAlreadyResponded] = useState(false);
+  const [emailLinkNotice, setEmailLinkNotice] = useState<string | null>(null);
+  const nonce = useState(() => crypto.randomUUID())[0];
+  const { requestLinkAsync } = useRequestRespondentLink();
+  const { verifyLinkAsync } = useVerifyRespondentLink();
+  const { checkSessionAsync } = useCheckRespondentSession();
+
+  useEffect(() => {
+    const storageKey = `dockett:respondent:${id}`;
+    const stored = sessionStorage.getItem(storageKey) ?? undefined;
+    setRespondentToken(stored);
+    setRespondentTokenLoaded(true);
+    if (stored) {
+      setCheckingRespondentSession(true);
+      void checkSessionAsync({ formId: id, token: stored }).then((session) => {
+        if (session.valid) {
+          setRespondentSessionValid(true);
+          setAlreadyResponded(!!session.alreadyResponded);
+        } else {
+          sessionStorage.removeItem(storageKey);
+          setRespondentToken(undefined);
+          setRespondentSessionValid(false);
+        }
+      }).catch(() => setRespondentSessionValid(false)).finally(() => setCheckingRespondentSession(false));
+    }
+    const rv = searchParams.get("rv");
+    if (!rv) return;
+    let active = true;
+    void verifyLinkAsync({ token: rv }).then((result) => {
+      if (!active) return;
+      if (result.status === "OK" && result.formId === id && result.token) {
+        sessionStorage.setItem(storageKey, result.token);
+        setRespondentToken(result.token);
+        setRespondentSessionValid(true);
+        setAlreadyResponded(!!result.alreadyResponded);
+        setEmailLinkNotice(null);
+      } else {
+        setEmailLinkNotice(result.status === "USED" ? "This link was already used. Request a new one to continue." : "This link is invalid or expired. Request a new one to continue.");
+      }
+    }).catch(() => {
+      if (active) setEmailLinkNotice("We couldn't verify this link. Request a new one to continue.");
+    }).finally(() => {
+      if (active) router.replace(`/form/${id}`);
+    });
+    return () => { active = false; };
+  }, [id, router, searchParams, verifyLinkAsync, checkSessionAsync]);
 
   const needsCodeAttempt =
     accessInfo?.submissionAccess === "ACCESS_CODE" && enteredCode === undefined;
-  const needsLogin = accessInfo?.submissionAccess === "AUTHENTICATED_ONLY" && !userLoading && !user;
+  const needsEmailVerification = accessInfo?.respondentIdentity === "VERIFIED_EMAIL";
 
   const {
     form,
     isLoading: formLoading,
     error: formError,
-  } = useGetFormWithFields(id, enteredCode, !!accessInfo && !needsCodeAttempt && !needsLogin);
+  } = useGetFormWithFields(id, enteredCode, !!accessInfo && !needsCodeAttempt && (!needsEmailVerification || (respondentTokenLoaded && respondentSessionValid)));
 
   const { createSubmissionAsync, isPending: submitting } = useCreateSubmission();
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const fields = form?.fields ?? [];
-  const flow = useSubmissionFlow(fields, form?.submissionLayout ?? "ONE_AT_A_TIME");
+  const resumeScope = respondentToken ? respondentToken.slice(-12) : "guest";
+  const resumeKey = form?.versionId ? `dockett:response:${id}:${form.versionId}:${resumeScope}` : undefined;
+  const flow = useSubmissionFlow(fields, form?.submissionLayout ?? "ONE_AT_A_TIME", resumeKey);
 
   if (accessInfoLoading) return null;
 
@@ -168,21 +221,6 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (needsLogin) {
-    return (
-      <CenteredMessage
-        icon={<LogIn className="size-8 text-muted-foreground" />}
-        title="Sign in to continue"
-        body={`"${accessInfo.title}" only accepts responses from signed-in Dockett accounts.`}
-        action={
-          <Button asChild className="w-full">
-            <Link href={`/signin?next=/form/${id}`}>Sign in</Link>
-          </Button>
-        }
-      />
-    );
-  }
-
   if (needsCodeAttempt) {
     return (
       <AccessCodeGate
@@ -193,6 +231,33 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
             : null
         }
         onSubmit={(code) => setEnteredCode(code)}
+      />
+    );
+  }
+
+  if (needsEmailVerification && (!respondentTokenLoaded || checkingRespondentSession || (searchParams.get("rv") && !respondentSessionValid && !emailLinkNotice))) {
+    return null;
+  }
+
+  if (needsEmailVerification && !respondentSessionValid) {
+    return (
+      <RespondentEmailGate
+        formTitle={accessInfo.title}
+        oneResponsePerEmail={accessInfo.oneResponsePerEmail}
+        notice={emailLinkNotice}
+        requestLink={async (email) => {
+          await requestLinkAsync({ formId: id, email, nonce, accessCode: enteredCode });
+        }}
+      />
+    );
+  }
+
+  if (needsEmailVerification && alreadyResponded) {
+    return (
+      <CenteredMessage
+        icon={<Lock className="size-8 text-muted-foreground" />}
+        title="Already responded"
+        body="This email address has already submitted a response to this form."
       />
     );
   }
@@ -216,7 +281,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (formLoading || !form) return null;
+  if (formLoading || !form || flow.isRestoring) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -232,7 +297,9 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
         formId: id,
         values: flow.toSubmissionValues(),
         accessCode: enteredCode,
+        respondentToken,
       });
+      flow.clearSavedResponse();
       setSubmitted(true);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to submit");
@@ -249,12 +316,12 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
           : "min-h-screen bg-background px-4 py-10 sm:py-16"
       }
     >
-      <FormUploadProvider formId={id} accessCode={enteredCode}>
+      <FormUploadProvider formId={id} accessCode={enteredCode} respondentToken={respondentToken}>
         <FormTemplateRenderer
           template={form.template}
           title={form.title}
           description={form.description}
-          fields={fields}
+          fields={flow.activeFields}
           visibleFields={flow.visibleFields}
           values={flow.values}
           onChange={flow.onChange}
