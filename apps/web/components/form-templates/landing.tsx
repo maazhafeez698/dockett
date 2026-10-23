@@ -34,7 +34,7 @@ export function LandingShell(props: FormTemplateShellProps) {
     errorMessage,
   } = props;
 
-  const design = getTemplateDesign("LANDING");
+  const design = getTemplateDesign("LANDING", props.designSettings);
   const [from, to] = design.accentGradient;
 
   return (
@@ -117,8 +117,8 @@ export function LandingShell(props: FormTemplateShellProps) {
                 <Button
                   type="button"
                   onClick={onNext}
-                  style={{ background: design.accent }}
-                  className="flex-1 border-0 text-[#2A0A38] hover:opacity-90"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="flex-1 border-0 hover:opacity-90"
                 >
                   Next
                 </Button>
@@ -126,8 +126,8 @@ export function LandingShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: design.accent }}
-                  className="flex-1 border-0 text-[#2A0A38] hover:opacity-90"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="flex-1 border-0 hover:opacity-90"
                 >
                   {submitting ? "Joining..." : "Join the waitlist"}
                 </Button>

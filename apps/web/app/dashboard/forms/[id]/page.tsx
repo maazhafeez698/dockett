@@ -49,7 +49,7 @@ import { AiFormBuilderPanel } from "~/components/ai-form-builder/panel";
 import { FormTemplateRenderer } from "~/components/form-templates";
 import { FormUploadProvider } from "~/components/form-upload-context";
 import { useSubmissionFlow } from "~/hooks/use-submission-flow";
-import type { FormTemplateId } from "~/lib/template-designs";
+import type { FormTemplateId, TemplateCustomization } from "~/lib/template-designs";
 import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 type BuilderView = "list" | "nodes";
@@ -240,6 +240,15 @@ export default function FormBuilder() {
     }
   };
 
+  const handleDesignChange = async (designSettings: TemplateCustomization) => {
+    if (!formId) return;
+    try {
+      await updateFormAsync({ formId, designSettings });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update appearance");
+    }
+  };
+
   const handleDeleteForm = async () => {
     if (!formId) return;
     try {
@@ -267,6 +276,7 @@ export default function FormBuilder() {
       onDescriptionBlur={handleDescriptionBlur}
       onTemplateChange={handleTemplateChange}
       onLayoutChange={handleLayoutChange}
+      onDesignChange={handleDesignChange}
     />
   );
 
@@ -450,6 +460,7 @@ export default function FormBuilder() {
                 <FormUploadProvider formId={formId ?? null} isPreview>
                 <FormTemplateRenderer
                   template={form?.template}
+                  designSettings={form?.designSettings}
                   title={form?.title ?? ""}
                   description={form?.description}
                   fields={previewFlow.activeFields}

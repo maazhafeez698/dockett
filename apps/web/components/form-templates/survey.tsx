@@ -32,7 +32,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
     errorMessage,
   } = props;
 
-  const design = getTemplateDesign("SURVEY");
+  const design = getTemplateDesign("SURVEY", props.designSettings);
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-4 py-10 text-center">
@@ -104,7 +104,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
                 <Button
                   type="button"
                   onClick={onNext}
-                  style={{ background: design.accent, color: "#04211d" }}
+                  style={{ background: design.accent, color: design.accentForeground }}
                   className="rounded-full border-0 px-8 hover:opacity-90"
                 >
                   Next
@@ -113,7 +113,7 @@ export function SurveyShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: design.accent, color: "#04211d" }}
+                  style={{ background: design.accent, color: design.accentForeground }}
                   className="rounded-full border-0 px-8 hover:opacity-90"
                 >
                   {submitting ? "Sending..." : "Submit"}

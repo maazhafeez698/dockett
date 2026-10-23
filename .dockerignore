@@ -23,6 +23,7 @@ Thumbs.db
 backups
 **/backups
 *.sql
+!packages/database/drizzle/*.sql
 *.sql.gz
 .deployed-image-tag*
 docker-compose.dev.yml

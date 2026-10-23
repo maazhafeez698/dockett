@@ -5,6 +5,7 @@
 
 import { createHash } from "node:crypto";
 import type { FormSnapshot, FormSnapshotField } from "@repo/database/models/form-version";
+import type { FormDesignSettings } from "@repo/database/models/form";
 import { env } from "../env";
 
 /** Automatic closure bounds, enforced by the server (the UI offers presets + a custom value). */
@@ -62,7 +63,7 @@ interface LiveFieldRow {
 
 /** `fields` must already be ordered by `index` (as the database returns them). */
 export function buildSnapshot(
-  form: { title: string; description: string | null; template: string; submissionLayout: string },
+  form: { title: string; description: string | null; template: string; submissionLayout: string; designSettings?: FormDesignSettings | null },
   fields: LiveFieldRow[],
 ): FormSnapshot {
   const snapFields: FormSnapshotField[] = fields.map((f) => ({
@@ -84,6 +85,7 @@ export function buildSnapshot(
     description: form.description ?? null,
     template: form.template,
     submissionLayout: form.submissionLayout,
+    designSettings: form.designSettings ?? {},
     fields: snapFields,
   };
 }
@@ -107,6 +109,7 @@ export function hashSnapshot(s: FormSnapshot): string {
     description: s.description,
     template: s.template,
     submissionLayout: s.submissionLayout,
+    designSettings: s.designSettings ?? {},
     fields: s.fields.map((f) => ({
       id: f.id,
       label: f.label,

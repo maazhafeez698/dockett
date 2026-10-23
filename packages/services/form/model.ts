@@ -13,6 +13,12 @@ export const formTemplateEnum = z.enum([
 ]);
 
 export const formSubmissionLayoutEnum = z.enum(["ONE_AT_A_TIME", "ALL_AT_ONCE"]);
+export const formDesignSettingsSchema = z.object({
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  surfaceMode: z.enum(["LIGHT", "DARK"]).optional(),
+  typography: z.enum(["SANS", "SERIF", "MONO"]).optional(),
+  corners: z.enum(["SOFT", "SHARP"]).optional(),
+});
 // AUTHENTICATED_ONLY is deprecated (respondents no longer need an account); it is never accepted as input.
 export const formAccessModeEnum = z.enum(["ANYONE", "ACCESS_CODE"]);
 export const formSubmissionAccessEnum = z.enum(["ANYONE", "ACCESS_CODE", "AUTHENTICATED_ONLY"]);
@@ -115,6 +121,7 @@ export const updateFormInput = z.object({
   description: z.string().max(300).nullable().optional().describe("New description of the form"),
   template: formTemplateEnum.optional().describe("Design template applied to the public page"),
   submissionLayout: formSubmissionLayoutEnum.optional(),
+  designSettings: formDesignSettingsSchema.optional(),
 });
 
 export type UpdateFormInputType = z.infer<typeof updateFormInput>;

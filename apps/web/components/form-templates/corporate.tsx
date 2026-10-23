@@ -35,14 +35,14 @@ export function CorporateShell(props: FormTemplateShellProps) {
     errorMessage,
   } = props;
 
-  const design = getTemplateDesign("CORPORATE");
+  const design = getTemplateDesign("CORPORATE", props.designSettings);
   const visibleIds = new Set(visibleFields.map((f) => f.id));
   const outlineFields = layout === "ALL_AT_ONCE" ? visibleFields : fields;
 
   return (
     <div className="mx-auto grid max-w-4xl gap-0 overflow-hidden rounded-2xl border border-slate-700/40 bg-slate-950 shadow-2xl sm:grid-cols-[280px_1fr]">
       {/* Left rail */}
-      <aside className="bg-slate-900 p-8 text-slate-200">
+      <aside className="p-8" style={{ background: design.accent, color: design.accentForeground }}>
         <p className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
           Application Form
         </p>
@@ -117,7 +117,8 @@ export function CorporateShell(props: FormTemplateShellProps) {
                 <Button
                   type="button"
                   onClick={onNext}
-                  className="rounded-none bg-slate-900 px-8 hover:bg-slate-800"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="rounded-none px-8 hover:opacity-90"
                 >
                   Continue
                 </Button>
@@ -125,7 +126,8 @@ export function CorporateShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="text-white rounded-full bg-slate-900 px-8 hover:bg-slate-800"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="rounded-full px-8 hover:opacity-90"
                 >
                   {submitting ? "Submitting..." : "Submit Application"}
                 </Button>

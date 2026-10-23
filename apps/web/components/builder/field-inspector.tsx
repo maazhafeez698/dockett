@@ -16,6 +16,7 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { GALLERY_TEMPLATE_IDS, getTemplateDesign } from "~/lib/template-designs";
+import type { TemplateCustomization } from "~/lib/template-designs";
 import {
   analyzeConditionalLogic,
   END_FORM,
@@ -37,6 +38,15 @@ const FILE_KIND_OPTIONS = [
   { value: "jpg", label: "JPEG" },
   { value: "png", label: "PNG" },
 ] as const satisfies readonly { value: AcceptedFileKind; label: string }[];
+
+const ACCENT_PRESETS = [
+  { label: "Template", value: "DEFAULT" },
+  { label: "Ocean", value: "#0E7490" },
+  { label: "Forest", value: "#15803D" },
+  { label: "Sunset", value: "#EA580C" },
+  { label: "Violet", value: "#7C3AED" },
+  { label: "Rose", value: "#E11D48" },
+] as const;
 
 const NUMBER_LOGIC_OPERATORS = [
   { value: "EQ", label: "=" },
@@ -67,6 +77,7 @@ interface FormSettings {
   description?: string | null;
   template?: string | null;
   submissionLayout?: string | null;
+  designSettings?: TemplateCustomization;
 }
 
 interface FieldInspectorProps {
@@ -84,6 +95,7 @@ interface FieldInspectorProps {
   onDescriptionBlur: (value: string) => void;
   onTemplateChange: (templateId: string) => void;
   onLayoutChange: (layout: "ONE_AT_A_TIME" | "ALL_AT_ONCE") => void;
+  onDesignChange: (settings: TemplateCustomization) => void;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -105,6 +117,7 @@ function FormSection({
   onDescriptionBlur,
   onTemplateChange,
   onLayoutChange,
+  onDesignChange,
 }: Pick<
   FieldInspectorProps,
   | "form"
@@ -113,8 +126,10 @@ function FormSection({
   | "onDescriptionBlur"
   | "onTemplateChange"
   | "onLayoutChange"
+  | "onDesignChange"
 > & { showDescription: boolean }) {
   const layout = form?.submissionLayout === "ALL_AT_ONCE" ? "ALL_AT_ONCE" : "ONE_AT_A_TIME";
+  const design = form?.designSettings ?? {};
 
   return (
     <div className="space-y-4">
@@ -156,6 +171,49 @@ function FormSection({
         <p className="text-[11px] leading-snug text-muted-foreground">
           Changes the structure and design of the public submission page.
         </p>
+      </div>
+
+      <div className="space-y-3 border-t border-border pt-3">
+        <div>
+          <Label>Appearance</Label>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Personalize the form while keeping its template layout.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Theme
+            <select aria-label="Theme" value={design.surfaceMode ?? "LIGHT"} onChange={(e) => onDesignChange({ ...design, surfaceMode: e.target.value as "LIGHT" | "DARK" })} className="h-9 w-full rounded-sm border border-input bg-card px-2 text-foreground">
+              <option value="LIGHT">Light</option><option value="DARK">Dark</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Typography
+            <select aria-label="Typography" value={design.typography ?? "SANS"} onChange={(e) => onDesignChange({ ...design, typography: e.target.value as "SANS" | "SERIF" | "MONO" })} className="h-9 w-full rounded-sm border border-input bg-card px-2 text-foreground">
+              <option value="SANS">Clean sans</option><option value="SERIF">Editorial serif</option><option value="MONO">Technical mono</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Corners
+            <select aria-label="Corners" value={design.corners ?? "DEFAULT"} onChange={(e) => onDesignChange({ ...design, corners: e.target.value === "DEFAULT" ? undefined : e.target.value as "SOFT" | "SHARP" })} className="h-9 w-full rounded-sm border border-input bg-card px-2 text-foreground">
+              <option value="DEFAULT">Template default</option><option value="SOFT">Soft</option><option value="SHARP">Square</option>
+            </select>
+          </label>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            Accent color
+            <div className="flex h-9 items-center gap-2 rounded-sm border border-input bg-card px-2">
+              <input aria-label="Accent color" type="color" value={design.accentColor ?? getTemplateDesign(form?.template).accent} onChange={(e) => onDesignChange({ ...design, accentColor: e.target.value })} className="size-6 cursor-pointer border-0 bg-transparent p-0" />
+              <span className="font-mono text-[11px] text-foreground">{design.accentColor ?? getTemplateDesign(form?.template).accent}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2" aria-label="Accent presets">
+          {ACCENT_PRESETS.map((preset) => {
+            const color = preset.value === "DEFAULT" ? getTemplateDesign(form?.template).accent : preset.value;
+            const selected = preset.value === "DEFAULT" ? !design.accentColor : design.accentColor?.toLowerCase() === color.toLowerCase();
+            return <button key={preset.label} type="button" aria-label={`${preset.label} accent`} aria-pressed={selected} title={preset.label} onClick={() => onDesignChange({ ...design, accentColor: preset.value === "DEFAULT" ? undefined : preset.value })} className={`size-5 rounded-full border-2 ${selected ? "border-foreground ring-1 ring-foreground/30" : "border-background"}`} style={{ backgroundColor: color }} />;
+          })}
+          <span className="text-[10px] text-muted-foreground">Accent presets</span>
+        </div>
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-1 text-[11px] text-muted-foreground" onClick={() => onDesignChange({})}>Reset appearance</Button>
       </div>
 
       <div className="space-y-1.5">

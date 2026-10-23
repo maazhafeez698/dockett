@@ -444,3 +444,24 @@
   background-image: radial-gradient(circle, var(--grain) 0.7px, transparent 0.95px);
   background-size: 4px 4px;
 }
+/* Template appearance controls apply uniformly while each shell keeps its own layout. */
+.template-frame { display: contents; }
+.template-frame[data-template-surface="DARK"] { color-scheme: dark; }
+.template-frame[data-template-surface="LIGHT"] { color-scheme: light; }
+.template-frame[data-template-corners="SHARP"] button,
+.template-frame[data-template-corners="SHARP"] input,
+.template-frame[data-template-corners="SHARP"] textarea,
+.template-frame[data-template-corners="SHARP"] select { border-radius: 2px !important; }
+.template-frame[data-template-corners="SOFT"] button,
+.template-frame[data-template-corners="SOFT"] input,
+.template-frame[data-template-corners="SOFT"] textarea,
+.template-frame[data-template-corners="SOFT"] select { border-radius: 14px !important; }
+.template-frame[data-template-corners="SHARP"] > div:first-child { border-radius: 2px !important; }
+.template-frame[data-template-corners="SOFT"] > div:first-child { border-radius: var(--template-radius) !important; }
+.template-frame[data-template-typography="SANS"] > div:first-child *,
+.template-frame[data-template-typography="SERIF"] > div:first-child *,
+.template-frame[data-template-typography="MONO"] > div:first-child * { font-family: inherit !important; }
+.template-frame[data-template-surface="DARK"] > div:first-child {
+  background-color: var(--template-surface) !important;
+  color: var(--template-foreground) !important;
+}

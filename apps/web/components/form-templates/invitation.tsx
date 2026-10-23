@@ -32,7 +32,7 @@ export function InvitationShell(props: FormTemplateShellProps) {
     errorMessage,
   } = props;
 
-  const design = getTemplateDesign("INVITATION");
+  const design = getTemplateDesign("INVITATION", props.designSettings);
 
   return (
     <div className="mx-auto max-w-xl rounded-lg border border-amber-300/50 bg-[#FBF6EC] px-6 py-12 text-center shadow-xl sm:px-14">
@@ -105,7 +105,7 @@ export function InvitationShell(props: FormTemplateShellProps) {
                 <Button
                   type="button"
                   onClick={onNext}
-                  style={{ background: design.accent }}
+                  style={{ background: design.accent, color: design.accentForeground }}
                   className="rounded-none border-0 px-8 text-[#3B2A12] hover:opacity-90"
                 >
                   Continue
@@ -114,7 +114,7 @@ export function InvitationShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: design.accent }}
+                  style={{ background: design.accent, color: design.accentForeground }}
                   className="rounded-none border-0 px-8 text-[#3B2A12] hover:opacity-90"
                 >
                   {submitting ? "Sending..." : "Send RSVP"}

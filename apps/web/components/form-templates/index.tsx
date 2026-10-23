@@ -4,6 +4,7 @@
 // live preview pane, so the two never drift apart.
 
 import type { FormTemplateId } from "~/lib/template-designs";
+import { getTemplateDesign } from "~/lib/template-designs";
 import type { FormTemplateShellProps } from "./types";
 import { ClassicShell } from "./classic";
 import { CorporateShell } from "./corporate";
@@ -33,5 +34,24 @@ export function FormTemplateRenderer(
   props: FormTemplateShellProps & { template: string | null | undefined },
 ) {
   const Shell = SHELLS[(props.template as FormTemplateId) ?? "CLASSIC"] ?? ClassicShell;
-  return <Shell {...props} />;
+  const design = getTemplateDesign(props.template, props.designSettings);
+  return (
+    <div
+      className="template-frame"
+      data-template-surface={props.designSettings?.surfaceMode ?? "LIGHT"}
+      data-template-corners={props.designSettings?.corners ?? "DEFAULT"}
+      data-template-typography={props.designSettings?.typography ?? "TEMPLATE"}
+      style={{
+        "--template-surface": design.surface,
+        "--template-foreground": design.foreground,
+        "--template-radius": design.cornerRadius,
+        "--primary": design.accent,
+        "--primary-foreground": design.accentForeground,
+        "--template-accent": design.accent,
+        fontFamily: design.fontFamily,
+      } as React.CSSProperties}
+    >
+      <Shell {...props} />
+    </div>
+  );
 }

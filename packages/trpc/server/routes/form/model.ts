@@ -65,6 +65,13 @@ const templateFieldModel = z.object({
     .optional(),
 });
 
+const designSettingsModel = z.object({
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  surfaceMode: z.enum(["LIGHT", "DARK"]).optional(),
+  typography: z.enum(["SANS", "SERIF", "MONO"]).optional(),
+  corners: z.enum(["SOFT", "SHARP"]).optional(),
+});
+
 export const createFormInputModel = z.object({
   title: z.string().max(55).describe("Title of the form"),
   description: z.string().max(300).optional().describe("Description of the form"),
@@ -102,6 +109,7 @@ export const listFormsOutputModel = z.array(
     closesAt: z.date().nullable().optional(),
     template: formTemplateEnum,
     submissionLayout: formSubmissionLayoutEnum,
+    designSettings: designSettingsModel,
     accessCode: z.string().nullable().optional(),
     planSuspended: z
       .boolean()
@@ -133,6 +141,7 @@ export const getFormOutputModel = z.object({
   oneResponsePerEmail: z.boolean(),
   template: formTemplateEnum,
   submissionLayout: formSubmissionLayoutEnum,
+  designSettings: designSettingsModel,
   accessCode: z.string().nullable(),
   versionId: z.string().nullable().describe("The published version this content belongs to (null for a live draft)"),
   version: z.number().nullable().describe("Version number of the current publication"),
@@ -157,6 +166,7 @@ export const getFormAccessInfoOutputModel = z.object({
   respondentIdentity: formRespondentIdentityEnum,
   oneResponsePerEmail: z.boolean(),
   template: formTemplateEnum,
+  designSettings: designSettingsModel,
   planUnavailable: z
     .boolean()
     .optional()
@@ -173,6 +183,7 @@ export const updateFormInputModel = z.object({
   description: z.string().max(300).nullable().optional(),
   template: formTemplateEnum.optional(),
   submissionLayout: formSubmissionLayoutEnum.optional(),
+  designSettings: designSettingsModel.optional(),
 });
 
 export const updateFormOutputModel = z.object({

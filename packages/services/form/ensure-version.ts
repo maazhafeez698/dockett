@@ -23,6 +23,7 @@ export async function ensurePublishedVersion(formId: string): Promise<string | n
           description: formsTable.description,
           template: formsTable.template,
           submissionLayout: formsTable.submissionLayout,
+          designSettings: formsTable.designSettings,
           publishedVersionId: formsTable.publishedVersionId,
         })
         .from(formsTable)
@@ -53,7 +54,7 @@ export async function ensurePublishedVersion(formId: string): Promise<string | n
       .orderBy(formFieldsTable.index);
 
     const snapshot = buildSnapshot(
-      { title: form.title, description: form.description ?? null, template: form.template, submissionLayout: form.submissionLayout },
+      { title: form.title, description: form.description ?? null, template: form.template, submissionLayout: form.submissionLayout, designSettings: form.designSettings },
       fields,
     );
     const inserted = await tx

@@ -1,5 +1,5 @@
 import { index, integer, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
-import { formsTable } from "./form";
+import { formsTable, type FormDesignSettings } from "./form";
 import { usersTable } from "./user";
 
 /** A field exactly as it was when the version was published (same shape the API returns). */
@@ -24,6 +24,7 @@ export interface FormSnapshot {
   description: string | null;
   template: string;
   submissionLayout: string;
+  designSettings: FormDesignSettings;
   fields: FormSnapshotField[];
 }
 

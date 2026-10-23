@@ -10,10 +10,12 @@
 // every template instead of each shell re-implementing stepping logic.
 
 import type { RendererField } from "~/components/form-field-renderer";
+import type { TemplateCustomization } from "~/lib/template-designs";
 
 export type SubmissionLayout = "ONE_AT_A_TIME" | "ALL_AT_ONCE";
 
 export interface FormTemplateShellProps {
+  designSettings?: TemplateCustomization;
   title: string;
   description?: string | null;
   /** The full field list — used for progress counts, not necessarily all rendered. */

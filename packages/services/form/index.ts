@@ -126,6 +126,7 @@ const FORM_SELECT_COLUMNS = {
   lastActivityAt: formsTable.lastActivityAt,
   template: formsTable.template,
   submissionLayout: formsTable.submissionLayout,
+  designSettings: formsTable.designSettings,
   accessCode: formsTable.accessCode,
   createdBy: formsTable.createdBy,
   createdAt: formsTable.createdAt,
@@ -273,6 +274,7 @@ export default class FormService {
       submissionAccess: normalizeAccess(form.submissionAccess),
       respondentIdentity: form.respondentIdentity,
       oneResponsePerEmail: form.oneResponsePerEmail,
+      designSettings: version?.snapshot.designSettings ?? form.designSettings ?? {},
       // A premium template is only served while its owner's plan includes it.
       // Snapshots are created from the form template enum; templateForOwner widens
       // its generic to string while applying the plan fallback.
@@ -320,7 +322,7 @@ export default class FormService {
     const publishedVersion = await this.getPublishedVersion(first.publishedVersionId);
     const liveFields = await loadLiveFields(first.id);
     const liveSnapshot = buildSnapshot(
-      { title: first.title, description: first.description ?? null, template: first.template, submissionLayout: first.submissionLayout },
+      { title: first.title, description: first.description ?? null, template: first.template, submissionLayout: first.submissionLayout, designSettings: first.designSettings },
       liveFields,
     );
 
@@ -342,6 +344,7 @@ export default class FormService {
       template: (await templateForOwner(first.createdBy, content.template)) as
         (typeof formsTable.$inferSelect)["template"],
       submissionLayout: content.submissionLayout as (typeof formsTable.$inferSelect)["submissionLayout"],
+      designSettings: content.designSettings ?? {},
       // Only the owner ever sees the code itself — everyone else already
       // had to know it to get this far.
       accessCode: isOwner ? (first.accessCode ?? null) : null,
@@ -360,7 +363,7 @@ export default class FormService {
 
   /** Draft content only (title, description, design, pacing). Publishing goes through publishForm. */
   public async updateForm(payload: UpdateFormInputType) {
-    const { formId, userId, title, description, template, submissionLayout } =
+    const { formId, userId, title, description, template, submissionLayout, designSettings } =
       await updateFormInput.parseAsync(payload);
 
     const form = await assertFormOwnership(formId, userId);
@@ -373,6 +376,7 @@ export default class FormService {
     if (description !== undefined) patch.description = description;
     if (template !== undefined) patch.template = template;
     if (submissionLayout !== undefined) patch.submissionLayout = submissionLayout;
+    if (designSettings !== undefined) patch.designSettings = designSettings;
     if (Object.keys(patch).length === 0) throw new Error("Nothing to update");
 
     const updated = await db.update(formsTable).set(patch).where(eq(formsTable.id, formId)).returning(FORM_SELECT_COLUMNS);
@@ -450,7 +454,7 @@ export default class FormService {
       if (logicErrors.length > 0) throw new Error(logicErrors[0]!.message);
 
       const snapshot = buildSnapshot(
-        { title: form.title, description: form.description ?? null, template: form.template, submissionLayout: form.submissionLayout },
+        { title: form.title, description: form.description ?? null, template: form.template, submissionLayout: form.submissionLayout, designSettings: form.designSettings },
         fields,
       );
       const hash = hashSnapshot(snapshot);

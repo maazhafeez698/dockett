@@ -34,11 +34,11 @@ export function EducationShell(props: FormTemplateShellProps) {
     errorMessage,
   } = props;
 
-  const design = getTemplateDesign("EDUCATION");
+  const design = getTemplateDesign("EDUCATION", props.designSettings);
 
   return (
     <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-green-900/20 shadow-xl">
-      <div className="bg-[#1B4332] px-6 py-8 text-center text-white sm:px-10">
+      <div className="px-6 py-8 text-center sm:px-10" style={{ background: design.accent, color: design.accentForeground }}>
         <p className="text-[11px] tracking-[0.3em] text-green-200 uppercase">Class Form</p>
         <h1 className="mt-1 font-serif text-2xl font-semibold">{title}</h1>
         {description ? <p className="mt-2 text-sm text-green-100/80">{description}</p> : null}
@@ -103,7 +103,8 @@ export function EducationShell(props: FormTemplateShellProps) {
                 <Button
                   type="button"
                   onClick={onNext}
-                  className="rounded-full bg-[#1B4332] px-6 hover:bg-[#153a29]"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="rounded-full px-6 hover:opacity-90"
                 >
                   Next
                 </Button>
@@ -111,7 +112,8 @@ export function EducationShell(props: FormTemplateShellProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="text-white rounded-full bg-[#1B4332] px-6 hover:bg-[#153a29]"
+                  style={{ background: design.accent, color: design.accentForeground }}
+                  className="rounded-full px-6 hover:opacity-90"
                 >
                   {submitting ? "Submitting..." : "Turn In"}
                 </Button>

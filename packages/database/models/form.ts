@@ -1,4 +1,4 @@
-import { boolean, index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { usersTable } from "./user";
 
 export const formStatusEnum = pgEnum("form_status_enum", ["DRAFT", "PUBLISHED", "CLOSED"]);
@@ -54,6 +54,13 @@ export const formSubmissionLayoutEnum = pgEnum("form_submission_layout_enum", [
   "ALL_AT_ONCE",
 ]);
 
+export interface FormDesignSettings {
+  accentColor?: string;
+  surfaceMode?: "LIGHT" | "DARK";
+  typography?: "SANS" | "SERIF" | "MONO";
+  corners?: "SOFT" | "SHARP";
+}
+
 export const formsTable = pgTable(
   "forms",
   {
@@ -70,6 +77,7 @@ export const formsTable = pgTable(
     submissionLayout: formSubmissionLayoutEnum("submission_layout")
       .default("ONE_AT_A_TIME")
       .notNull(),
+    designSettings: jsonb("design_settings").$type<FormDesignSettings>().notNull().default({}),
 
     // Set only when submissionAccess = ACCESS_CODE. Short, shareable,
     // human-typeable — this gates *response access*, not a security secret on

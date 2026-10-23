@@ -17,6 +17,7 @@ backups/
 **/backups/
 *.sql
 *.sql.gz
+!packages/database/drizzle/*.sql
 .deployed-image-tag*
 
 # Turbo

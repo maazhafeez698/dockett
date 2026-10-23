@@ -319,6 +319,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
       <FormUploadProvider formId={id} accessCode={enteredCode} respondentToken={respondentToken}>
         <FormTemplateRenderer
           template={form.template}
+          designSettings={form.designSettings}
           title={form.title}
           description={form.description}
           fields={flow.activeFields}
