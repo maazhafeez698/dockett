@@ -7,10 +7,7 @@ export const createUserWithEmailAndPasswordInputModel = z.object({
 });
 
 export const createUserWithEmailAndPasswordOutputModel = z.object({
-  id: z.string().describe("ID of the user"),
-  emailSent: z
-    .boolean()
-    .describe("Whether a verification email went out (false: ask the user to use 'Resend')"),
+  success: z.literal(true),
 });
 
 export const verifyEmailInputModel = z.object({

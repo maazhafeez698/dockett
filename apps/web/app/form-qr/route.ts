@@ -13,8 +13,19 @@ export async function GET(request: NextRequest) {
     return new Response("Invalid form URL", { status: 400 });
   }
 
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  let publicOrigin = request.nextUrl.origin;
+  if (host && protocol && (protocol === "http" || protocol === "https")) {
+    try {
+      publicOrigin = new URL(`${protocol}://${host}`).origin;
+    } catch {
+      return new Response("Invalid request host", { status: 400 });
+    }
+  }
+
   const match = FORM_PATH.exec(target.pathname);
-  if (target.origin !== request.nextUrl.origin || !match || target.search || target.hash) {
+  if (target.origin !== publicOrigin || !match || target.search || target.hash) {
     return new Response("Invalid form URL", { status: 400 });
   }
 

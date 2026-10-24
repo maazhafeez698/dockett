@@ -26,14 +26,14 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // After registering the account is NOT usable yet: it waits for the emailed link.
-  const [registered, setRegistered] = useState<{ email: string; emailSent: boolean } | null>(null);
+  const [registered, setRegistered] = useState<{ email: string } | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      const created = await createUserWithEmailAndPasswordAsync({ fullName, email, password });
-      setRegistered({ email, emailSent: created.emailSent });
+      await createUserWithEmailAndPasswordAsync({ fullName, email, password });
+      setRegistered({ email });
     } catch {
       // error is surfaced via the `error` state below
     }
@@ -50,10 +50,9 @@ export default function SignupPage() {
 
   if (registered) {
     return (
-      <AuthShell title="Check your email" subtitle="One more step before you can sign in.">
+      <AuthShell title="Check your email" subtitle="If verification is needed, we&apos;ll send instructions.">
         <VerifyEmailPanel
           email={registered.email}
-          initiallySent={registered.emailSent}
           onBack={() => setRegistered(null)}
           backLabel="Use a different email"
         />

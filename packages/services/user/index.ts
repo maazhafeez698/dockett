@@ -1,4 +1,4 @@
-import { db, eq, and, gt, gte, isNull, desc } from "@repo/database";
+import { db, eq, and, gt, gte, isNull, desc, sql } from "@repo/database";
 import { logger } from "@repo/logger";
 import { usersTable } from "@repo/database/models/user";
 import { refreshTokensTable } from "@repo/database/models/refresh-token";
@@ -59,7 +59,10 @@ export interface TokenPair {
 
 export default class UserService {
   private async getUserByEmail(email: string) {
-    const result = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const result = await db
+      .select()
+      .from(usersTable)
+      .where(sql`lower(${usersTable.email}) = ${email.trim().toLowerCase()}`);
 
     if (!result || result.length === 0) return null;
 
@@ -141,35 +144,29 @@ export default class UserService {
     }
   }
 
-  /**
-   * Registers an account that CANNOT sign in until its email is verified: no session is issued here.
-   * An unverified address that registers again simply replaces the earlier attempt (last registrant
-   * wins), so nobody can squat on someone else's address.
-   */
-  public async createUserWithEmailAndPassword(payload: CreateUserWithEmailAndPasswordType) {
-    const { fullName, email, password } = await createUserWithEmailAndPassword.parseAsync(payload);
-
-    const existingUser = await this.getUserByEmail(email);
-
-    if (existingUser?.emailVerified) throw new Error("User with this email already exists");
-
+  /** Creates a pending account when needed and returns the same result for existing addresses. */
+  public async createUserWithEmailAndPassword(payload: CreateUserWithEmailAndPasswordType): Promise<void> {
+    const { fullName, password } = await createUserWithEmailAndPassword.parseAsync(payload);
+    const email = payload.email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(password, 10);
+    const existingUser = await this.getUserByEmail(email);
+    if (existingUser) return;
 
     let userId: string;
-    if (existingUser) {
-      await db.update(usersTable).set({ fullName, passwordHash }).where(eq(usersTable.id, existingUser.id));
-      userId = existingUser.id;
-    } else {
+    try {
       const result = await db
         .insert(usersTable)
         .values({ fullName, email, passwordHash, emailVerified: false })
         .returning({ id: usersTable.id });
       if (!result || result.length === 0 || !result[0]?.id) throw new Error("Failed to create user");
       userId = result[0].id;
+    } catch (error) {
+      const accountCreatedByConcurrentRequest = await this.getUserByEmail(email);
+      if (accountCreatedByConcurrentRequest) return;
+      throw error;
     }
 
-    const emailSent = await this.sendVerificationLink(userId, email);
-    return { id: userId, emailSent };
+    await this.sendVerificationLink(userId, email);
   }
 
   /** Always resolves the same way for known / unknown / already-verified addresses. */

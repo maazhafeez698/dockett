@@ -89,20 +89,14 @@ export const authRouter = router({
       const { fullName, email, password } = input;
 
       try {
-        const created = await userService.createUserWithEmailAndPassword({
+        await userService.createUserWithEmailAndPassword({
           fullName,
           email,
           password,
         });
         // No session yet: the account only becomes usable once the emailed link is opened.
-        return { id: created.id, emailSent: created.emailSent };
+        return { success: true as const };
       } catch (error) {
-        if (error instanceof Error && error.message === "User with this email already exists") {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "An account with this email already exists. Sign in or reset your password.",
-          });
-        }
         if (error instanceof ZodError) {
           throw new TRPCError({ code: "BAD_REQUEST", message: toReadableMessage(error, "Check your details and try again.") });
         }

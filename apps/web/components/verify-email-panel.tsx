@@ -11,17 +11,15 @@ const COOLDOWN_SECONDS = 60;
 
 interface VerifyEmailPanelProps {
   email: string;
-  /** false: the first email could not be sent (SMTP problem) — nudge the user to resend. */
-  initiallySent?: boolean;
   onBack?: () => void;
   backLabel?: string;
   /** "inline": the compact notice used on the sign-in form (nothing was just sent). */
   variant?: "page" | "inline";
 }
 
-export function VerifyEmailPanel({ email, initiallySent = true, onBack, backLabel, variant = "page" }: VerifyEmailPanelProps) {
+export function VerifyEmailPanel({ email, onBack, backLabel, variant = "page" }: VerifyEmailPanelProps) {
   const { resendVerificationEmailAsync, isPending } = useResendVerificationEmail();
-  const [wait, setWait] = useState(initiallySent && variant === "page" ? COOLDOWN_SECONDS : 0);
+  const [wait, setWait] = useState(0);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -56,19 +54,13 @@ export function VerifyEmailPanel({ email, initiallySent = true, onBack, backLabe
     <div className="flex flex-col items-center gap-4 text-center" aria-live="polite">
       <MailCheck className="size-9 text-primary" aria-hidden="true" />
       <p className="text-sm text-muted-foreground">
-        {initiallySent ? (
-          <>
-            We sent a verification link to <b className="break-all text-foreground">{email}</b>. Open it to activate
-            your account — you&apos;ll be signed in automatically.
-          </>
-        ) : (
-          <>
-            Your account is created, but we couldn&apos;t send the email to{" "}
-            <b className="break-all text-foreground">{email}</b>. Use the button below to try again.
-          </>
-        )}
+        If this address can be used for a new account, we&apos;ll send a verification link to{" "}
+        <b className="break-all text-foreground">{email}</b>. If you already have an account, sign in or reset your
+        password.
       </p>
-      <p className="font-mono text-[10px] text-muted-foreground">The link works once and expires.</p>
+      <p className="font-mono text-[10px] text-muted-foreground">
+        Waiting for a verification link? You can request one below.
+      </p>
       <div className="flex w-full flex-col gap-2">
         <Button type="button" variant="outline" className="w-full" disabled={isPending || wait > 0} onClick={resend}>
           {wait > 0 ? `Resend in ${wait}s` : isPending ? "Sending…" : "Resend verification email"}
