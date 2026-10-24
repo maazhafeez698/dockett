@@ -1,7 +1,3 @@
-// apps/web/components/form-ticket-card.tsx
-//
-// A form, issued like a ticket: top rule, title, blurb, status stub + date.
-
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "~/components/ui/badge";

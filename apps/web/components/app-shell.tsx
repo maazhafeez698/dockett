@@ -1,9 +1,3 @@
-// apps/web/components/app-shell.tsx
-//
-// The Dockett workspace frame: ticket-style sidebar (numbered nav, vertical
-// wordmark, FORMS LIVE numeral, sign out), a DOC STRIP header, and the page.
-// Below `lg` the sidebar collapses into a top bar + slide-in sheet.
-
 "use client";
 
 import { useState, type ReactNode } from "react";

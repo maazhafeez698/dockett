@@ -1,5 +1,3 @@
-// apps/web/app/dashboard/settings/page.tsx
-
 "use client";
 
 import { useState, type FormEvent } from "react";

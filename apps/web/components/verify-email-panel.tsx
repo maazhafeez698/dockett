@@ -1,8 +1,3 @@
-// apps/web/components/verify-email-panel.tsx
-//
-// "Check your email": shown after registering and when an unverified account tries to sign in.
-// Resending is throttled by the server (and by a cooldown here).
-
 "use client";
 
 import { useEffect, useState } from "react";

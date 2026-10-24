@@ -1,8 +1,3 @@
-// apps/web/components/dashboard-right-panel.tsx
-//
-// Right column of the Create window: quick requests, voice input and — for
-// workspaces that aren't on Pro yet — the Dockett Pro upgrade card.
-
 "use client";
 
 import { useState } from "react";

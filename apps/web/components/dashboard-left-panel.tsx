@@ -1,8 +1,3 @@
-// apps/web/components/dashboard-left-panel.tsx
-//
-// Left column of the Create window: the giant live-forms numeral, the
-// workspace overview (Total / Live / Replies) and shortcuts.
-
 import Link from "next/link";
 import { ArrowUpRight, LayoutTemplate, Sparkles } from "lucide-react";
 import { pad2 } from "~/components/doc-strip";

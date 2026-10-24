@@ -1,9 +1,3 @@
-// apps/web/components/form-templates/invitation.tsx
-//
-// Symmetric, cream-and-gold formal invitation layout: centered serif
-// display headline, thin gold rule lines above/below, generous whitespace.
-// The opposite of a "form" feel — reads like a printed RSVP card.
-
 "use client";
 
 import { CheckCircle2 } from "lucide-react";

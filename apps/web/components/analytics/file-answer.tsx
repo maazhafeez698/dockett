@@ -1,9 +1,3 @@
-// apps/web/components/analytics/file-answer.tsx
-//
-// A FILE_UPLOAD answer in the response viewer: file names with a Download button. Downloads go
-// through an owner-only endpoint that mints a 5-minute signed link — the files are private and
-// have no public URL.
-
 "use client";
 
 import { Download, FileText, Loader2 } from "lucide-react";

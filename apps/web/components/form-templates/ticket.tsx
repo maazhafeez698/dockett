@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/ticket.tsx
-//
-// Kanban-ticket card styling: a ticket-ID header badge, a colored status
-// rail down the left edge, and each field presented as a labeled "ticket
-// field" row rather than a plain stacked form — reads like an internal
-// ops/support tool, not a survey.
-
 "use client";
 
 import { CheckCircle2, CircleHelp, ClipboardList, LockKeyhole, ShieldCheck, Wrench } from "lucide-react";

@@ -1,10 +1,3 @@
-// apps/web/app/dashboard/templates/page.tsx
-//
-// Gallery of 8 structurally distinct Pro templates + a trailing
-// "Custom Form" card. Preview opens the full form experience in a modal;
-// Use Template creates the form (with fields + design pre-populated) and
-// jumps straight into the builder canvas.
-
 "use client";
 
 import { useMemo, useState } from "react";

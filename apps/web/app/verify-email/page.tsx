@@ -1,8 +1,3 @@
-// apps/web/app/verify-email/page.tsx
-//
-// The page the verification email links to. Consumes the single-use token, which also signs the
-// user in, then sends them straight to the dashboard. Expired / used links offer a fresh one.
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";

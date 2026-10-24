@@ -1,10 +1,3 @@
-// apps/web/components/form-field-renderer.tsx
-//
-// Renders one field as a respondent would fill it in. Used verbatim by both
-// the public fill page (app/form/[id]/page.tsx) and the builder's live
-// preview pane — that's deliberate: the preview should be the real
-// component, not a lookalike that can drift out of sync with it.
-
 "use client";
 
 import { useState } from "react";

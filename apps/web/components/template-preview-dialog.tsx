@@ -1,12 +1,3 @@
-// apps/web/components/template-preview-dialog.tsx
-//
-// "Preview" popup on a gallery card — shows the complete form experience
-// using the same shell component the real public page uses, filled with
-// sample values so it doesn't read as an empty shell. Rendered in the
-// template's own default submissionLayout so the pacing is representative
-// too. Non-interactive in the sense that nothing here ever calls the
-// server (isPreview just suppresses that, not the click-through itself).
-
 "use client";
 
 import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";

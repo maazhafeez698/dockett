@@ -1,5 +1,3 @@
-// apps/web/app/dashboard/billing/page.tsx
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";

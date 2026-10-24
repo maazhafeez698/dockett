@@ -1,5 +1,3 @@
-// apps/web/components/logout-confirm.tsx
-
 "use client";
 
 import { useState, type ReactNode } from "react";

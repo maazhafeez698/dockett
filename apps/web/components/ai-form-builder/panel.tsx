@@ -1,11 +1,3 @@
-// apps/web/components/ai-form-builder/panel.tsx
-//
-// The AI Form Builder: a floating chat panel (non-modal, so the canvas stays
-// visible behind it). One component, two entry points:
-//   NEW_FORM   — dashboard prompt bar. Approve creates the form and opens it in the builder.
-//   ADD_FIELDS — builder "AI Generate" button. Approve puts the form on the open canvas.
-// Nothing touches the database until the user presses Approve.
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";

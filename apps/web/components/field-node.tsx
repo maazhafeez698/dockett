@@ -1,9 +1,3 @@
-// apps/web/components/field-node.tsx
-//
-// Nodes for the Canvas view: START (Form opens), a field node per question,
-// END (Submit). Field nodes carry handles on all four sides because the
-// canvas lays the flow out as a serpentine grid.
-
 import { Handle, Position } from "@xyflow/react";
 import { Trash2 } from "lucide-react";
 

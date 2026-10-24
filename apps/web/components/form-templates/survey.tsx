@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/survey.tsx
-//
-// A single big question centered on the screen with progress dots up top
-// — deliberately minimal chrome so the question itself is the whole
-// layout. Works best with ONE_AT_A_TIME (its default), but still renders
-// sensibly stacked for ALL_AT_ONCE.
-
 "use client";
 
 import { CheckCircle2 } from "lucide-react";

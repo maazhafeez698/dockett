@@ -1,8 +1,3 @@
-// apps/web/components/form-templates/index.tsx
-//
-// Single dispatcher used by both the public fill page and the builder's
-// live preview pane, so the two never drift apart.
-
 import type { FormTemplateId } from "~/lib/template-designs";
 import { getTemplateDesign } from "~/lib/template-designs";
 import type { FormTemplateShellProps } from "./types";

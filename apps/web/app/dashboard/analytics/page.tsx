@@ -1,12 +1,3 @@
-// apps/web/app/dashboard/analytics/page.tsx
-//
-// Layout: a slim sidebar of the user's forms on the left, and on the right
-// either an empty state, the selected form's analytics overview, or (once
-// the eye icon on a response card is clicked) that single submission's
-// full detail. The overview and detail views share the same ordered
-// submission list so prev/next paging in the detail view walks the real
-// response order, not just the handful of cards shown on the overview.
-
 "use client";
 
 import { useState } from "react";

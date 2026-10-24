@@ -1,11 +1,3 @@
-// apps/web/app/dashboard/forms/[id]/page.tsx
-//
-// The form builder. Two views over the same form data:
-//   - List  (default): palette + drag-and-drop list of field cards
-//   - Nodes: the canvas flow (START → fields → END)
-// Selection, edits, preview and every action are shared, so switching views
-// never loses state.
-
 "use client";
 
 import { useEffect, useState } from "react";

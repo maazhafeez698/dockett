@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/corporate.tsx
-//
-// Formal two-column layout: a fixed left rail with the form's title, a
-// numbered outline of every field, and a step indicator; the right column
-// holds the actual inputs on a plain white/near-white card. Serif display
-// type for headings, sans for body — a deliberately "HR department" feel.
-
 "use client";
 
 import { CheckCircle2 } from "lucide-react";

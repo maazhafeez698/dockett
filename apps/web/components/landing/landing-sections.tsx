@@ -1,7 +1,3 @@
-// apps/web/components/landing/landing-sections.tsx
-//
-// Features, steps, pricing, FAQ, final CTA and footer of the landing page.
-
 "use client";
 
 import { useState } from "react";

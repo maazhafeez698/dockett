@@ -48,3 +48,16 @@ yarn-error.log*
 *.key
 *.p12
 *.pfx
+*.crt
+*.cer
+
+# Local credentials and machine-specific files
+.aws/
+.ssh/
+.vscode/
+.idea/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3

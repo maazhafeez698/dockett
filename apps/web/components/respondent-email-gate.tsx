@@ -1,9 +1,3 @@
-// apps/web/components/respondent-email-gate.tsx
-//
-// "Verified email" forms: the respondent proves they own an address with a magic link — no Dockett
-// account. Two steps: enter the address, then "check your inbox" (resend after a short wait, or go
-// back and use a different address — allowed any time before the link is opened).
-
 "use client";
 
 import { useEffect, useState } from "react";

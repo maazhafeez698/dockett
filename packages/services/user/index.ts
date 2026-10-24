@@ -1,4 +1,5 @@
 import { db, eq, and, gt, gte, isNull, desc } from "@repo/database";
+import { logger } from "@repo/logger";
 import { usersTable } from "@repo/database/models/user";
 import { refreshTokensTable } from "@repo/database/models/refresh-token";
 import { passwordResetTokensTable } from "@repo/database/models/password-reset-token";
@@ -133,7 +134,9 @@ export default class UserService {
       await sendVerificationEmail(email, `${env.WEB_URL}/verify-email?token=${rawToken}`);
       return true;
     } catch (error) {
-      console.error("Failed to send verification email", error);
+      logger.error("auth.verification_email_failed", {
+        message: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+      });
       return false;
     }
   }
@@ -365,7 +368,9 @@ export default class UserService {
       await sendPasswordResetEmail(existingUser.email, resetUrl);
     } catch (error) {
       // Deliberately swallowed — see doc comment above.
-      console.error("Failed to send password reset email", error);
+      logger.error("auth.password_reset_email_failed", {
+        message: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+      });
     }
   }
 

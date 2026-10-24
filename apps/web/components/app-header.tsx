@@ -1,5 +1,3 @@
-// apps/web/components/app-header.tsx
-
 import Link from "next/link";
 import { Logo } from "~/components/logo";
 import { ThemeToggle } from "~/components/theme-toggle";

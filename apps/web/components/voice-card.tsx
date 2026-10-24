@@ -1,8 +1,3 @@
-// apps/web/components/voice-card.tsx
-//
-// "Say something to Dockett" — voice input for the AI builder, using the
-// browser's Web Speech API. Where it isn't supported the card says so.
-
 "use client";
 
 import { useState } from "react";

@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/education.tsx
-//
-// Notebook-paper layout: a cream page with a red margin rule down the left
-// and faint horizontal ruled lines, a chalkboard-green header band for the
-// title. Each field sits in its own "notebook entry" rather than a plain
-// stacked form.
-
 "use client";
 
 import { CheckCircle2 } from "lucide-react";

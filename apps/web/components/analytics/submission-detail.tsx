@@ -1,9 +1,3 @@
-// apps/web/components/analytics/submission-detail.tsx
-//
-// Detail view for a single submission — every field's exact answer, with
-// prev/next paging across the full response list (not just the "latest
-// 10" shown as cards). Mirrors the reference's "Response Preview" screen.
-
 "use client";
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";

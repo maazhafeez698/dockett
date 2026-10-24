@@ -37,18 +37,8 @@ export const ALL_KINDS = ["pdf", "docx", "jpg", "png"] as const;
 export const KIND_LABELS: Record<string, string> = { pdf: "PDF", docx: "DOCX", jpg: "JPEG", png: "PNG" };
 
 /** Cloudinary answers errors as {"error":{"message":"..."}} — surface it instead of a bare status. */
-function storageErrorMessage(xhr: XMLHttpRequest): string {
-  let message = "";
-  try {
-    const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } };
-    message = parsed.error?.message ?? "";
-  } catch {
-    message = xhr.responseText?.slice(0, 200) ?? "";
-  }
-  // eslint-disable-next-line no-console
-  console.error("[upload] storage rejected the upload", { status: xhr.status, message, response: xhr.responseText });
-  const base = `Storage rejected the upload (HTTP ${xhr.status})`;
-  return message ? `${base}: ${message}` : base;
+function storageErrorMessage(): string {
+  return "The file could not be uploaded. Please try again.";
 }
 
 function postToStorage(
@@ -70,7 +60,7 @@ function postToStorage(
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(storageErrorMessage(xhr)));
+      else reject(new Error(storageErrorMessage()));
     };
     xhr.onerror = () => reject(new Error("Network error while uploading."));
     xhr.ontimeout = () => reject(new Error("The upload timed out."));

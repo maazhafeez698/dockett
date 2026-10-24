@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/classic.tsx
-//
-// Dockett's own respondent experience (the default for forms built from
-// scratch): a punched-ticket card. One question at a time shows a huge Ember
-// question, a big mono answer box, "OK ✓ / press Enter ↵" and a thin progress
-// bar; all-at-once shows the same ticket with every field.
-
 "use client";
 
 import { ArrowDown, ArrowUp, Check } from "lucide-react";

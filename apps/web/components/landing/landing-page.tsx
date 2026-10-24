@@ -1,8 +1,3 @@
-// apps/web/components/landing/landing-page.tsx
-//
-// The public landing page — shown to signed-out visitors. Signed-in users are
-// sent straight to the dashboard's Create window.
-
 "use client";
 
 import { useEffect, useState } from "react";

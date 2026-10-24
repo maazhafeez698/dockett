@@ -1,12 +1,3 @@
-// apps/web/components/logo.tsx
-//
-// Dockett brand mark. A D-shaped ticket body with:
-//   01 an edge notch (where the stub tears)
-//   02 a perforation line
-//   03 a punch hole — the counter of the "D" and the "o" of docket
-//   04 a wordmark dot — the same hole, punched
-// Small sizes drop the notch and perforation (only the D and its hole remain).
-
 import { useId } from "react";
 
 interface LogoProps {

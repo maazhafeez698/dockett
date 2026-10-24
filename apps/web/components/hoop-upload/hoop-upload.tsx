@@ -1,8 +1,3 @@
-// apps/web/components/hoop-upload/hoop-upload.tsx
-//
-// Thin React wrapper. The engine owns its DOM (one rAF loop, CSS transitions, a few WAAPI calls);
-// React only mounts it into a ref and tears it down, so animation frames never cause renders.
-
 "use client";
 
 import { useEffect, useRef } from "react";

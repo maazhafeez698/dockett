@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/landing.tsx
-//
-// A bold marketing-landing-page hero (huge headline, gradient backdrop,
-// feature bullets) sits above a short, funnel-style field area — the
-// field list is presented like a signup widget bolted onto a landing
-// page, not a form page in its own right.
-
 "use client";
 
 import { CheckCircle2, Sparkles } from "lucide-react";

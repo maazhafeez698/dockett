@@ -1,13 +1,3 @@
-// apps/web/components/file-upload-field.tsx
-//
-// The FILE_UPLOAD field on a live form: just an "Upload files" button (plus the list of files that
-// are already attached). The upload experience — the basketball hoop — opens in a dialog.
-//
-//   - by default, browsing for files or dropping them uploads them immediately
-//   - the "Shot mode" switch in the dialog makes every file score a basket first (a miss = a failed upload)
-//
-// The answer carried in form state is the list of server-verified upload ids (see lib/file-answer).
-
 "use client";
 
 import { useId, useRef, useState } from "react";

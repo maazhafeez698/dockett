@@ -1,9 +1,3 @@
-// apps/web/components/builder/field-inspector.tsx
-//
-// The right-hand inspector. One component serves the List view ("SAVE
-// CHANGES") and the Node view ("SAVE NODE") so a field is edited the same way
-// in both. With nothing selected it edits the form itself.
-
 "use client";
 
 import { useState } from "react";

@@ -1,9 +1,3 @@
-// apps/web/components/form-templates/developer.tsx
-//
-// A dark terminal window (traffic-light dots, monospace throughout).
-// Field labels render like a CLI prompt (`$ field_name`) and inputs sit in
-// a bordered "code block" rather than a normal form control style.
-
 "use client";
 
 import { Bug, CheckCircle2, CircleDot, Code2, FileCode2, GitBranch, ShieldCheck } from "lucide-react";

@@ -1,8 +1,3 @@
-// apps/web/app/dashboard/page.tsx
-//
-// The Create window — where logged-in users land. Describe a form and let AI
-// build it, jump back into recent forms, or reach for a quick request.
-
 "use client";
 
 import { useState } from "react";

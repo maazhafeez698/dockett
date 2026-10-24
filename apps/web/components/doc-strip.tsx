@@ -1,8 +1,3 @@
-// apps/web/components/doc-strip.tsx
-//
-// The "DOC STRIP" brand device: a ticket header with DOCUMENT / TYPE / CLASS /
-// ZONE / DATE cells, mono labels, bold values. Sits at the top of every app screen.
-
 "use client";
 
 import { useEffect, useState } from "react";

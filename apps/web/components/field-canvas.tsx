@@ -1,10 +1,3 @@
-// apps/web/components/field-canvas.tsx
-//
-// The Canvas (node) view. The form is a flow: START → each field → END,
-// laid out as a serpentine grid. Drag a node to a new slot to reorder; drag
-// from one node's handle to another to move it there; click the ADD NODE
-// toolbar (or drag from it) to add fields.
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

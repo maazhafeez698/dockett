@@ -1,13 +1,3 @@
-// apps/web/components/builder/list-view.tsx
-//
-// The List view of the form builder (the default): a component palette on the
-// left (Fields | Pages) and a vertical, drag-and-drop list of field cards.
-//
-//  - drag a palette tile onto the list to insert a field at that spot
-//  - drag a field card to reorder (with move up / move down buttons as the
-//    keyboard + touch alternative)
-//  - reordering is optimistic; the server order wins as soon as it responds
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";

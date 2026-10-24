@@ -1,5 +1,3 @@
-// apps/web/app/forgot-password/page.tsx
-
 "use client";
 
 import { useState } from "react";

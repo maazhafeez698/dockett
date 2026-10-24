@@ -1,8 +1,3 @@
-// apps/web/components/auth-shell.tsx
-//
-// Shared frame for sign in / sign up / forgot / reset: the centered ticket
-// card with the Dockett lockup above it.
-
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "~/components/logo";

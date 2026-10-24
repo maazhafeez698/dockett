@@ -1,10 +1,3 @@
-// apps/web/components/ai-chat-dialog.tsx
-//
-// The AI form builder surface. One component, two modes:
-//   NEW_FORM   — opened from the dashboard bar; approving creates a form and opens it in the builder.
-//   ADD_FIELDS — opened from the builder's "AI Generate" button; approving appends fields to that form.
-// Nothing touches the database until the user presses the approve button.
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";

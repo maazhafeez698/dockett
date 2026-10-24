@@ -1,14 +1,3 @@
-// apps/web/app/form/[id]/page.tsx
-//
-// Respondent-facing fill page. Flow:
-//   1. getFormAccessInfo (always public) — cheap metadata, decides which
-//      gate (if any) to show before we try to load the real fields.
-//   2. If gated (access code / sign-in), show that screen first.
-//   3. getFormWithFields (with accessCode if applicable) — the server
-//      re-checks everything regardless of what the client already showed.
-//   4. Render via the form's template shell, pacing fields per its
-//      submissionLayout.
-
 "use client";
 
 import { use, useEffect, useState } from "react";

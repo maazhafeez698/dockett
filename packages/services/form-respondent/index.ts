@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { and, db, eq, gt, gte, isNull } from "@repo/database";
+import { logger } from "@repo/logger";
 import { formRespondentChallengesTable } from "@repo/database/models/form-respondent-challenge";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formsTable } from "@repo/database/models/form";
@@ -128,7 +129,7 @@ export default class FormRespondentService {
       await sendRespondentLinkEmail(email, `${env.WEB_URL}/form/${form.id}?rv=${rawToken}`, title);
     } catch (error) {
       const smtpError = error as NodeJS.ErrnoException & { responseCode?: number; command?: string };
-      console.error("Failed to send respondent link", {
+      logger.error("form_respondent.email_failed", {
         code: smtpError.code,
         responseCode: smtpError.responseCode,
         command: smtpError.command,

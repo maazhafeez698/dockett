@@ -1,7 +1,3 @@
-// apps/web/app/dashboard/forms/page.tsx
-//
-// FORMS — the full ledger of everything you've issued.
-
 "use client";
 
 import { useMemo, useState } from "react";

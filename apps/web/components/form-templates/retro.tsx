@@ -1,10 +1,3 @@
-// apps/web/components/form-templates/retro.tsx
-//
-// A beveled 90s-desktop window: title bar with minimize/maximize/close
-// squares, inset/outset borders, a teal "desktop" backdrop behind the
-// window. Deliberately chunky, low-radius, high-contrast — the opposite
-// of the rest of the product's glassmorphism.
-
 "use client";
 
 import { CheckCircle2, Globe2, Home, RefreshCw, Shield, Star } from "lucide-react";

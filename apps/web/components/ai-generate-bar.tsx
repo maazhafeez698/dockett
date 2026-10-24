@@ -1,9 +1,3 @@
-// apps/web/components/ai-generate-bar.tsx
-//
-// "Describe a form, and let AI build it." The prompt itself is handed to the
-// caller (which owns the AI builder panel) so quick requests and voice input
-// can feed the very same flow.
-
 "use client";
 
 import { useState } from "react";

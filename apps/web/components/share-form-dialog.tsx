@@ -1,8 +1,3 @@
-// apps/web/components/share-form-dialog.tsx
-//
-// Shareable link + Copy link + QR code. Works as a normal trigger-based dialog (the Share button)
-// AND as a controlled dialog: the builder opens it automatically right after a successful publish.
-
 "use client";
 
 import { useState, type ReactNode } from "react";

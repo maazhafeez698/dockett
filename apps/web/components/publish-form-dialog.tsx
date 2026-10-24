@@ -1,10 +1,3 @@
-// apps/web/components/publish-form-dialog.tsx
-//
-// The Publish dialog: Status · Access · Respondent identity · Automatic closure.
-// Saving as "Published" snapshots the draft into a new immutable version (when it changed), then
-// the caller opens the Share dialog. Everything is decided and stored on the server in ONE call
-// (form.publishForm); if it fails, the existing publication is untouched.
-
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
