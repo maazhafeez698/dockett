@@ -20,7 +20,8 @@ const NOW = new Date("2026-10-10T12:00:00Z");
 test("plans match the approved table exactly", () => {
   assert.deepEqual(PLAN_ORDER, ["basic", "premium", "business"]);
   const { basic, premium, business } = PLANS;
-  assert.deepEqual([basic.priceMonthlyUsd, premium.priceMonthlyUsd, business.priceMonthlyUsd], [0, 1, null]);
+  assert.deepEqual([basic.priceMonthlyUsd, premium.priceMonthlyUsd, business.priceMonthlyUsd], [0, 5, null]);
+  assert.equal(premium.priceYearlyUsd, 50);
   assert.deepEqual(basic.limits, { maxActiveForms: 5, maxResponsesPerFormPerMonth: 100 });
   assert.deepEqual(premium.limits, { maxActiveForms: 50, maxResponsesPerFormPerMonth: 1000 });
   assert.deepEqual(business.limits, { maxActiveForms: null, maxResponsesPerFormPerMonth: null });

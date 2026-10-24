@@ -324,7 +324,7 @@ const PLANS = [
   {
     key: "premium",
     kicker: "Most popular",
-    price: "$1",
+    price: "$5",
     suffix: "/mo",
     blurb: "For creators who need more room and more polish.",
     features: [
@@ -388,6 +388,11 @@ export function PricingSection() {
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground">{p.suffix}</span>
                 </p>
+                {p.key === "premium" ? (
+                  <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                    Or $50/year, billed annually · save 17%
+                  </p>
+                ) : null}
                 <p className="mt-2 min-h-[2.5rem] text-sm text-muted-foreground">{p.blurb}</p>
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {p.features.map((f) => (
