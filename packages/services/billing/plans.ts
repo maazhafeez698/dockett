@@ -75,9 +75,9 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     key: "premium",
     name: "Pro",
     tagline: "For creators who need more room and more polish.",
-    priceMonthlyUsd: 1,
-    // 10 months for 12 ("Save 16%"). Only offered if a yearly Paddle price id is configured.
-    priceYearlyUsd: 10,
+    priceMonthlyUsd: 5,
+    // 10 months for 12 ("Save 16.7%"). Only offered if a yearly Paddle price id is configured.
+    priceYearlyUsd: 50,
     purchasable: true,
     contactSales: false,
     limits: { maxActiveForms: 50, maxResponsesPerFormPerMonth: 1000 },

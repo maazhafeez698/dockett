@@ -5,7 +5,7 @@
 {$DOMAIN} {
 	encode zstd gzip
 
-	@api path /api /api/* /trpc /trpc/* /ai/form/stream /health /openapi.json /docs /docs/*
+	@api path /api /api/* /trpc /trpc/* /ai/form/stream /billing/paddle/webhook /health /openapi.json /docs /docs/*
 	handle @api {
 		reverse_proxy app:8000
 	}
