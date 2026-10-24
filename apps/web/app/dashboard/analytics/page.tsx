@@ -20,6 +20,7 @@ import { AppShell } from "~/components/app-shell";
 import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { parseStoredFiles } from "~/lib/file-answer";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { useListForms } from "~/hooks/api/form";
 import { useGetFormAnalytics, useListSubmissions, useExportData } from "~/hooks/api/analytics";
 import { SubmissionDetail } from "~/components/analytics/submission-detail";
@@ -182,7 +183,9 @@ export default function AnalyticsPage() {
           <h1 className="font-display text-2xl font-extrabold">Analytics</h1>
           <p className="mono-label-sm mt-4 text-muted-foreground">Forms</p>
           {formsLoading ? (
-            <div className="mt-2 text-xs text-muted-foreground">Loading...</div>
+            <div className="mt-2 space-y-2" aria-label="Loading forms">
+              {[0, 1, 2, 3].map((item) => <Skeleton key={item} className="h-8 w-full rounded-none" />)}
+            </div>
           ) : forms && forms.length > 0 ? (
             <ul className="mt-2 max-h-[40vh] overflow-y-auto lg:max-h-[60vh]">
               {forms.map((f) => (

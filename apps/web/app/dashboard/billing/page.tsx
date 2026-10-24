@@ -9,6 +9,7 @@ import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { ContactSalesDialog } from "~/components/billing/contact-sales-dialog";
 import { PricingPlans, type BillingCycle } from "~/components/billing/pricing-plans";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { useBillingOverview, useCreatePortalSession } from "~/hooks/api/billing";
 import { openPremiumCheckout, closeCheckout } from "~/lib/paddle";
 
@@ -118,8 +119,26 @@ export default function BillingPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <div className="space-y-5" aria-label="Loading billing details">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[0, 1].map((item) => (
+                <div key={item} className="border border-border bg-card p-5">
+                  <Skeleton className="h-3 w-24 rounded-none" />
+                  <Skeleton className="mt-4 h-8 w-40 rounded-none" />
+                  <Skeleton className="mt-3 h-4 w-2/3 rounded-none" />
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="border border-border bg-card p-5">
+                  <Skeleton className="h-5 w-1/2 rounded-none" />
+                  <Skeleton className="mt-5 h-10 w-2/3 rounded-none" />
+                  <Skeleton className="mt-4 h-3 w-full rounded-none" />
+                  <Skeleton className="mt-2 h-3 w-4/5 rounded-none" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : error || !overview ? (
           <p role="alert" className="border border-destructive/50 bg-destructive/10 p-4 text-sm">

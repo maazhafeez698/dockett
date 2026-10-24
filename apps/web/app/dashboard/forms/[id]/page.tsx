@@ -34,6 +34,7 @@ import { toastError } from "~/lib/plan-limit";
 
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTitle } from "~/components/ui/sheet";
 import { ShareFormDialog } from "~/components/share-form-dialog";
 import { PublishFormDialog, type PublishResult } from "~/components/publish-form-dialog";
@@ -430,25 +431,14 @@ export default function FormBuilder() {
           <div className="dotgrid-strong min-h-0 flex-1 overflow-y-auto border border-border bg-card/40 p-4 sm:p-6">
             <div className="mx-auto max-w-2xl">
               {fieldsLoading ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">
-                  Loading fields...
+                <div className="space-y-4 border border-border bg-card p-6" aria-label="Loading preview fields">
+                  <Skeleton className="h-6 w-2/3 rounded-none" />
+                  <Skeleton className="h-3 w-full rounded-none" />
+                  <Skeleton className="h-12 w-full rounded-none" />
+                  <Skeleton className="h-12 w-full rounded-none" />
                 </div>
               ) : fields && fields.length > 0 ? (
                 <>
-                <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border border-border bg-card px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="mono-label-sm text-muted-foreground">TEST PATH</p>
-                    <p className="mt-1 text-xs leading-relaxed">
-                      {previewFlow.activePath.map((fieldId) => fields.find((field) => field.id === fieldId)?.label ?? "Question").join(" → ")}
-                    </p>
-                  </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => {
-                    previewFlow.setValues({});
-                    previewFlow.setStep(0);
-                  }}>
-                    Reset preview
-                  </Button>
-                </div>
                 <FormUploadProvider formId={formId ?? null} isPreview>
                 <FormTemplateRenderer
                   template={form?.template}
@@ -517,7 +507,14 @@ export default function FormBuilder() {
               aria-label="Form canvas"
             >
               {fieldsLoading ? (
-                <div className="p-6 text-sm text-muted-foreground">Loading fields...</div>
+                <div className="space-y-4 p-6" aria-label="Loading canvas fields">
+                  {[0, 1, 2, 3].map((item) => (
+                    <div key={item} className="border border-border bg-card p-4">
+                      <Skeleton className="h-4 w-2/3 rounded-none" />
+                      <Skeleton className="mt-3 h-3 w-1/3 rounded-none" />
+                    </div>
+                  ))}
+                </div>
               ) : fields ? (
                 <FieldCanvas
                   fields={fields.map(

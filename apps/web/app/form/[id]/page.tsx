@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { RespondentEmailGate } from "~/components/respondent-email-gate";
+import { PublicFormSkeleton } from "~/components/loading-skeletons";
 
 function CenteredMessage({
   icon,
@@ -167,7 +168,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
   const resumeKey = form?.versionId ? `dockett:response:${id}:${form.versionId}:${resumeScope}` : undefined;
   const flow = useSubmissionFlow(fields, form?.submissionLayout ?? "ONE_AT_A_TIME", resumeKey);
 
-  if (accessInfoLoading) return null;
+  if (accessInfoLoading) return <PublicFormSkeleton />;
 
   if (accessInfoError || !accessInfo) {
     return (
@@ -225,7 +226,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
   }
 
   if (needsEmailVerification && (!respondentTokenLoaded || checkingRespondentSession || (searchParams.get("rv") && !respondentSessionValid && !emailLinkNotice))) {
-    return null;
+    return <PublicFormSkeleton />;
   }
 
   if (needsEmailVerification && !respondentSessionValid) {
@@ -270,7 +271,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (formLoading || !form || flow.isRestoring) return null;
+  if (formLoading || !form || flow.isRestoring) return <PublicFormSkeleton />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

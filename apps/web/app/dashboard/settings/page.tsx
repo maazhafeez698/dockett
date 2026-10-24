@@ -9,6 +9,7 @@ import { AppShell } from "~/components/app-shell";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Skeleton } from "~/components/ui/skeleton";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -52,7 +53,13 @@ export default function SettingsPage() {
 
         <Card title="Account">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="flex items-center gap-4" aria-label="Loading account">
+              <Skeleton className="size-14 rounded-none" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-6 w-48 max-w-full rounded-none" />
+                <Skeleton className="h-3 w-64 max-w-full rounded-none" />
+              </div>
+            </div>
           ) : (
             <div className="flex items-center gap-4">
               <div
@@ -78,7 +85,12 @@ export default function SettingsPage() {
 
         <Card title="Password">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="space-y-3" aria-label="Loading password settings">
+              <Skeleton className="h-3 w-48 rounded-none" />
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-9 w-32 rounded-none" />
+            </div>
           ) : !user?.hasPassword ? (
             <p className="text-sm text-muted-foreground">
               This account uses Google sign-in. There&apos;s no password to change.

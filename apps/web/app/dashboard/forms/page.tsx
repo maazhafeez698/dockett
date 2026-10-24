@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AppShell } from "~/components/app-shell";
 import { StatusTag } from "~/components/form-ticket-card";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { useCreateForm, useDeleteForm, useListForms } from "~/hooks/api/form";
 import { useAuthGuard } from "~/hooks/use-auth-guard";
 import { getTemplateDesign } from "~/lib/template-designs";
@@ -103,9 +104,16 @@ export default function DashboardForms() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-2">
+          <div className="space-y-2" aria-label="Loading forms">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-16 animate-pulse border border-border bg-card" />
+              <div key={i} className="flex items-center gap-4 border border-border bg-card p-4">
+                <Skeleton className="size-8 rounded-none" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3 rounded-none" />
+                  <Skeleton className="h-3 w-2/3 rounded-none" />
+                </div>
+                <Skeleton className="h-6 w-20 rounded-none" />
+              </div>
             ))}
           </div>
         ) : visible.length === 0 ? (

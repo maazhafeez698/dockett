@@ -63,7 +63,7 @@ export function ShareFormDialog({
   // dialog actually opens client-side.
   const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/form/${formId}` : "";
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&color=181818&bgcolor=F4F1EA&qzone=4&data=${encodeURIComponent(shareUrl)}`;
-  const qrDownloadUrl = `/api/form-qr?url=${encodeURIComponent(shareUrl)}`;
+  const qrDownloadUrl = `/form-qr?url=${encodeURIComponent(shareUrl)}`;
 
   const handleCopy = async () => {
     try {

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useGetSubmissionDetail } from "~/hooks/api/analytics";
 import { FileAnswer } from "~/components/analytics/file-answer";
+import { Skeleton } from "~/components/ui/skeleton";
 
 interface SubmissionDetailProps {
   submissionId: string;
@@ -63,7 +64,21 @@ export function SubmissionDetail({
       </div>
 
       {isLoading || !detail ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading response...</div>
+        <div className="space-y-5 pt-5" aria-label="Loading response">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-none" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40 rounded-none" />
+              <Skeleton className="h-3 w-28 rounded-none" />
+            </div>
+          </div>
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="space-y-2 border-l-2 border-primary pl-3.5">
+              <Skeleton className="h-3 w-1/3 rounded-none" />
+              <Skeleton className="h-4 w-2/3 rounded-none" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="pt-5">
           <div className="flex items-center gap-3">
