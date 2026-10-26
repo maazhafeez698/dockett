@@ -41,6 +41,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the EC2 .env file with host postgresdb}
       WEB_URL: ${WEB_URL:?Set WEB_URL in the EC2 .env file}
       BASE_URL: ${BASE_URL:?Set BASE_URL in the EC2 .env file}
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in the EC2 .env file}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Dockett}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:?Set EMAIL_FROM_ADDRESS in the EC2 .env file}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
       TRUST_PROXY: "1"
       LOGGER_LEVEL: ${LOGGER_LEVEL:-info}
     expose:

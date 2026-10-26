@@ -1,17 +1,5 @@
-import nodemailer from "nodemailer";
 import { env } from "../env";
-
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_PORT === 465, // true for 465 (implicit TLS), false for 587 (STARTTLS)
-  auth: {
-    user: env.SMTP_USER,
-    // Google displays App Passwords in four groups separated by spaces. Remove that
-    // display formatting before authentication; preserve passwords for other SMTP hosts.
-    pass: env.SMTP_HOST.toLowerCase() === "smtp.gmail.com" ? env.SMTP_PASS.replace(/\s/g, "") : env.SMTP_PASS,
-  },
-});
+import { sendEmail } from "../email/resend";
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -59,7 +47,7 @@ async function sendBrandedEmail({ to, subject, eyebrow, title, message, buttonLa
   `;
   const text = `DOCKETT / FORMS\n${eyebrow}\n\n${title}\n\n${message}\n\n${buttonLabel}: ${buttonUrl}\n\n${note}\n\nDockett · Make forms people want to finish.`;
 
-  await transporter.sendMail({ to, from: env.SMTP_FROM_EMAIL ?? env.SMTP_USER, subject, html, text });
+  await sendEmail({ to, subject, html, text });
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {

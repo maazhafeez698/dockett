@@ -28,12 +28,10 @@ const envSchema = z.object({
     .string()
     .describe("OAuth2 client ID from Google Cloud Console, used to verify Google ID tokens"),
 
-  SMTP_HOST: z.string().default("smtp.gmail.com").describe("SMTP server host"),
-  SMTP_PORT: z.coerce.number().default(587).describe("SMTP server port"),
-  SMTP_USER: z.string().describe("SMTP username — for Gmail, your full email address"),
-  SMTP_PASS: z
-    .string()
-    .describe("SMTP password — for Gmail, a 16-character App Password, not your normal password"),
+  RESEND_API_KEY: z.string().min(1).describe("Server-side Resend API key"),
+  EMAIL_FROM_NAME: z.string().trim().min(1).default("Dockett"),
+  EMAIL_FROM_ADDRESS: z.email().describe("Sender address on a domain verified with Resend"),
+  EMAIL_REPLY_TO: z.preprocess((value) => (value === "" ? undefined : value), z.email().optional()),
   // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
   // builder, but uploading reports "not set up" instead of crashing the server. ----
   // ---- Publishing / auth lifecycle ----
@@ -119,10 +117,6 @@ const envSchema = z.object({
     .min(1)
     .default(15)
     .describe("How often abandoned uploads are cleaned up, in minutes"),
-  SMTP_FROM_EMAIL: z
-    .string()
-    .optional()
-    .describe("Sender address shown to recipients; defaults to SMTP_USER if not set"),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
