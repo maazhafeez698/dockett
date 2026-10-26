@@ -312,6 +312,7 @@ const PLANS = [
       "Standard themes",
       "Basic analytics",
       "Limited AI generations",
+      "Conditional rendering",
     ],
     soon: [] as string[],
     cta: "Start free",

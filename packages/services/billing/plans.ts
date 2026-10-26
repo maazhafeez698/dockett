@@ -69,6 +69,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       { text: "Standard themes" },
       { text: "Basic analytics" },
       { text: "Limited AI generations" },
+      { text: "Conditional rendering" },
     ],
   },
   premium: {
