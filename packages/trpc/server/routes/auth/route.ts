@@ -74,6 +74,13 @@ function clearAuthCookies(ctx: Context) {
   ctx.clearCookie(REFRESH_TOKEN_COOKIE);
 }
 
+function isKnownSessionError(error: unknown) {
+  return (
+    error instanceof Error &&
+    ["Invalid refresh token", "Refresh token has expired, please sign in again"].includes(error.message)
+  );
+}
+
 export const authRouter = router({
   createUserWithEmailAndPassword: publicProcedure
     .meta({
@@ -224,9 +231,7 @@ export const authRouter = router({
         return { id: rotated.id };
       } catch (error) {
         clearAuthCookies(ctx);
-        const knownSessionError =
-          error instanceof Error &&
-          ["Invalid refresh token", "Refresh token has expired, please sign in again"].includes(error.message);
+        const knownSessionError = isKnownSessionError(error);
         throw new TRPCError({
           code: knownSessionError ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
           message: knownSessionError
@@ -355,25 +360,49 @@ export const authRouter = router({
       }
     }),
 
-  getLoggedInUserInfo: authenticatedProcedure
+  getLoggedInUserInfo: publicProcedure
     .meta({
       openapi: {
         method: "GET",
         path: getPath("/getLoggedInUserInfo"),
         tags: TAGS,
-        protect: true,
       },
     })
     .input(getLoggedInUserInfoInputModel)
     .output(getLoggedInUserInfoOutputModel)
     .query(async ({ ctx }) => {
-      const { fullName, email, id, hasPassword } = await userService.getUserInfoById(ctx.user.id);
+      const accessToken = ctx.getCookie(ACCESS_TOKEN_COOKIE);
+      const refreshToken = ctx.getCookie(REFRESH_TOKEN_COOKIE);
+      let userId: string | undefined;
 
-      return {
-        id,
-        fullName,
-        email,
-        hasPassword,
-      };
+      if (accessToken) {
+        try {
+          ({ id: userId } = await userService.verifyAndDecodeAccessToken(accessToken));
+        } catch {
+          // An invalid access token can still be renewed with a valid refresh token.
+        }
+      }
+
+      if (!userId && refreshToken) {
+        try {
+          const rotated = await userService.rotateRefreshToken(refreshToken);
+          setAuthCookies(ctx, rotated.tokens);
+          userId = rotated.id;
+        } catch (error) {
+          clearAuthCookies(ctx);
+          if (isKnownSessionError(error)) return null;
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "We couldn't refresh your session. Please try again.",
+          });
+        }
+      }
+
+      if (!userId) {
+        if (accessToken) clearAuthCookies(ctx);
+        return null;
+      }
+
+      return userService.getUserInfoById(userId);
     }),
 });

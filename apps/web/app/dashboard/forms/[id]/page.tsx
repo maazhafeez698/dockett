@@ -58,18 +58,18 @@ export default function FormBuilder() {
   const params = useParams();
   const router = useRouter();
   const { ready } = useAuthGuard();
-  const { overview: billing } = useBillingOverview();
+  const { overview: billing } = useBillingOverview(ready);
   const premiumUnlocked = billing?.plan.premiumTemplates ?? true;
   const [aiOpen, setAiOpen] = useState(false);
   const formId = params?.id as string | undefined;
 
   // live: the builder edits the draft; respondents (and this page for them) see the published version
-  const { form } = useGetFormWithFields(formId ?? "", undefined, true, true);
+  const { form } = useGetFormWithFields(formId ?? "", undefined, ready, true);
 
   // The Share dialog opens by itself right after a publication succeeds (never on failure).
   const [shareOpen, setShareOpen] = useState(false);
   const [justPublished, setJustPublished] = useState<PublishResult | null>(null);
-  const { fields, isLoading: fieldsLoading } = useGetFields(formId ?? "");
+  const { fields, isLoading: fieldsLoading } = useGetFields(formId ?? "", ready);
 
   const { createFieldAsync } = useCreateField(formId ?? "");
   const { updateFieldAsync, isPending: isSavingField } = useUpdateField(formId ?? "");

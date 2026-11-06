@@ -35,14 +35,16 @@ export const signInUserWithEmailAndPasswordOutputModel = z.object({
 });
 
 export const getLoggedInUserInfoInputModel = z.undefined();
-export const getLoggedInUserInfoOutputModel = z.object({
-  id: z.string().describe("ID of the user"),
-  fullName: z.string().describe("Name of the user"),
-  email: z.email().describe("Email of the user"),
-  hasPassword: z
-    .boolean()
-    .describe("Whether the account has a password set (false for Google-only accounts)"),
-});
+export const getLoggedInUserInfoOutputModel = z
+  .object({
+    id: z.string().describe("ID of the user"),
+    fullName: z.string().describe("Name of the user"),
+    email: z.email().describe("Email of the user"),
+    hasPassword: z
+      .boolean()
+      .describe("Whether the account has a password set (false for Google-only accounts)"),
+  })
+  .nullable();
 
 export const refreshAccessTokenInputModel = z.object({});
 export const refreshAccessTokenOutputModel = z.object({

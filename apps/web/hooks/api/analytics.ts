@@ -84,10 +84,12 @@ export const useGetSubmissionDetail = (submissionId: string | null) => {
  * Sum of responses across the given forms — drives the dashboard's REPLIES
  * counter. One (batched) analytics query per form; cached by react-query.
  */
-export const useTotalResponses = (formIds: string[]) => {
+export const useTotalResponses = (formIds: string[], enabled = true) => {
   const timeZone = getTimeZone();
   const results = trpc.useQueries((t) =>
-    formIds.map((formId) => t.analytics.getFormAnalytics({ formId, timeZone }, { retry: false })),
+    formIds.map((formId) =>
+      t.analytics.getFormAnalytics({ formId, timeZone }, { enabled, retry: false }),
+    ),
   );
 
   const total = results.reduce((sum, r) => sum + (r.data?.totalResponses ?? 0), 0);

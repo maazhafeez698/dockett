@@ -22,7 +22,7 @@ export default function TemplatesPage() {
     useCreateFormFromTemplate();
   const { createFormAsync, isPending: creatingBlank } = useCreateForm();
 
-  const { overview } = useBillingOverview();
+  const { overview } = useBillingOverview(ready);
   const premiumUnlocked = overview?.plan.premiumTemplates ?? true; // unknown yet → let the server decide
 
   const [previewing, setPreviewing] = useState<FormTemplate | null>(null);

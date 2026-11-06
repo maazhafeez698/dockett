@@ -136,7 +136,7 @@ function StatCardSkeleton() {
 
 export default function AnalyticsPage() {
   const { ready } = useAuthGuard();
-  const { forms, isLoading: formsLoading } = useListForms();
+  const { forms, isLoading: formsLoading } = useListForms(ready);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);

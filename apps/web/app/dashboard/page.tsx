@@ -20,7 +20,7 @@ export default function DashboardCreatePage() {
   const router = useRouter();
   const { ready } = useAuthGuard();
   const { user } = useUser();
-  const { forms, isLoading } = useListForms();
+  const { forms, isLoading } = useListForms(ready);
   const { createFormAsync, isPending: creatingBlank } = useCreateForm();
   const [aiOpen, setAiOpen] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | undefined>();
@@ -28,6 +28,7 @@ export default function DashboardCreatePage() {
   const published = (forms ?? []).filter((f) => f.status === "PUBLISHED");
   const { total: replies, isLoading: repliesLoading } = useTotalResponses(
     published.map((f) => f.id),
+    ready,
   );
 
   const recent = [...(forms ?? [])]

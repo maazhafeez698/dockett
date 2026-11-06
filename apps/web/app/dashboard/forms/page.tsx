@@ -19,7 +19,7 @@ const FILTERS = ["ALL", "PUBLISHED", "DRAFT", "CLOSED"] as const;
 export default function DashboardForms() {
   const { ready } = useAuthGuard();
   const router = useRouter();
-  const { forms, isLoading } = useListForms();
+  const { forms, isLoading } = useListForms(ready);
   const { createFormAsync } = useCreateForm();
   const { deleteFormAsync } = useDeleteForm();
   const [query, setQuery] = useState("");

@@ -32,7 +32,7 @@ export function useCreateForm() {
   };
 }
 
-export function useListForms() {
+export function useListForms(enabled = true) {
   const {
     data: forms,
     error,
@@ -40,7 +40,7 @@ export function useListForms() {
     isFetching,
     isLoading,
     status,
-  } = trpc.form.listForms.useQuery();
+  } = trpc.form.listForms.useQuery(undefined, { enabled });
 
   return {
     forms,

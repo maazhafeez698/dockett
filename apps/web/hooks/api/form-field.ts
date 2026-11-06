@@ -33,7 +33,7 @@ export function useCreateField(formId: string) {
   };
 }
 
-export function useGetFields(formId: string) {
+export function useGetFields(formId: string, enabled = true) {
   const {
     data: fields,
     error,
@@ -41,7 +41,7 @@ export function useGetFields(formId: string) {
     isFetching,
     isLoading,
     status,
-  } = trpc.formField.getFields.useQuery({ formId });
+  } = trpc.formField.getFields.useQuery({ formId }, { enabled: enabled && !!formId });
 
   return {
     fields,
