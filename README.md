@@ -1,156 +1,111 @@
-# Turborepo starter
+# Dockett
 
-This Turborepo starter is maintained by the Turborepo core team.
+Dockett is a full-stack form platform for creating, publishing, and analyzing forms. Build a form from scratch, a template, or an AI-generated draft; share it with respondents; and review or export its responses.
+
+## What you can do
+
+- Design forms with 12 field types, configurable themes and layouts, drag-and-drop ordering, and conditional question flows.
+- Start from nine visual templates, including Classic, Survey, Education, Corporate, and Landing.
+- Publish public or access-code-protected forms, optionally require verified respondent email, and set automatic closing.
+- Collect anonymous or email-verified submissions, with server-side validation against the exact published form version.
+- Review views, response trends, device mix, individual submissions, and CSV exports.
+- Generate or refine forms with a streaming Gemini-powered assistant.
+- Add file-upload questions backed by optional Cloudinary storage.
+- Manage Basic, Pro, and Business plan entitlements; Pro checkout and subscription management use optional Paddle Billing.
+
+## Architecture
+
+The pnpm/Turborepo workspace separates the Next.js product UI, Express API, shared tRPC contract, domain services, and PostgreSQL persistence.
+
+```mermaid
+flowchart LR
+  Browser["Browser / respondent"] -->|Next.js pages| Web["apps/web<br/>Next.js · React"]
+  Web -->|typed tRPC · /trpc| API["apps/api<br/>Express"]
+  Web -->|public REST · /api| API
+  Web -->|AI POST + SSE| API
+  API --> RPC["packages/trpc<br/>routers · auth · context"]
+  RPC --> SVC["packages/services<br/>forms · auth · submissions<br/>analytics · AI · billing · uploads"]
+  SVC --> DB["packages/database<br/>Drizzle ORM"]
+  DB --> PG[("PostgreSQL")]
+  SVC -. optional .-> Email["Resend"]
+  SVC -. optional .-> AI["Gemini API"]
+  SVC -. optional .-> Storage["Cloudinary"]
+  SVC -. optional .-> Paddle["Paddle"]
+```
+
+### Stack
+
+| Area                 | Technology                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Workspace and builds | pnpm 9, Turborepo 2                                                                  |
+| Web                  | Next.js 16, React 19, TypeScript 5.9                                                 |
+| UI                   | Tailwind CSS 4, Radix UI, React Query, tRPC React, React Hook Form, Recharts         |
+| API                  | Node.js 24 in production, Express 5, tRPC 11, Zod, generated OpenAPI and Scalar docs |
+| Persistence          | PostgreSQL 15, Drizzle ORM and Drizzle Kit                                           |
+| Integrations         | Google sign-in, Resend email, Gemini AI, Cloudinary uploads, Paddle Billing          |
+| Operations           | Docker, Docker Compose, Caddy, GitHub Actions, AWS EC2                               |
+
+### Workspace map
+
+- `apps/web` — public site, authentication, dashboard, form builder and respondent experience.
+- `apps/api` — Express server, REST/OpenAPI and tRPC endpoints, health checks, and background lifecycle jobs.
+- `packages/trpc` — shared router, input/output schemas, authentication procedures, and API services wiring.
+- `packages/services` — form, field, submission, respondent, analytics, authentication, AI, billing, and upload business logic.
+- `packages/database` — Drizzle connection, schema, models, and migrations.
+- `packages/logger` — structured application logging.
+- `packages/eslint-config`, `packages/typescript-config` — shared tooling configuration.
 
 ## Run locally
 
-Set `DATABASE_URL` in the root `.env` to a PostgreSQL URL at `localhost:5432` and set
-`POSTGRES_PASSWORD` to the same password. Start the isolated local database, apply migrations,
-then start the app:
+Prerequisites: Node.js 24 (Node 18+ is declared in the root package manifest), pnpm 9, and Docker Compose.
 
-```sh
-pnpm db:up
-pnpm db:migrate
-pnpm dev
-```
+1. Copy `.env.example` to `.env`.
+2. Set `POSTGRES_PASSWORD` and configure `DATABASE_URL` for the local Compose database, for example:
 
-Stop the local database without deleting its data with:
+   ```text
+   postgresql://postgres:<your-password>@localhost:5432/dev
+   ```
 
-```sh
-pnpm db:down
-```
+3. Configure the required API values in `.env`: `JWT_SECRET` (at least 32 characters), `GOOGLE_CLIENT_ID`, `RESEND_API_KEY`, and `EMAIL_FROM_ADDRESS` (use a sender address verified with Resend). Configure the sender domain and Google OAuth application for your local URLs. Integration credentials for AI, billing, and uploads are optional and only enable those features.
+4. Start PostgreSQL, apply migrations, then start the web app and API:
 
-The local database uses its own Compose file and volume; it does not start or share the production
-EC2 database.
+   ```sh
+   pnpm install
+   pnpm db:up
+   pnpm db:migrate
+   pnpm dev
+   ```
 
-## Using this example
+   Open [http://localhost:3000](http://localhost:3000). The API listens on port `8000`; its health endpoint is [http://localhost:8000/health](http://localhost:8000/health).
 
-Run the following command:
+5. Stop the local database when finished:
 
-```sh
-npx create-turbo@latest
-```
+   ```sh
+   pnpm db:down
+   ```
 
-## What's inside?
+The development database uses a dedicated Compose file and volume (`dockett_local_pg_data`), separate from the production database. Do not copy production credentials into a local environment.
 
-This Turborepo includes the following packages/apps:
+## Useful commands
 
-### Apps and Packages
+| Command                                            | Purpose                                                   |
+| -------------------------------------------------- | --------------------------------------------------------- |
+| `pnpm dev`                                         | Run the web app and API in development                    |
+| `pnpm build`                                       | Build workspace applications and packages                 |
+| `pnpm lint`                                        | Lint workspace packages                                   |
+| `pnpm check-types`                                 | Run workspace type checks                                 |
+| `pnpm db:up` / `pnpm db:down`                      | Start / stop the isolated local PostgreSQL service        |
+| `pnpm db:generate`                                 | Generate Drizzle migrations from schema changes           |
+| `pnpm db:migrate`                                  | Apply pending migrations                                  |
+| `pnpm --filter @repo/api test:ai`                  | Run the API package's AI and billing unit-test script     |
+| `pnpm --filter @repo/api test:ai:integration`      | Run the PostgreSQL-backed AI usage-store integration test |
+| `pnpm --filter @repo/api test:billing:integration` | Run billing integration tests                             |
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## API and deployment
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- tRPC is served at `/trpc`; REST endpoints are generated at `/api`. OpenAPI JSON is at `/openapi.json` and interactive API docs at `/docs`.
+- In production, Caddy terminates HTTPS and routes API paths to the API process and all other requests to Next.js.
+- GitHub Actions runs lint and type checks on pushes to `main`, builds a combined Docker image, pushes commit-tagged and `latest` images to Docker Hub, then deploys to AWS EC2.
+- Production runs the web and API processes in one application container alongside Caddy and PostgreSQL. Health checks gate service startup; the deploy script can roll the application image back if health checks fail.
 
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+For detailed architecture, domain behavior, engineering decisions, operational notes, and known constraints, see [Dockett.md](./Dockett.md).
