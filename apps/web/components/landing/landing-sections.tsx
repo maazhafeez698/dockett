@@ -573,6 +573,7 @@ export function LandingFooter() {
         { label: "About", href: "/about" },
         { label: "Privacy", href: "/privacy" },
         { label: "Terms", href: "/terms" },
+        { label: "Refunds", href: "/refunds" },
         { label: "Contact us", href: "/contact" },
       ],
     },

@@ -14,6 +14,7 @@ const TITLES: Record<string, string> = {
   "/contact": "Contact",
   "/privacy": "Privacy policy",
   "/terms": "Terms of service",
+  "/refunds": "Refund policy",
   "/dashboard": "Create form",
   "/dashboard/forms": "Forms",
   "/dashboard/analytics": "Analytics",
