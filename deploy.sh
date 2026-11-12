@@ -60,6 +60,28 @@ wait_healthy() {
   return 1
 }
 
+pull_app_image() {
+  echo "Removing unused dangling Docker images before pulling the app image."
+  docker image prune --force
+
+  if docker compose pull app; then
+    return 0
+  fi
+
+  echo "Could not pull the app image. The running app and database have not been stopped." >&2
+  echo "Docker disk usage:" >&2
+  docker system df >&2 || true
+
+  local docker_root
+  docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+  if [[ -n "$docker_root" ]]; then
+    echo "Filesystem space for Docker data ($docker_root):" >&2
+    df -h "$docker_root" >&2 || true
+  fi
+
+  return 1
+}
+
 rollback() {
   if [[ -z "$previous_tag" ]]; then
     echo "No previous combined app image tag is available for automatic rollback." >&2
@@ -68,13 +90,13 @@ rollback() {
 
   echo "Rolling app back to image tag $previous_tag" >&2
   export IMAGE_TAG="$previous_tag"
-  docker compose pull app
+  pull_app_image
   docker compose up -d --no-deps app
   wait_healthy app
 }
 
 echo "Deploying app image tag $IMAGE_TAG"
-docker compose pull app
+pull_app_image
 docker compose up -d postgresdb
 if ! wait_healthy postgresdb; then
   docker compose logs --tail=100 postgresdb

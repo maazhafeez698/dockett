@@ -207,7 +207,7 @@ Production Compose runs:
 - PostgreSQL 15, persisting to the required external volume `dockett_pg_data`.
 - Caddy 2.10, routing web/API traffic and managing HTTPS certificates.
 
-Container health checks probe both the web root and API `/health`. The deployment script validates configuration and the existing database volume, waits for service health, records the deployed image tag, and attempts an application-image rollback if the new app or Caddy does not become healthy. PostgreSQL is not removed or recreated by that rollback.
+Container health checks probe both the web root and API `/health`. The deployment script validates configuration and the existing database volume, removes only dangling Docker images before pulling, reports Docker disk usage if a pull fails, waits for service health, records the deployed image tag, and attempts an application-image rollback if the new app or Caddy does not become healthy. PostgreSQL is not removed or recreated by that rollback.
 
 ### Configuration and secrets
 
