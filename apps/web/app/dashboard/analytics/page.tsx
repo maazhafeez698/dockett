@@ -66,7 +66,7 @@ function toCsvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-/** "2026-09-24 5:10 PM" — readable in a spreadsheet, not an ISO string. */
+// "2026-09-24 5:10 PM" - readable in a spreadsheet, not an ISO string.
 function formatCsvTimestamp(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -79,10 +79,10 @@ function formatCsvTimestamp(iso: string | null): string {
   return `${datePart} ${timePart}`;
 }
 
-/** Real per-field export — one column per form field, using the field's
- * exact label as the header, in field order. A serial number stands in for
- * a submission id (meaningless to a form owner), and there's no "signed
- * in" column — not useful information for most owners reading a CSV. */
+// Real per-field export - one column per form field, using the field's
+// exact label as the header, in field order. A serial number stands in for
+// a submission id (meaningless to a form owner), and there's no "signed
+// in" column - not useful information for most owners reading a CSV.
 function downloadSubmissionsCsv(
   formTitle: string,
   data: {
@@ -178,7 +178,6 @@ export default function AnalyticsPage() {
   return (
     <AppShell docLabel="Analytics">
       <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[224px_minmax(0,1fr)] lg:p-5">
-        {/* Forms list */}
         <aside className="self-start border border-border bg-card p-4 lg:sticky lg:top-0">
           <h1 className="font-display text-2xl font-extrabold">Analytics</h1>
           <p className="mono-label-sm mt-4 text-muted-foreground">Forms</p>
@@ -213,7 +212,6 @@ export default function AnalyticsPage() {
           )}
         </aside>
 
-        {/* Main content */}
         <div className="min-w-0">
           {!selectedFormId || !selectedForm ? (
             <div className="flex min-h-[50vh] flex-col items-center justify-center border border-dashed border-foreground/40 p-8 text-center">

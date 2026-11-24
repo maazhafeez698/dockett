@@ -1,45 +1,3 @@
-// apps/web/components/hoop-upload/engine.ts
-//
-// HoopUpload — "slingshot a file into a basketball hoop" upload widget.
-// Framework-agnostic core ported 1:1 from the reference implementation (hoop-upload.html).
-// No dependencies, no DOM access at import time (SSR-safe): everything happens inside
-// createHoopUpload(), which is only ever called from the browser.
-//
-// ALL geometry is in DESIGN UNITS (dp): the stage is 432 x 539 dp and is uniformly scaled to its
-// container (see `fit()`), so every number below is the same at any size. 1 dp = 0.5 px of the 2x
-// source recording. G, FINISH, PULL_PATH and the timing constants were measured from that
-// recording — do not "improve" them.
-//
-// Interaction model (v3):
-//   - By default the widget is a normal uploader: browsing for files, or dropping them anywhere on
-//     the stage, uploads them straight away.
-//   - Shot mode is an opt-in switch (`shotMode` option / setShotMode()). While it is on, every file
-//     that is browsed or dropped waits for a basket first: it sits where it was dropped (or at the
-//     default spot for browsed files), the cursor turns into an aiming reticle, and you slingshot
-//     it from anywhere. The flight is simulated with real physics (gravity, rim collisions, walls,
-//     floor). Only a file that scores is uploaded; a miss becomes a failed upload (a "Failed" row).
-//     Turning shot mode off at any time uploads whatever is still waiting.
-//   - The scripted, always-scoring slingshot (the original recording) is still what the keyboard
-//     (Enter / Space on the file) and demo() use, so the widget stays accessible.
-//   - The "Uploaded" counter counts finished uploads (it used to count shots).
-//   - Exactly two sounds, both synthesised (no audio files): a pleasant chime on a basket and a
-//     soft low "thud" on a miss.
-//
-// Intentional deviations from the reference (everything else is identical):
-//   - matchMedia is read inside the factory, not at import time (SSR).
-//   - Theme CSS variables are namespaced `--hu-*` (the reference's `--accent`/`--muted`/... would
-//     collide with the app's shadcn tokens). Defaults live in the injected stylesheet so a dark
-//     theme can override them; only values the caller passes are written inline.
-//   - Text options are escaped, and the file badge label is restricted to [A-Z0-9] (the reference
-//     built it with innerHTML from the file extension, which a hostile filename could abuse).
-//   - destroy() really cleans up: every timer is tracked, the ResizeObserver is disconnected and
-//     pending uploads can no longer touch the DOM.
-//   - Added: maxSize / maxFiles / accept validation with a flashing message, `disabled`, a
-//     hover-only remove (x) button on finished rows, onRemove / onBusyChange / onReject hooks, and
-//     Space on the dropzone no longer scrolls the page.
-
-/* ---------- 1. CONFIG (everything a consumer may customise) ---------- */
-
 export interface HuTheme {
   bg: string;
   ink: string;
@@ -53,7 +11,7 @@ export interface HuTheme {
   ok: string;
   track: string;
   pill: string;
-  /** default file-type badge colour */
+  // default file-type badge colour 
   badge: string;
   font: string;
 }
@@ -68,25 +26,25 @@ export interface HuText {
   done: string;
   failed: string;
   plusOne: string;
-  /** shown when a file is rejected: {max} = size limit, {n} = file limit */
+  // shown when a file is rejected: {max} = size limit, {n} = file limit 
   rejectType: string;
   rejectSize: string;
   rejectCount: string;
   disabled: string;
   remove: string;
-  /** toast after a missed shot */
+  // toast after a missed shot 
   miss: string;
-  /** tooltip on the failed row of a missed shot */
+  // tooltip on the failed row of a missed shot 
   missReason: string;
-  /** shown after an upload finishes */
+  // shown after an upload finishes 
   uploadedMsg: string;
-  /** subtitle while a file is waiting for a shot */
+  // subtitle while a file is waiting for a shot
   shotHint: string;
-  /** subtitle while shot mode is on and nothing is waiting */
+  // subtitle while shot mode is on and nothing is waiting
   shotReady: string;
 }
 
-/** The minimal file shape the widget needs (real `File`s satisfy it; the demo uses a plain object). */
+// The minimal file shape the widget needs (real `File`s satisfy it; the demo uses a plain object). */
 export interface HuFileLike {
   name: string;
   size: number;
@@ -96,46 +54,46 @@ export interface HuFileLike {
 export interface HoopUploadOptions {
   theme: Partial<HuTheme>;
   text: Partial<HuText>;
-  /** file extension (lowercase, no dot) -> badge colour */
+  // file extension (lowercase, no dot) -> badge colour 
   kinds: Record<string, string>;
-  /** `<input accept>` syntax: ".pdf,.docx,image/png". Empty = anything. Also enforced on drops. */
+  // `<input accept>` syntax: ".pdf,.docx,image/png". Empty = anything. Also enforced on drops. */
   accept: string;
   multiple: boolean;
-  /** Largest accepted file in bytes (0 = unlimited). */
+  // Largest accepted file in bytes (0 = unlimited). 
   maxSize: number;
-  /** Most files accepted in total (uploaded + waiting). Infinity = unlimited. */
+  // Most files accepted in total (uploaded + waiting). Infinity = unlimited. 
   maxFiles: number;
-  /** slingshot limits (dp) */
+  // slingshot limits (dp) 
   maxPull: number;
   minPull: number;
-  /** simulated upload length when no `upload` fn is given */
+  // simulated upload length when no `upload` fn is given
   uploadMs: number;
-  /** Real upload. Report progress 0..1. Reject to show "Failed" on the row. Its resolved value is passed to onUploaded. */
+  // Real upload. Report progress 0..1. Reject to show "Failed" on the row. Its resolved value is passed to onUploaded.
   upload: ((file: File | HuFileLike, onProgress: (p: number) => void) => Promise<unknown>) | null;
   onUploaded: ((file: File | HuFileLike, result: unknown) => void) | null;
-  /** Start with shot mode on (default off). Change later with setShotMode(). */
+  // Start with shot mode on (default off). Change later with setShotMode().
   shotMode: boolean;
-  /** The user removed a finished (or failed) row. */
+  // The user removed a finished (or failed) row.
   onRemove: ((file: File | HuFileLike, result: unknown) => void) | null;
-  /** A file was refused before entering the queue. */
+  // A file was refused before entering the queue.
   onReject: ((file: File | HuFileLike, reason: "type" | "size" | "count" | "miss") => void) | null;
-  /** true while any upload is in flight (use it to block form submission). */
+  // true while any upload is in flight (use it to block form submission).
   onBusyChange: ((busy: boolean) => void) | null;
-  /** Skip the flight and just add the row. Default: never (the throw always plays). */
+  // Skip the flight and just add the row. Default: never (the throw always plays).
   reducedMotion: boolean | undefined;
-  /**
-   * Follow the OS "reduce motion" setting (skip the flight when it is on). Off by default: the throw is
-   * started by the visitor's own drag, and skipping it made shots look like the file just vanished.
-   */
+  
+    // Follow the OS "reduce motion" setting (skip the flight when it is on). Off by default: the throw is
+    // started by the visitor's own drag, and skipping it made shots look like the file just vanished.
+   
   respectReducedMotion: boolean;
-  /** Adopt the app's dark theme (`.dark` ancestor) via tokens.css. */
+  // Adopt the app's dark theme (`.dark` ancestor) via tokens.css. 
   adaptive: boolean;
   disabled: boolean;
-  /** Files that are already uploaded (restored without animation, e.g. when going back a step). */
+  // Files that are already uploaded (restored without animation, e.g. when going back a step).
   initialFiles: { file: HuFileLike; result: unknown }[];
-  /** Play the basket / miss sound (two short synthesised tones, nothing else). */
+  // Play the basket / miss sound (two short synthesised tones, nothing else).
   sound: boolean;
-  /** Reference-recording compatibility: bump the counter when the shot scores instead of when the upload succeeds. */
+  // Reference-recording compatibility: bump the counter when the shot scores instead of when the upload succeeds.
   countOnScore: boolean;
 }
 
@@ -212,7 +170,6 @@ export const DEFAULT_TEXT: HuText = {
   shotReady: "Shot mode is on: add a file, then score a basket",
 };
 
-/* ---------- 2. GEOMETRY / TIMING measured from the recording ---------- */
 const G = {
   W: 432,
   H: 539,
@@ -229,8 +186,8 @@ const G = {
 
 type Waypoint = [t: number, dx: number, dy: number, rot: number, scale: number];
 
-/* Flight after the apex, relative to rim centre: [t(s since release), dx, dy, rot°, scale]
- * (measured per frame; rotation ends at 720° = exactly two turns, scale 0.80)           */
+//  Flight after the apex, relative to rim centre: [t(s since release), dx, dy, rot°, scale]
+//   (measured per frame; rotation ends at 720° = exactly two turns, scale 0.80)           
 const FINISH: Waypoint[] = [
   [0.52, -50, -74, 340, 0.9],
   [0.6, -37, -68, 377, 0.87],
@@ -247,8 +204,8 @@ const FINISH: Waypoint[] = [
   [1.42, -1, 59, 707, 0.8],
   [1.55, 1, 60, 720, 0.8],
 ];
-/* Real-physics shots (shot mode). Units: dp, dp/s. Gravity is the one implied by the recording
- * (apex 264dp above the start after 0.52s -> g = 2h/t^2 ~ 1950). */
+  // Real-physics shots (shot mode). Units: dp, dp/s. Gravity is the one implied by the recording
+  // (apex 264dp above the start after 0.52s -> g = 2h/t^2 ~ 1950). 
 const PHYS = {
   g: 1950,
   ballR: 11, // collision radius of the file (the sprite is bigger; this is the felt size)
@@ -269,7 +226,6 @@ const PHYS = {
 const HOOP_ZONE = { x0: 167, y0: 191, x1: 265, y1: 264 };
 const T = { tintOn: 0.42, tintOff: 1.52, plusOne: 1.35, score: 1.45, row: 1.6 }; // s after release
 
-/* ---------- 3. small helpers ---------- */
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -309,7 +265,6 @@ function makeTrack(pts: number[][]) {
   };
 }
 
-/* ---------- 4. markup ---------- */
 interface Kind {
   label: string;
   color: string;
@@ -400,7 +355,6 @@ const CSS = `${THEME_DEFAULTS_CSS}
 `;
 // Dark theme tokens live in tokens.css (opt-in per instance via `adaptive`).
 
-/* ---------- 5. the component ---------- */
 
 interface Row {
   el: HTMLElement;
@@ -600,8 +554,6 @@ export function createHoopUpload(
     dotsEl.append(d);
     return { el: d, x: 0, y: 0, v: 0, seen: 0 };
   });
-
-  /* ---- state ---- */
   const S: State = {
     mode: "idle",
     x: G.rest.x,
@@ -674,8 +626,6 @@ export function createHoopUpload(
   function paint() {
     fileEl.style.transform = `translate3d(${S.x - G.file.w / 2}px,${S.y - G.file.h / 2}px,0) rotate(${S.rot}deg) scale(${S.sc})`;
   }
-
-  /* ---- aim: parabola from ball to apex; dots sample it ---- */
   function aim(_px: number, py: number, pullLen: number) {
     const ay = G.rim.y + G.apexRel.y - clamp((pullLen - G.apexPull) * 1.5, -60, 60);
     const ax = G.rim.x + G.apexRel.x;
@@ -689,8 +639,6 @@ export function createHoopUpload(
     px + (a.ax - px) * u,
     a.ay + (py - a.ay) * (1 - u) ** 2,
   ];
-
-  /* ---- shot-mode UI (cursor, hint) ---- */
   const waiting = () => S.shotMode && S.queue.length > 0 && !o.disabled;
   function syncShotUi() {
     root.classList.toggle("shot", waiting());
@@ -707,8 +655,6 @@ export function createHoopUpload(
       }
     }
   }
-
-  /* ---- shot mode ballistics ---- */
   /** launch velocity from a slingshot pull (the file flies opposite to the pull) */
   function launchVel(pull: { x: number; y: number }) {
     const len = Math.hypot(pull.x, pull.y) || 1;
@@ -765,8 +711,6 @@ export function createHoopUpload(
     trailClock = 0;
     dots.forEach((d) => (d.el.style.opacity = "0"));
   }
-
-  /* ---- loop ---- */
   function loop(now: number) {
     const dt = Math.min(0.05, (now - S.last) / 1000 || 0.016);
     S.last = now;
@@ -846,8 +790,6 @@ export function createHoopUpload(
       S.raf = requestAnimationFrame(loop);
     }
   };
-
-  /* ---- interaction (pointer + scripted demo share these three) ---- */
   const toStage = (e: { clientX: number; clientY: number }) => {
     const r = root.getBoundingClientRect();
     return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
@@ -904,8 +846,6 @@ export function createHoopUpload(
     else launchPhys();
     return true;
   }
-
-  /* ---- shared celebration: tint, +1, net squash, sound, then the result row ---- */
   function celebrate(f: File | HuFileLike, k0: number, rowAt: number, tintOffAt: number, plusAt: number) {
     after(plusAt, () => {
       const anim = plus.animate(
@@ -939,8 +879,6 @@ export function createHoopUpload(
       });
     });
   }
-
-  /* ---- scripted slingshot: always scores (keyboard / demo; the recording) ---- */
   function shoot(pl: number = G.apexPull) {
     S.scripted = false;
     const f = S.queue.shift()!;
@@ -984,8 +922,6 @@ export function createHoopUpload(
       syncShotUi();
     });
   }
-
-  /* ---- shot mode: real physics ---- */
   const floorY = () => H - PHYS.pad;
   const flightScale = (t: number) =>
     1.12 - 0.22 * clamp(t / 0.52, 0, 1) - 0.1 * clamp((t - 0.52) / 0.23, 0, 1);
@@ -1160,8 +1096,6 @@ export function createHoopUpload(
     showMiss();
     later(900, () => missedFile(f));
   }
-
-  /* ---- sound: exactly two short synthesised tones, no files, no voice ---- */
   let audioCtx: AudioContext | null = null;
   function playSound(kind: "success" | "fail") {
     if (!o.sound || S.dead) return;
@@ -1221,8 +1155,6 @@ export function createHoopUpload(
       cur.remove();
     nx.animate(kf("100%", "0"), { duration: 250, easing: "ease-out" });
   }
-
-  /* ---- result rows + upload ---- */
   const setBusy = (delta: number) => {
     const was = S.inflight > 0;
     S.inflight = Math.max(0, S.inflight + delta);
@@ -1336,8 +1268,6 @@ export function createHoopUpload(
     later(200, () => row.el.remove());
     relayoutRows();
   }
-
-  /* ---- validation ---- */
   const acceptTokens = o.accept
     .split(",")
     .map((s) => s.trim().toLowerCase())
@@ -1364,8 +1294,6 @@ export function createHoopUpload(
       syncShotUi();
     });
   }
-
-  /* ---- public input paths ---- */
   type AddMode = { mode?: "direct" | "shot"; at?: { x: number; y: number } };
   /** Files go to the shot queue only while the switch is on; `mode` forces one or the other. */
   function addFiles(list: Iterable<File | HuFileLike> | ArrayLike<File>, opts: AddMode = {}) {
@@ -1562,8 +1490,6 @@ export function createHoopUpload(
     };
     go();
   }
-
-  /* ---- scripted slingshot (keyboard / native drop / demo) ---- */
   const PULL_PATH: [number, number, number][] = [
     [0, 0, 0],
     [0.23, -1.5, 5.5],

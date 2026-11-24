@@ -1,10 +1,3 @@
-// packages/services/form-respondent/index.ts
-//
-// "Verified email" respondents. No Dockett account: the respondent asks for a magic link, opens
-// it, and gets a short-lived credential for that one form (see token.ts). Links are single-use and
-// expire; asking again invalidates the earlier pending links of the same fill attempt (so a typo'd
-// address can be corrected).
-
 import { z } from "zod";
 import { and, db, eq, gt, gte, isNull } from "@repo/database";
 import { logger } from "@repo/logger";
@@ -178,14 +171,12 @@ export default class FormRespondentService {
     };
   }
 
-  /** Is this stored credential still good (not expired / forged)? */
   public async checkSession(formId: string, token: string | undefined) {
     const claims = verifyRespondentToken(token, formId);
     if (!claims) return { valid: false as const };
     return { valid: true as const, email: claims.email, alreadyResponded: await this.hasResponded(formId, claims.email) };
   }
 
-  /** Only meaningful while the form enforces one response per email. */
   private async hasResponded(formId: string, email: string): Promise<boolean> {
     const form = (
       await db

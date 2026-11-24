@@ -18,24 +18,6 @@ import { backoffDelay, sleep, systemClock, type CircuitBreaker, type Clock, type
 import type { ModelProvider } from "./providers";
 import type { ProviderId } from "./config";
 
-/**
- * Runs one user request against the model chain and turns it into either a
- * validated result or a single, well-classified error.
- *
- * Reliability rules (each one exists to avoid a specific failure mode):
- *  - Total attempts across the whole chain are capped (config.retry.maxAttempts)
- *    and the whole request has a hard deadline — retries can never snowball
- *    into a runaway bill or a hung request.
- *  - Same-model retry happens only for transient/timeout failures where the
- *    model produced NO output yet; otherwise we move to the next model.
- *  - Rate-limit (429) responses are never hammered: fall back immediately.
- *  - Safety blocks are final — no retry, no fallback.
- *  - If a stream dies after the user already saw text, the client is told to
- *    discard it (`onReset`) before the next attempt starts streaming.
- *  - Every attempt's billable tokens are accumulated (even failed ones) so
- *    accounting reflects what was actually spent.
- */
-
 export interface GenerationEvents {
   onStatus(phase: "retrying" | "fallback", message: string): void;
   onReplyDelta(text: string): void;
@@ -48,10 +30,8 @@ export interface GenerationParams {
   messages: ChatMessage[];
   maxOutputTokens: number;
   maxFields: number;
-  /** Conservative input-token estimate, used only if a provider never reports usage. */
   estimatedInputTokens: number;
   clientSignal: AbortSignal;
-  /** Templates the user's plan includes (premium ones are coerced to CLASSIC otherwise). */
   allowedTemplates?: readonly string[];
 }
 
@@ -110,7 +90,7 @@ export interface OrchestratorDeps {
   config: AiConfig;
   providers: Partial<Record<ProviderId, ModelProvider>>;
   breaker: CircuitBreaker;
-  /** Free-tier guard: per-model requests/minute and requests/day. */
+  // Free-tier guard: per-model requests/minute and requests/day. 
   quota: ModelQuota;
   logger: AiLogger;
   clock?: Clock;
@@ -136,7 +116,7 @@ export class Orchestrator {
 
     const chain = config.chain.filter((r) => this.deps.providers[r.provider]);
     // Prefer models whose breaker is closed; if every model is tripped, try
-    // them anyway — failing fast with no attempt at all is worse than a probe.
+    // them anyway - failing fast with no attempt at all is worse than a probe.
     const open = chain.filter((r) => !breaker.isOpen(modelKey(r)));
     const ordered = open.length ? open : chain;
 
@@ -321,7 +301,7 @@ export class Orchestrator {
           events.onField(fieldCount++, field);
         }
       } catch {
-        /* the authoritative final parse decides validity */
+        // the authoritative final parse decides validity 
       }
     };
 

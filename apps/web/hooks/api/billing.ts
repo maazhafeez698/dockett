@@ -1,6 +1,6 @@
 import { trpc } from "~/trpc/client";
 
-/** The user's plan, limits, usage and checkout details. Refetches when the tab regains focus (after Paddle's overlay). */
+// The user's plan, limits, usage and checkout details. Refetches when the tab regains focus (after Paddle's overlay). 
 export function useBillingOverview(enabled = true) {
   const {
     data: overview,

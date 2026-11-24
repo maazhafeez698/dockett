@@ -1,14 +1,3 @@
-// packages/services/form-submission/index.ts
-//
-// Accepting a response. Everything is decided on the server, against the form's CURRENT
-// PUBLICATION: the form must be live right now (status + scheduled closure + idle closure),
-// access / respondent-identity rules must pass, and the answers are validated against the exact
-// published version — whose id is stored with the response.
-//
-// Retries are safe: a client-generated idempotency key maps a repeated request to the response it
-// already created, and the one-response-per-email rule is enforced by a unique index (so two
-// simultaneous requests can't both win).
-
 import { db, eq, and } from "@repo/database";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formsTable } from "@repo/database/models/form";
@@ -25,7 +14,6 @@ import { ensurePublishedVersion } from "../form/ensure-version";
 import { validateAnswers } from "./validate";
 import { createSubmissionInput, CreateSubmissionInputType } from "./model";
 
-/** Is this a Postgres unique-violation (drizzle may wrap the driver error in `cause`)? */
 function uniqueViolation(error: unknown): string | null {
   const e = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } } | null;
   const pg = e?.cause?.code === "23505" ? e.cause : e?.code === "23505" ? e : null;
@@ -59,7 +47,7 @@ export default class FormSubmissionService {
 
     const isOwner = !!requesterId && requesterId === form.createdBy;
 
-    // ---- is the form live RIGHT NOW? (server clock, not a browser timer) ----
+    // is the form live RIGHT NOW? (server clock, not a browser timer) 
     const eff = effectiveState(form);
     if (eff.status !== "PUBLISHED") {
       throw new Error(
@@ -72,7 +60,7 @@ export default class FormSubmissionService {
       throw new PlanLimitError("FORM_UNAVAILABLE", "This form is temporarily unavailable.");
     }
 
-    // ---- who may submit ----
+    // who may submit? 
     if (!isOwner && form.submissionAccess === "ACCESS_CODE") {
       if (!accessCode || accessCode.toUpperCase() !== (form.accessCode ?? "").toUpperCase()) {
         throw new Error("A valid access code is required to submit this form.");
@@ -85,13 +73,13 @@ export default class FormSubmissionService {
       verifiedEmail = claims.email;
     }
 
-    // ---- retry of a request that already succeeded: return the original response ----
+    // retry of a request that already succeeded: return the original response 
     if (idempotencyKey) {
       const existing = await this.findByIdempotencyKey(form.id, idempotencyKey);
       if (existing) return existing;
     }
 
-    // ---- the exact published version ----
+    // the exact published version
     // (a form published before versioning existed gets its version 1 on first use)
     if (!form.publishedVersionId) form.publishedVersionId = await ensurePublishedVersion(form.id);
     if (!form.publishedVersionId) throw new Error("This form hasn't been published.");
@@ -104,7 +92,7 @@ export default class FormSubmissionService {
     if (!version) throw new Error("This form hasn't been published.");
     const fields = version.snapshot.fields;
 
-    // ---- validate every answer against that version ----
+    // validate every answer against that version 
     const answers = validateAnswers(fields, values);
 
     // FILE_UPLOAD answers arrive as upload ids: resolve them to verified uploads issued for this
@@ -118,7 +106,7 @@ export default class FormSubmissionService {
       answers.set(field.id, refs.length > 0 ? JSON.stringify(refs satisfies StoredFileRef[]) : "");
     }
 
-    // ---- one response per verified email ----
+    // one response per verified email
     const emailKey = form.oneResponsePerEmail && verifiedEmail ? verifiedEmail : null;
     if (emailKey) {
       const dup = await db
@@ -129,7 +117,7 @@ export default class FormSubmissionService {
       if (dup.length > 0) throw new Error("This email address has already responded to this form.");
     }
 
-    // ---- insert (quota-checked, atomic). Unique indexes make the rules race-proof. ----
+    // insert (quota-checked, atomic). Unique indexes make the rules race-proof.
     let created: { id: string; createdAt: Date | null } | undefined;
     try {
       const result = await withResponseQuota(form.id, form.createdBy, (tx) =>

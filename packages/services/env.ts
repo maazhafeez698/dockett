@@ -32,9 +32,6 @@ const envSchema = z.object({
   EMAIL_FROM_NAME: z.string().trim().min(1).default("Dockett"),
   EMAIL_FROM_ADDRESS: z.email().describe("Sender address on a domain verified with Resend"),
   EMAIL_REPLY_TO: z.preprocess((value) => (value === "" ? undefined : value), z.email().optional()),
-  // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
-  // builder, but uploading reports "not set up" instead of crashing the server. ----
-  // ---- Publishing / auth lifecycle ----
   FORM_INACTIVITY_CLOSE_DAYS: z.coerce
     .number()
     .int()
@@ -62,8 +59,6 @@ const envSchema = z.object({
     .max(1440)
     .default(15)
     .describe("How long a respondent's email magic link stays valid"),
-  // ---- File uploads (Cloudinary). Optional: when unset, the FILE_UPLOAD field still exists in the
-  // builder, but uploading reports "not set up" instead of crashing the server. ----
   CLOUDINARY_CLOUD_NAME: z
     .string()
     .min(1)

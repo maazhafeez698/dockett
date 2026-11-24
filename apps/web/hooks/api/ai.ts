@@ -14,7 +14,7 @@ export function useAiUsage(enabled = true) {
   return { usage, error, isLoading, refetch };
 }
 
-/** Dashboard flow: approve → a brand-new form is created from the draft. */
+// Dashboard flow: approve - a brand-new form is created from the draft. 
 export function useSaveAiDraft() {
   const utils = trpc.useUtils();
   const { mutateAsync: saveDraftAsync, isPending } = trpc.ai.saveDraftAsForm.useMutation({
@@ -25,7 +25,7 @@ export function useSaveAiDraft() {
   return { saveDraftAsync, isPending };
 }
 
-/** Builder flow: approve → the draft lands on the open canvas. */
+// Builder flow: approve → the draft lands on the open canvas. 
 export function useApplyAiDraft(formId: string) {
   const utils = trpc.useUtils();
   const { mutateAsync: applyDraftAsync, isPending } = trpc.ai.applyDraftToForm.useMutation({

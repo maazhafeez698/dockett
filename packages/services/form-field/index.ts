@@ -26,11 +26,6 @@ const OPTION_BASED_TYPES = new Set<FieldType>([
   "RADIO_GROUP",
 ]);
 
-/**
- * The shape of `config` is validated loosely at the zod layer; which keys
- * are actually *required* depends on the field's type, which is what this
- * checks. Keeps the zod schema simple while still being strict per-type.
- */
 function validateConfigForType(type: FieldType, config: FieldConfig | undefined | null) {
   if (OPTION_BASED_TYPES.has(type)) {
     if (!config?.options || config.options.length === 0) {

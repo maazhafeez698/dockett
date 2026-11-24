@@ -44,13 +44,6 @@ import {
   type PublishFormInputType,
 } from "./model";
 
-/**
- * Shared ownership guard, used by every service that needs to confirm a
- * form belongs to the caller (form fields, submissions, and the form
- * service itself). A non-owner and a non-existent form get the same error
- * — deliberately not distinguishing the two so a probing request can't
- * learn whether a given formId exists.
- */
 export async function assertFormOwnership(formId: string, userId: string) {
   const rows = await db
     .select({ id: formsTable.id, createdBy: formsTable.createdBy })
@@ -73,7 +66,6 @@ function toLabelKey(label: string): string {
     .replace(/^_|_$/g, "");
 }
 
-/** Short, human-typeable code — unambiguous alphabet (no 0/O/1/I). */
 function generateAccessCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -98,7 +90,6 @@ const FIELD_COLUMNS = {
   updatedAt: formFieldsTable.updatedAt,
 };
 
-/** A transaction or the pool — anything that can run these queries. */
 type Db = Pick<typeof db, "select" | "insert" | "update">;
 
 async function loadLiveFields(formId: string, executor: Db = db) {
@@ -109,7 +100,6 @@ async function loadLiveFields(formId: string, executor: Db = db) {
     .orderBy(formFieldsTable.index);
 }
 
-/** The deprecated "sign in to respond" mode is treated as an open link. */
 const normalizeAccess = (a: string): "ANYONE" | "ACCESS_CODE" => (a === "ACCESS_CODE" ? "ACCESS_CODE" : "ANYONE");
 
 const FORM_SELECT_COLUMNS = {
@@ -158,11 +148,6 @@ export default class FormService {
     return { id: result[0].id };
   }
 
-  /**
-   * Creates a form and its fields from a gallery template in one call —
-   * fields land in the given order (sequential inserts, same reasoning as
-   * FormFieldService: index is derived from insertion order).
-   */
   public async createFormFromTemplate(payload: CreateFormFromTemplateInputType) {
     const { title, description, createdBy, template, submissionLayout, fields } =
       await createFormFromTemplateInput.parseAsync(payload);
@@ -232,7 +217,6 @@ export default class FormService {
     }));
   }
 
-  /** The published snapshot of a form, or null if it was never published. */
   private async getPublishedVersion(versionId: string | null) {
     if (!versionId) return null;
     const rows = await db
@@ -247,8 +231,6 @@ export default class FormService {
     return rows[0] ?? null;
   }
 
-  /** Cheap, always-public metadata — used by the fill page to decide what
-   * gate (if any) to show *before* attempting to load the actual fields. */
   public async getFormAccessInfo(formId: string) {
     const rows = await db
       .select(FORM_SELECT_COLUMNS)
@@ -275,9 +257,7 @@ export default class FormService {
       respondentIdentity: form.respondentIdentity,
       oneResponsePerEmail: form.oneResponsePerEmail,
       designSettings: version?.snapshot.designSettings ?? form.designSettings ?? {},
-      // A premium template is only served while its owner's plan includes it.
-      // Snapshots are created from the form template enum; templateForOwner widens
-      // its generic to string while applying the plan fallback.
+    
       template: (await templateForOwner(form.createdBy, version?.snapshot.template ?? form.template)) as
         (typeof formsTable.$inferSelect)["template"],
       // Plan state, so the fill page can say so up front instead of failing at submit time.
@@ -305,7 +285,7 @@ export default class FormService {
 
     if (!isOwner) {
       if (eff.status !== "PUBLISHED") {
-        // Same message as "doesn't exist" — a draft form isn't distinguishable from a nonexistent
+        // Same message as "doesn't exist" - a draft form isn't distinguishable from a nonexistent
         // one to a non-owner (the fill page uses getFormAccessInfo to show "closed").
         throw new Error("Form not found");
       }
@@ -327,7 +307,7 @@ export default class FormService {
     );
 
     // The builder (owner + live) and an owner previewing a never-published draft see the draft;
-    // everyone else — and the owner on the public page — gets the exact published version.
+    // everyone else - and the owner on the public page — gets the exact published version.
     const useLive = isOwner && (live === true || !publishedVersion);
     if (!useLive && !publishedVersion) throw new Error("Form not found");
     const content = useLive ? liveSnapshot : publishedVersion!.snapshot;
@@ -361,7 +341,6 @@ export default class FormService {
     };
   }
 
-  /** Draft content only (title, description, design, pacing). Publishing goes through publishForm. */
   public async updateForm(payload: UpdateFormInputType) {
     const { formId, userId, title, description, template, submissionLayout, designSettings } =
       await updateFormInput.parseAsync(payload);
@@ -385,22 +364,12 @@ export default class FormService {
     return { ...row, submissionAccess: normalizeAccess(row.submissionAccess) };
   }
 
-  /**
-   * Status, access, respondent identity and automatic closure — one atomic call.
-   *
-   *  - PUBLISHED: snapshots the live draft into an immutable version (reusing the latest version
-   *    when nothing changed), then flips the form live. Everything happens in one transaction: if
-   *    anything fails, the previous publication is untouched.
-   *  - CLOSED: stops accepting responses; nothing is deleted.
-   *  - DRAFT: takes the form offline; its versions and responses are kept.
-   */
   public async publishForm(payload: PublishFormInputType) {
     const input = await publishFormInput.parseAsync(payload);
     const { formId, userId, status } = input;
     await assertFormOwnership(formId, userId);
 
     const identity = input.respondentIdentity;
-    // "One response per email" only means something when the email is verified.
     const oneResponsePerEmail = identity === "VERIFIED_EMAIL" ? input.oneResponsePerEmail : false;
 
     const minutes = input.autoClose?.minutes;
@@ -528,11 +497,6 @@ export default class FormService {
     };
   }
 
-  /**
-   * Closes every published form whose automatic closure is due, or that has had no activity for
-   * FORM_INACTIVITY_CLOSE_DAYS. Idempotent and safe to run on several instances at once; reads and
-   * submissions ALSO enforce these rules directly, so this is bookkeeping, not the gate.
-   */
   public async closeDueForms(now: Date = new Date()) {
     const cutoff = new Date(now.getTime() - inactivityMs());
     const scheduled = await db
@@ -558,12 +522,10 @@ export default class FormService {
     return { scheduled: scheduled.length, idle: idle.length };
   }
 
-  /** Records activity (an accepted submission) so an active form is never closed as idle. */
   public async touchActivity(formId: string) {
     await db.update(formsTable).set({ lastActivityAt: new Date() }).where(eq(formsTable.id, formId));
   }
 
-  /** Runs closeDueForms() on a timer. Returns a stop function. */
   public startLifecycle(): () => void {
     let running = false;
     const run = () => {

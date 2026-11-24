@@ -102,10 +102,7 @@ export default class UserService {
     return { accessToken, refreshToken, refreshTokenExpiresAt };
   }
 
-  /**
-   * Sends a fresh verification link (older unused links stop working). Throttled per user, in the
-   * database: at most one email a minute and five an hour. Returns whether an email actually went out.
-   */
+ 
   private async sendVerificationLink(userId: string, email: string): Promise<boolean> {
     const recent = await db
       .select({ createdAt: emailVerificationTokensTable.createdAt })
@@ -144,7 +141,6 @@ export default class UserService {
     }
   }
 
-  /** Creates a pending account when needed and returns the same result for existing addresses. */
   public async createUserWithEmailAndPassword(payload: CreateUserWithEmailAndPasswordType): Promise<void> {
     const { fullName, password } = await createUserWithEmailAndPassword.parseAsync(payload);
     const email = payload.email.trim().toLowerCase();
@@ -184,10 +180,6 @@ export default class UserService {
     await this.sendVerificationLink(user.id, user.email);
   }
 
-  /**
-   * Consumes a verification link: single-use, expiring, atomic. On success the account is verified
-   * and a session is issued, so the user lands in the dashboard without signing in again.
-   */
   public async verifyEmailWithToken(payload: VerifyEmailType) {
     const { token } = await verifyEmail.parseAsync(payload);
     const tokenHash = hashToken(token);
@@ -276,12 +268,6 @@ export default class UserService {
     }
   }
 
-  /**
-   * Verifies a presented refresh token against the DB, rotates it (revokes
-   * the old one, issues a new pair), and returns the new pair + user id.
-   * Reusing an already-revoked token revokes every refresh token the user
-   * has, since that's a signal the token may have been stolen and replayed.
-   */
   public async rotateRefreshToken(rawRefreshToken: string) {
     const tokenHash = hashToken(rawRefreshToken);
 
@@ -335,18 +321,13 @@ export default class UserService {
       .where(and(eq(refreshTokensTable.userId, userId), isNull(refreshTokensTable.revokedAt)));
   }
 
-  /**
-   * Always resolves without throwing, and never reveals whether the email
-   * is registered — that's what makes "forgot password" safe from
-   * enumeration. Errors sending the email are swallowed for the same reason.
-   */
   public async requestPasswordReset(payload: ForgotPasswordType) {
     const { email } = await forgotPassword.parseAsync(payload);
 
     const existingUser = await this.getUserByEmail(email);
     if (!existingUser) return;
 
-    // No password on the account (Google-only) — nothing to reset. Stay
+    // No password on the account (Google-only) - nothing to reset. Stay
     // silent here too, same as the "user doesn't exist" case above, so
     // this endpoint can't be used to probe which accounts use a password.
     if (!existingUser.passwordHash) return;
@@ -420,9 +401,6 @@ export default class UserService {
     const user = await this.getUserById(userId);
     if (!user) throw new Error("User with this ID does not exist");
 
-    // Google-only accounts can't add a password in this flow — only an
-    // account that already has one can change it. See the decisions log
-    // for why this is deliberate, not an oversight.
     if (!user.passwordHash) {
       throw new Error("This account uses Google sign-in and doesn't support setting a password");
     }
@@ -470,14 +448,12 @@ export default class UserService {
       return { id: existingLink[0].userId, tokens };
     }
 
-    // No link yet — either link this Google account to an existing
+    // No link yet - either link this Google account to an existing
     // email/password user, or create a brand new account.
     const existingUser = await this.getUserByEmail(email);
 
     if (existingUser && !existingUser.emailVerified) {
-      // Someone registered this address with a password but never proved they own it. Google just
-      // proved the real owner does — so verify it AND drop that unproven password, otherwise whoever
-      // registered it first could keep signing in to the real owner's account.
+    
       await db
         .update(usersTable)
         .set({ emailVerified: true, passwordHash: null })

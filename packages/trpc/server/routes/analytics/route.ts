@@ -1,4 +1,3 @@
-// packages/trpc/server/routes/analytics/route.ts
 
 import { TRPCError } from "@trpc/server";
 

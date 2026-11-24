@@ -15,7 +15,6 @@ const PRICES = { premiumMonthly: "pri_month", premiumYearly: "pri_year" };
 const cfg = { prices: PRICES, webhookSecret: SECRET };
 const NOW = new Date("2026-10-10T12:00:00Z");
 
-// ------------------------------------------------------------------ plan table
 
 test("plans match the approved table exactly", () => {
   assert.deepEqual(PLAN_ORDER, ["basic", "premium", "business"]);
@@ -59,7 +58,6 @@ test("isAtLimit: null is unlimited, otherwise count >= limit blocks", () => {
   assert.equal(getPlan("nonsense").key, "basic");
 });
 
-// ----------------------------------------------------------------- entitlements
 
 const sub = (o: Partial<SubscriptionState> = {}): SubscriptionState => ({ planKey: "premium", status: "ACTIVE", source: "PADDLE", graceUntil: null, ...o });
 
@@ -87,7 +85,6 @@ test("entitlements: an unknown plan key fails safe to Basic", () => {
   assert.equal(resolvePlanKey(sub({ planKey: "basic" }), NOW), "basic");
 });
 
-// ----------------------------------------------------------------------- config
 
 test("config: billing is only 'configured' when everything required is set, and says what is missing", () => {
   const off = loadBillingConfig({});
@@ -107,7 +104,6 @@ test("config: sandbox/production mix-ups are caught at startup; blank values cou
   assert.throws(() => loadBillingConfig({ PADDLE_ENV: "staging" }));
 });
 
-// ------------------------------------------------------------ webhook signature
 
 const BODY = JSON.stringify({ event_id: "evt_1", event_type: "subscription.updated", occurred_at: NOW.toISOString(), data: {} });
 
@@ -144,7 +140,6 @@ test("checkout binding: only a signature minted by the server for THAT user veri
   assert.equal(verifyCheckoutBinding(undefined, undefined, SECRET), false);
 });
 
-// ---------------------------------------------------------------- event parsing
 
 function subEvent(over: Record<string, any> = {}, type = "subscription.created", id = "evt_1", at = NOW): PaddleEvent {
   return {
@@ -199,7 +194,6 @@ test("parse: scheduled cancellation, statuses and junk payloads", () => {
   assert.doesNotThrow(() => parseSubscriptionEvent(subEvent({ items: "nope", current_billing_period: 5 }), cfg));
 });
 
-// ------------------------------------------------------------- update decisions
 
 const existing = (o: Partial<ExistingSubscription> = {}): ExistingSubscription => ({
   userId: USER, planKey: "premium", source: "PADDLE", paddleSubscriptionId: "sub_1", status: "ACTIVE", graceUntil: null, lastEventAt: new Date(NOW.getTime() - 1000), ...o,

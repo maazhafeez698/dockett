@@ -14,7 +14,7 @@ import { FORM_TEMPLATES } from "~/lib/templates-data";
 import { toastError } from "~/lib/plan-limit";
 
 interface DashboardRightPanelProps {
-  /** Opens the AI builder with this prompt. */
+  // Opens the AI builder with this prompt. 
   onAiPrompt: (prompt: string) => void;
 }
 

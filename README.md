@@ -2,6 +2,8 @@
 
 Dockett is a full-stack form platform for creating, publishing, and analyzing forms. Build a form from scratch, a template, or an AI-generated draft; share it with respondents; and review or export its responses.
 
+Video Demo: [Click here](https://www.linkedin.com/feed/update/urn:li:activity:7520567003590623232/)
+
 ## What you can do
 
 - Design forms with 12 field types, configurable themes and layouts, drag-and-drop ordering, and conditional question flows.
@@ -107,5 +109,3 @@ The development database uses a dedicated Compose file and volume (`dockett_loca
 - In production, Caddy terminates HTTPS and routes API paths to the API process and all other requests to Next.js.
 - GitHub Actions runs lint and type checks on pushes to `main`, builds a combined Docker image, pushes commit-tagged and `latest` images to Docker Hub, then deploys to AWS EC2.
 - Production runs the web and API processes in one application container alongside Caddy and PostgreSQL. Health checks gate service startup; the deploy script can roll the application image back if health checks fail.
-
-For detailed architecture, domain behavior, engineering decisions, operational notes, and known constraints, see [Dockett.md](./Dockett.md).

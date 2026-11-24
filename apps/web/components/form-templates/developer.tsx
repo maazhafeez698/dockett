@@ -54,7 +54,7 @@ export function DeveloperShell(props: FormTemplateShellProps) {
         {submitted ? (
           <div className="mt-6 flex flex-col items-center gap-2 py-8 text-center">
             <CheckCircle2 className="size-10 text-emerald-400" />
-            <p className="text-sm text-emerald-300">// report created — thank you for the clear details</p>
+            <p className="text-sm text-emerald-300">// report created - thank you for the clear details</p>
           </div>
         ) : (
           <form data-submission-form onSubmit={onSubmit} noValidate className="mt-6 space-y-6">

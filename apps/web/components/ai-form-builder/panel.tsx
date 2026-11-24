@@ -31,11 +31,11 @@ interface AiFormBuilderPanelProps {
   open: boolean;
   onOpenChange(open: boolean): void;
   mode: "NEW_FORM" | "ADD_FIELDS";
-  /** Required for ADD_FIELDS. */
+  // Required for ADD_FIELDS. 
   formId?: string;
-  /** How many fields the canvas already has (changes the wording: "new form" vs "additions"). */
+  // How many fields the canvas already has (changes the wording: "new form" vs "additions"). 
   existingFieldCount?: number;
-  /** Sent automatically the first time the panel opens (dashboard prompt bar). */
+  // Sent automatically the first time the panel opens (dashboard prompt bar). 
   initialPrompt?: string;
   onInitialPromptConsumed?(): void;
 }

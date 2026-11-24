@@ -188,7 +188,6 @@ test("when provider omits usage, cost is estimated from output size rather than 
   assert.ok(out.outputTokens > 0 && out.costMicros > 0);
 });
 
-// ------------------------------------------------------------------ scope + free tier
 
 const offTopic = (reply: string, extra: Record<string, unknown> = {}) =>
   JSON.stringify({ intent: "OFF_TOPIC", reply, form: { title: "", description: "", template: "CLASSIC", submissionLayout: "ONE_AT_A_TIME", fields: [], ...extra } });

@@ -1,12 +1,3 @@
-// apps/web/lib/file-answer.ts
-//
-// How a FILE_UPLOAD field's answer is carried through the form state:
-//   ""                          nothing uploaded
-//   '["<uploadId>", ...]'       uploads the server has verified (this is what gets submitted)
-//   "~uploading~" + the above   at least one upload is still in flight -> submission is blocked
-//
-// The server never sees the "~uploading~" form: validation refuses to submit while it is present.
-
 export const BUSY_PREFIX = "~uploading~";
 
 export function encodeFileAnswer(ids: string[], busy: boolean): string {
@@ -29,7 +20,7 @@ export function parseFileAnswer(value: string): { ids: string[]; busy: boolean }
 
 export const isUploading = (value: string | undefined) => !!value && value.startsWith(BUSY_PREFIX);
 
-/** File references as stored in a submission (written by the server). */
+// File references as stored in a submission (written by the server). 
 export interface StoredFileRef {
   id: string;
   name: string;

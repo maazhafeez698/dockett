@@ -1,4 +1,3 @@
-// packages/services/file-upload/model.ts
 
 import { z } from "zod";
 

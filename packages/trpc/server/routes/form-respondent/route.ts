@@ -1,7 +1,3 @@
-// packages/trpc/server/routes/form-respondent/route.ts
-//
-// Email verification for respondents of "verified email" forms (no Dockett account involved).
-
 import { TRPCError } from "@trpc/server";
 import { TooManyRequestsError } from "@repo/services/user";
 

@@ -47,7 +47,7 @@ import { MAX_FIELDS_PER_FORM } from "@repo/services/form-field/limits";
 
 type BuilderView = "list" | "nodes";
 
-/** What a freshly added field starts with. */
+// What a freshly added field starts with. 
 function defaultConfig(type: FieldType) {
   if (OPTION_TYPES.has(type)) return { options: ["Option 1"] };
   if (type === "FILE_UPLOAD") return { maxFiles: 1, maxSizeMB: 5 };
@@ -102,7 +102,7 @@ export default function FormBuilder() {
     if (form) setTitleDraft(form.title);
   }, [form?.title]);
 
-  /* ----------------------------- actions ----------------------------- */
+  // actions
 
   const handleAddField = async (type: FieldType) => {
     if (!formId) return;
@@ -119,7 +119,7 @@ export default function FormBuilder() {
     }
   };
 
-  // Dropped onto the list/canvas at a specific position — create it, then
+  // Dropped onto the list/canvas at a specific position - create it, then
   // reorder if it didn't land at the end (createField always appends).
   const handleDropNewField = async (type: string, afterFieldId: string | undefined) => {
     if (!formId || !fields) return;
@@ -275,14 +275,13 @@ export default function FormBuilder() {
 
   if (!ready) return null;
 
-  /* ------------------------------ render ------------------------------ */
+  // render
 
   const statusVariant = form?.status === "PUBLISHED" ? "secondary" : "ember";
 
   return (
     <AppShell docLabel="Create form" scroll={false}>
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:px-4 lg:px-5 lg:pt-3 lg:pb-5">
-        {/* --- toolbar --- */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
           <Link
             href="/dashboard/forms"
@@ -314,7 +313,6 @@ export default function FormBuilder() {
           {form?.version ? <Badge variant="outline">v{form.version}</Badge> : null}
           {form?.hasUnpublishedChanges && form.version ? <Badge variant="ember">Unpublished changes</Badge> : null}
 
-          {/* view switch */}
           <div
             className="flex border border-foreground/70 p-0.5"
             role="group"
@@ -426,7 +424,6 @@ export default function FormBuilder() {
           />
         ) : null}
 
-        {/* --- body --- */}
         {previewMode ? (
           <div className="dotgrid-strong min-h-0 flex-1 overflow-y-auto border border-border bg-card/40 p-4 sm:p-6">
             <div className="mx-auto max-w-2xl">
@@ -547,7 +544,6 @@ export default function FormBuilder() {
         )}
       </div>
 
-      {/* inspector as a sheet below the xl breakpoint */}
       {!isWide ? (
         <Sheet open={inspectorOpen && !previewMode} onOpenChange={setInspectorOpen}>
           <SheetContent
@@ -560,7 +556,6 @@ export default function FormBuilder() {
         </Sheet>
       ) : null}
 
-      {/* below xl the inspector is reachable from a floating button in both views */}
       {!isWide && !previewMode ? (
         <button
           type="button"

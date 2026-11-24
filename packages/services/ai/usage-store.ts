@@ -1,31 +1,13 @@
 import { AiError } from "./errors";
 import { nextQuotaDayStart } from "./quota-day";
 
-/**
- * Persistence contract for usage accounting. The Postgres implementation
- * (usage-store.postgres.ts) is what runs in production; the in-memory one
- * below implements identical semantics for tests and for running the engine
- * without a database.
- *
- * Three things are tracked:
- *  - the user's window ("session") — the UI's prompt-weighted percentage, balanced to the message cap,
- *  - per-user daily tokens and app-wide daily requests/tokens — free-tier
- *    safety ceilings (counters, with a worst-case RESERVATION at admission that
- *    is trued-up to the real number at settle),
- *  - notional cost in micro-USD — informational only (free tier charges $0),
- *    kept so a future paid plan can bill from real data.
- *
- * Everything `begin` does is ATOMIC: either the request is admitted and every
- * counter is reserved, or nothing changes and an AiError explains why.
- */
-
 export interface BudgetSpec {
-  /** Namespaced counter key, e.g. "global:day:2026-09-30". */
+  // Namespaced counter key, e.g. "global:day:2026-09-30". 
   key: string;
   capTokens: number;
-  /** Optional request-count ceiling (used for Google's requests-per-day quota). */
+  // Optional request-count ceiling (used for Google's requests-per-day quota). 
   capRequests?: number;
-  /** Decides which error a breach produces: global → "at capacity", user → "limit reached". */
+  // Decides which error a breach produces: global → "at capacity", user → "limit reached". 
   scope: "global" | "user";
 }
 
@@ -37,13 +19,10 @@ export interface WindowLimits {
 
 export interface WindowSnapshot {
   windowStart: Date;
-  /** Set only after the user's credit limit is reached. */
   windowEnd: Date | null;
   requestsUsed: number;
   tokensUsed: number;
-  /** Reserved credit allocation, in basis points (10,000 = 100%). */
   creditsUsed: number;
-  /** Credit amount reserved by the request currently being admitted. */
   creditUnits: number;
 }
 
@@ -55,9 +34,7 @@ export interface BeginInput {
   formId: string | null;
   promptChars: number;
   prompt: string;
-  /** Worst-case tokens this request could use (input estimate + max output). */
   estimatedTokens: number;
-  /** Notional cost of that worst case (informational). */
   estimatedCostMicros: number;
   window: WindowLimits;
   budgets: BudgetSpec[];
@@ -79,9 +56,7 @@ export interface SettleInput {
   outputTokens: number;
   estimatedTokens: number;
   estimatedCostMicros: number;
-  /** Notional cost of what was actually used. */
   actualCostMicros: number;
-  /** false → hand the reserved message back to the user's window (e.g. provider failed before answering). */
   countRequest: boolean;
   latencyMs: number;
   firstTokenMs: number | null;
@@ -98,7 +73,7 @@ export interface SettleInput {
 export interface UsageStore {
   begin(input: BeginInput): Promise<WindowSnapshot>;
   settle(input: SettleInput): Promise<void>;
-  /** Current window without reserving anything; null if there is no live window. */
+  // Current window without reserving anything; null if there is no live window. 
   snapshot(userId: string, feature: string, now: Date): Promise<WindowSnapshot | null>;
 }
 
@@ -122,7 +97,7 @@ export function humanizeDuration(ms: number): string {
   return m === 0 ? `${h} hour${h === 1 ? "" : "s"}` : `${h}h ${m}m`;
 }
 
-/** Whether a budget would be breached by reserving `tokens` and one request. */
+// Whether a budget would be breached by reserving `tokens` and one request. 
 export function breaches(b: BudgetSpec, current: { tokens: number; requests: number }, tokens: number): boolean {
   if (tokens > b.capTokens) return true;
   if (current.tokens + tokens > b.capTokens) return true;
@@ -138,7 +113,6 @@ export function budgetError(b: BudgetSpec, now: Date): AiError {
       });
 }
 
-// ---------------------------------------------------------------- in-memory
 
 interface MemRequest {
   userId: string;
@@ -157,7 +131,7 @@ interface MemWindow {
 
 const CREDIT_SCALE = 10_000;
 
-/** Assign a small, prompt-dependent variation while keeping 20 messages at exactly 100%. */
+// Assign a small, prompt-dependent variation while keeping 20 messages at exactly 100%. 
 export function messageCreditUnits(
   prompt: string,
   requestIndex: number,

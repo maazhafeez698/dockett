@@ -40,7 +40,7 @@ export function OrDivider() {
   );
 }
 
-/** Only follow same-site relative paths from ?next= */
+// Only follow same-site relative paths from ?next= 
 export function safeNext(): string {
   if (typeof window === "undefined") return "/dashboard";
   const next = new URLSearchParams(window.location.search).get("next");

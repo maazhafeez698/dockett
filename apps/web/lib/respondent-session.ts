@@ -1,12 +1,3 @@
-// apps/web/lib/respondent-session.ts
-//
-// What a respondent's browser remembers for ONE form, in localStorage (shared across tabs, so a
-// magic link opened in a new tab can hand the credential back to the tab that asked for it):
-//   dockett:rv:<formId>    the credential from the email link (a signed token — the server decides if it is good)
-//   dockett:rvn:<formId>   a random id of this fill attempt (lets a corrected email replace the earlier link)
-//   dockett:code:<formId>  the access code they entered, so a magic-link tab doesn't ask again
-// All access is wrapped: storage can be unavailable (private mode, blocked cookies).
-
 const k = {
   token: (id: string) => `dockett:rv:${id}`,
   nonce: (id: string) => `dockett:rvn:${id}`,
@@ -25,7 +16,7 @@ function write(key: string, value: string | null) {
     if (value === null) window.localStorage.removeItem(key);
     else window.localStorage.setItem(key, value);
   } catch {
-    /* storage unavailable: the flow still works within this tab */
+    // storage unavailable: the flow still works within this tab 
   }
 }
 

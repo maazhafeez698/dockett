@@ -254,7 +254,6 @@ test("validation: malformed bodies are rejected before any reservation or model 
   assert.equal((await t.engine.getUsageSummary(USER)).tokensUsed, 0);
 });
 
-// ------------------------------------------------------------ builder-mode context
 
 const FORM_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const mine = { [`${USER}:${FORM_ID}`]: { title: "Mine", fields: [{ label: "Name", type: "TEXT", isRequired: true, config: null }] } };
@@ -287,7 +286,6 @@ test("a pending (unapproved) draft is passed back so follow-ups like 'shorter pl
   assert.match(t2.provider.calls.at(-1)!.userText, /<current_form>[\s\S]*Rate the talk/);
 });
 
-// ------------------------------------------------------------ scope & abuse
 
 const offTopicJson = (reply: string) => JSON.stringify({ intent: "OFF_TOPIC", reply, form: { title: "", description: "", template: "CLASSIC", submissionLayout: "ONE_AT_A_TIME", fields: [] } });
 
@@ -399,7 +397,6 @@ test("a throwing event sink (client vanished) cannot break accounting", async ()
   assert.equal((await t.send({})).at(-1)!.event, "done", "lock was released");
 });
 
-// ------------------------------------------------------------ plan sync (Basic / Premium / Business)
 
 const accounts: Record<string, { planKey: string; premiumTemplates: boolean }> = {
   [USER]: { planKey: "free", premiumTemplates: false },

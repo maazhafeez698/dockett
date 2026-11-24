@@ -64,13 +64,6 @@ export const authenticatedProcedure = tRPCContext.procedure.use(async (options) 
   }
 });
 
-/**
- * Like publicProcedure, but populates ctx.user when a valid access token is
- * present — never throws. Used by respondent-facing endpoints (public form
- * fetch, submission) that need to know "is this visitor logged in, and are
- * they the owner?" without requiring login outright. A missing or expired
- * token is treated as "anonymous visitor", not an error.
- */
 export const optionalAuthProcedure = tRPCContext.procedure.use(async (options) => {
   const { ctx } = options;
 

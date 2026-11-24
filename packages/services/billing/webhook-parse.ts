@@ -3,7 +3,7 @@ import type { BillingConfig } from "./config";
 import type { SubscriptionStatus } from "./entitlements";
 import type { PlanKey } from "./plans";
 
-/** Subset of Paddle's notification envelope that we rely on. */
+// Subset of Paddle's notification envelope that we rely on. 
 export interface PaddleEvent {
   event_id: string;
   event_type: string;
@@ -22,11 +22,11 @@ export const SUBSCRIPTION_EVENTS = new Set([
   "subscription.canceled",
 ]);
 
-/** What a subscription event says about the subscription, normalised. */
+// What a subscription event says about the subscription, normalised.
 export interface SubscriptionSnapshot {
   paddleSubscriptionId: string;
   paddleCustomerId: string | null;
-  /** Verified user id from signed checkout custom data; null if absent/invalid. */
+  // Verified user id from signed checkout custom data; null if absent/invalid.
   userId: string | null;
   status: SubscriptionStatus;
   planKey: PlanKey | null;
@@ -52,7 +52,7 @@ function toDate(v: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Looks a Paddle price id up in the configured price → plan table. */
+// Looks a Paddle price id up in the configured price → plan table. 
 export function planForPrice(priceId: string | null, prices: BillingConfig["prices"]): { plan: PlanKey; cycle: "month" | "year" } | null {
   if (!priceId) return null;
   if (priceId === prices.premiumMonthly) return { plan: "premium", cycle: "month" };
@@ -60,10 +60,6 @@ export function planForPrice(priceId: string | null, prices: BillingConfig["pric
   return null;
 }
 
-/**
- * Pure: turn a subscription.* event into a snapshot. Never throws on odd
- * payloads — returns null when the event can't be understood.
- */
 export function parseSubscriptionEvent(
   event: PaddleEvent,
   cfg: Pick<BillingConfig, "prices" | "webhookSecret">,

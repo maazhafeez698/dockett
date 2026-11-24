@@ -1,18 +1,3 @@
-// packages/services/file-upload/storage.ts
-//
-// Storage adapter. Everything provider-specific lives here; the upload service only talks to the
-// StorageProvider interface (and tests swap in an in-memory fake). Provider: Cloudinary.
-//
-//  - Objects are stored as resource_type "raw" with a PRIVATE delivery type ("authenticated", or
-//    "private" via CLOUDINARY_DELIVERY_TYPE). There is no public URL for them: reads go through
-//    short-lived, signed download URLs minted on demand.
-//  - The browser uploads straight to Cloudinary using a signature minted here. Every parameter of
-//    the upload (public_id, type, overwrite, timestamp) is part of the signature, so a client can
-//    neither change the key, make the file public, nor overwrite an object after it was checked.
-//  - The API secret never leaves this file / the server.
-//  - probe() runs a complete upload -> inspect -> delete round trip from the SERVER so a
-//    misconfigured account shows Cloudinary's real error message (see the "Test storage" button).
-
 import { randomUUID } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { env } from "../env";
@@ -20,11 +5,8 @@ import { env } from "../env";
 export type DeliveryType = "authenticated" | "private";
 
 export interface SignedUpload {
-  /** Where the browser POSTs (multipart/form-data) the file. */
   url: string;
-  /** Extra form fields to send together with the `file` part, exactly as given. */
   fields: Record<string, string>;
-  /** Safe generated filename with the canonical extension required by Cloudinary raw assets. */
   fileName: string;
 }
 
@@ -45,17 +27,11 @@ export interface ProbeResult {
 
 export interface StorageProvider {
   isConfigured(): boolean;
-  /** Mints a one-time upload signature for exactly this object key. */
   signUpload(key: string): SignedUpload;
-  /** Size of the stored object, or null if it doesn't exist (yet). */
   head(key: string): Promise<StoredObjectInfo | null>;
-  /** The first `length` bytes of the stored object, or null if missing. */
   readHead(key: string, length: number): Promise<Uint8Array | null>;
-  /** Deletes the object. Resolves true when it is gone (including "was never there"). */
   remove(key: string): Promise<boolean>;
-  /** Short-lived download link that forces a download with the given filename. */
   downloadUrl(key: string, opts: { filename: string; ttlSec: number }): string;
-  /** Self-test against the real account, for one delivery type. */
   probe(type: DeliveryType): Promise<ProbeResult>;
 }
 
@@ -189,11 +165,6 @@ class CloudinaryStorage implements StorageProvider {
     });
   }
 
-  /**
-   * Upload a 1x1 PNG from the server with exactly the parameters the browser would use, then read
-   * it back and delete it. Every step reports Cloudinary's own message, which is what you need when
-   * the browser only shows "403".
-   */
   public async probe(type: DeliveryType): Promise<ProbeResult> {
     const steps: ProbeStep[] = [];
     const done = (ok: boolean): ProbeResult => ({ type, ok, steps });
@@ -219,7 +190,7 @@ class CloudinaryStorage implements StorageProvider {
         const j = JSON.parse(text) as { error?: { message?: string } };
         if (j.error?.message) message = j.error.message;
       } catch {
-        /* keep raw text */
+        // keep raw text 
       }
       uploaded = res.ok;
       steps.push({ name: "upload", ok: res.ok, detail: res.ok ? `accepted (${res.status})` : `HTTP ${res.status}: ${message}` });

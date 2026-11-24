@@ -39,17 +39,12 @@ function publicPlan(p: PlanDefinition, yearlyAvailable: boolean) {
   };
 }
 
-/**
- * Facade the tRPC layer talks to (same pattern as FormService, AiService).
- * Config is read lazily so a missing Paddle variable disables payments, never the API.
- */
 export default class BillingService {
   private _client?: PaddleClient;
   private get client() {
     return (this._client ??= new PaddleClient(getBillingConfig()));
   }
 
-  /** The current plan plus everything the billing page and upgrade prompts need. */
   public async getOverview(userId: string, email: string) {
     const cfg = getBillingConfig();
     const plan = await getUserPlan(userId);
@@ -90,7 +85,7 @@ export default class BillingService {
     };
   }
 
-  /** Paddle-hosted portal: update card, see invoices, cancel. */
+  // Paddle-hosted portal: update card, see invoices, cancel. 
   public async createPortalSession(userId: string) {
     const cfg = getBillingConfig();
     if (!cfg.configured) throw new Error("Payments aren't set up yet");
@@ -102,10 +97,6 @@ export default class BillingService {
     return { url: links.overview, cancelUrl: links.cancel ?? null, updatePaymentUrl: links.updatePaymentMethod ?? null };
   }
 
-  /**
-   * Verifies and applies a Paddle webhook. Throws on a bad signature (→ 400 so
-   * Paddle doesn't retry garbage) and on processing failure (→ 500 so it does retry).
-   */
   public async handleWebhook(rawBody: string, signatureHeader: string | undefined): Promise<{ outcome: string }> {
     const cfg = getBillingConfig();
     if (!cfg.configured || !cfg.webhookSecret) throw new WebhookError(503, "Billing is not configured");

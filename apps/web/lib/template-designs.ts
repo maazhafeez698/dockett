@@ -1,17 +1,3 @@
-// apps/web/lib/template-designs.ts
-//
-// Single source of truth for each template's identity — name, category
-// badge, blurb, and the small set of colors used consistently across the
-// gallery card, the builder's template picker, the dashboard list stripe,
-// and (loosely) inside each template's own shell component. The actual
-// structure/layout/interaction differences live in
-// components/form-templates/*, not here — this file is just "what is this
-// template called and what color is its badge."
-//
-// CLASSIC is deliberately excluded from GALLERY_TEMPLATE_IDS — it's the
-// plain Dockett look used for forms built from scratch, not something
-// picked from the gallery.
-
 export type FormTemplateId =
   | "CORPORATE"
   | "SURVEY"
@@ -28,7 +14,7 @@ export interface TemplateDesign {
   name: string;
   category: string;
   tagline: string;
-  /** Two-stop gradient, used sparingly (badges, thin accent strips) — the
+  /** Two-stop gradient, used sparingly (badges, thin accent strips) - the
    * shells themselves mostly do NOT rely on a gradient hero, that was the
    * old theme system's move. */
   accentGradient: [string, string];
@@ -179,7 +165,7 @@ const DARK_PALETTES: Record<
   CLASSIC: { surface: "#171729", panel: "#202036", field: "#292940", foreground: "#F5F5FF", muted: "#B6B6CC", border: "#45455F" },
 };
 
-/** Gallery order — CLASSIC intentionally omitted (see file header). */
+// Gallery order — CLASSIC intentionally omitted (see file header). 
 export const GALLERY_TEMPLATE_IDS: FormTemplateId[] = [
   "CORPORATE",
   "SURVEY",

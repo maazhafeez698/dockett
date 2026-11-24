@@ -8,8 +8,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the EC2 .env file}
       POSTGRES_DB: ${POSTGRES_DB:-dev}
-    # Bind only on the EC2 loopback interface. Reach this port through SSH;
-    # never publish PostgreSQL on 0.0.0.0 or open it in the security group.
     ports:
       - "127.0.0.1:15432:5432"
     volumes:

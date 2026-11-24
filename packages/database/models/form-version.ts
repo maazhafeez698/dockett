@@ -2,7 +2,7 @@ import { index, integer, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar }
 import { formsTable, type FormDesignSettings } from "./form";
 import { usersTable } from "./user";
 
-/** A field exactly as it was when the version was published (same shape the API returns). */
+// A field exactly as it was when the version was published (same shape the API returns). 
 export interface FormSnapshotField {
   id: string;
   formId: string | null;
@@ -18,7 +18,7 @@ export interface FormSnapshotField {
   updatedAt: string | null;
 }
 
-/** Everything a respondent sees and is validated against, frozen at publish time. */
+// Everything a respondent sees and is validated against, frozen at publish time. 
 export interface FormSnapshot {
   title: string;
   description: string | null;
@@ -28,9 +28,6 @@ export interface FormSnapshot {
   fields: FormSnapshotField[];
 }
 
-// One row per publication that changed the content. Rows are only ever INSERTED —
-// there is no update path — so a response can always be read against the exact
-// version it was submitted to.
 export const formVersionsTable = pgTable(
   "form_versions",
   {

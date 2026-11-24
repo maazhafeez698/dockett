@@ -34,12 +34,12 @@ interface ListViewProps {
   onSelect: (id: string | null) => void;
   onAddField: (type: FieldType) => void;
   onDropNewField: (type: string, afterFieldId: string | undefined) => void;
-  /** Resolves true when the server accepted the new order. */
+  // Resolves true when the server accepted the new order. 
   onReorder: (orderedIds: string[]) => Promise<boolean>;
   onDeleteField: (id: string) => void;
   onRemoveOption: (fieldId: string, index: number) => void;
   onOpenAi: () => void;
-  /** Opens the inspector sheet (below the xl breakpoint). */
+  // Opens the inspector sheet (below the xl breakpoint).
   onEdit: () => void;
   formTitle: string;
   onTitleChange: (value: string) => void;
@@ -47,11 +47,7 @@ interface ListViewProps {
   formDescription?: string | null;
   layout: "ONE_AT_A_TIME" | "ALL_AT_ONCE";
 }
-
-/* ------------------------------------------------------------------ */
-/* Palette                                                             */
-/* ------------------------------------------------------------------ */
-
+// Palette  
 function PaletteTile({
   type,
   short,
@@ -144,11 +140,7 @@ function PagesPanel({
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Field previews                                                      */
-/* ------------------------------------------------------------------ */
-
+// Field previews                                                     
 function FieldPreview({
   field,
   onRemoveOption,
@@ -264,11 +256,7 @@ function DropLine() {
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* View                                                                */
-/* ------------------------------------------------------------------ */
-
+// View 
 export function ListView(props: ListViewProps) {
   const {
     fields,
@@ -371,7 +359,6 @@ export function ListView(props: ListViewProps) {
 
   return (
     <>
-      {/* ---------- palette (lg+) ---------- */}
       <aside className="hidden min-h-0 flex-col gap-3 overflow-y-auto border border-border bg-card p-3 lg:flex">
         <div
           className="grid grid-cols-2 border border-border p-0.5"
@@ -445,12 +432,10 @@ export function ListView(props: ListViewProps) {
         )}
       </aside>
 
-      {/* ---------- canvas ---------- */}
       <section
         className="dotgrid-strong relative flex min-h-0 min-w-0 flex-col border border-border bg-card/40"
         aria-label="Form fields"
       >
-        {/* palette strip (below lg) */}
         <div className="scrollbar-none flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-card p-2 lg:hidden">
           <span className="flex shrink-0 items-center px-1 font-mono text-[10px] text-muted-foreground">
             {fields.length}/{MAX_FIELDS_PER_FORM}
@@ -488,7 +473,6 @@ export function ListView(props: ListViewProps) {
               }
             }}
           >
-            {/* heading block = the form's own title */}
             <div
               onClick={() => onSelect(null)}
               onDragOver={(e) => {

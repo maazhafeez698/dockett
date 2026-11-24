@@ -1,4 +1,3 @@
-// apps/web/hooks/use-media-query.ts
 
 "use client";
 

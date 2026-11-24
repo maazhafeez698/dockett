@@ -1,11 +1,5 @@
 import type { BillingConfig } from "./config";
 
-/**
- * Minimal Paddle Billing REST client (no SDK = no new dependency, nothing to
- * install). Only what we need: customer-portal sessions, so users can update
- * their card, view invoices and cancel — hosted and maintained by Paddle.
- * Plans are changed ONLY by webhooks, never as a side effect of these calls.
- */
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 export interface PortalLinks {

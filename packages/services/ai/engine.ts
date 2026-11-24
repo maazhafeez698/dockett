@@ -13,11 +13,6 @@ import { noopLogger, type AiLogger } from "./logging";
 import { UsageService, planLimits, type Admission, type Credits, type UsageSummary } from "./usage";
 import { quotaError, type UsageStore } from "./usage-store";
 
-/**
- * Wire-level request for POST /ai/form/stream. The hard ceilings here exist
- * so an oversized body is rejected before any work happens; the *plan*
- * limits (which can be lower) are applied afterwards.
- */
 export const aiStreamRequestSchema = z.object({
   requestId: z.string().uuid("requestId must be a UUID"),
   mode: z.enum(["NEW_FORM", "ADD_FIELDS"]),
@@ -37,7 +32,7 @@ export interface ExistingFormContext {
   fields: Array<Pick<DraftField, "label" | "type" | "isRequired" | "config">>;
 }
 
-/** Server → client SSE events. Mirrored by apps/web/lib/ai-stream.ts. */
+// Server -> client SSE events. Mirrored by apps/web/lib/ai-stream.ts. 
 export type AiStreamEvent =
   | { event: "meta"; data: { requestId: string; credits: Credits } }
   | { event: "status"; data: { phase: "retrying" | "fallback"; message: string } }
@@ -57,7 +52,6 @@ export type EventSink = (evt: AiStreamEvent) => void;
 
 export interface AiSession {
   readonly requestId: string;
-  /** Streams the generation to `sink`. Never throws; failures are delivered as an `error` event. */
   run(sink: EventSink): Promise<void>;
 }
 
@@ -66,14 +60,9 @@ export interface EngineDeps {
   store: UsageStore;
   logger?: AiLogger;
   clock?: Clock;
-  /** Loads an existing form the user owns; return null if it doesn't exist / isn't theirs. */
   loadForm(userId: string, formId: string): Promise<ExistingFormContext | null>;
-  /**
-   * The user's account as far as AI cares: which AI plan they're on and whether premium templates are
-   * theirs to use. Production wires this to the user's subscription; the default is "free, no premium".
-   */
+  
   resolveAccount?(userId: string): Promise<{ planKey: string; premiumTemplates: boolean }>;
-  /** Test seam: replace real provider adapters. */
   providers?: Partial<Record<ProviderId, ModelProvider>>;
   fetchImpl?: FetchLike;
 }
@@ -120,11 +109,6 @@ export class AiFormEngine {
     return { ...(await this.usage.summary(userId)), enabled: this.enabled };
   }
 
-  /**
-   * Validates, screens, builds the prompt, and reserves credits. Everything
-   * that can be rejected is rejected HERE — before any streaming headers are
-   * sent — so callers can answer with a plain HTTP error.
-   */
   async start(userId: string, rawInput: unknown, clientSignal: AbortSignal): Promise<AiSession> {
     const { config } = this.deps;
     if (!this.enabled) throw new AiError("AI_DISABLED");
@@ -158,7 +142,7 @@ export class AiFormEngine {
     }
 
     // Local pre-screen: greetings and blatant off-topic/jailbreak messages get a
-    // friendly canned nudge — zero tokens, zero model calls, no credits used.
+    // friendly canned nudge - zero tokens, zero model calls, no credits used.
     const screened = preScreen(input.prompt);
     if (screened) {
       if (screened.strike) this.usage.recordStrike(userId);
@@ -170,7 +154,6 @@ export class AiFormEngine {
             try {
               sink(evt);
             } catch {
-              /* connection closed */
             }
           };
           send({ event: "meta", data: { requestId: input.requestId, credits: before } });
@@ -257,7 +240,7 @@ export class AiFormEngine {
       try {
         sink(evt);
       } catch {
-        /* connection closed */
+        // connection closed 
       }
     };
 

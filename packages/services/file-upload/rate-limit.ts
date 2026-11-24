@@ -1,20 +1,13 @@
-// packages/services/file-upload/rate-limit.ts
-//
-// A small in-memory sliding-window limiter. It protects a single API instance cheaply; the
-// database-backed caps in the upload service (pending uploads per visitor, per form, per owner)
-// are the cross-instance backstop.
-
 export class SlidingWindowLimiter {
   private readonly hits = new Map<string, number[]>();
 
   constructor(
     private readonly limit: number,
     private readonly windowMs: number,
-    /** Hard cap on tracked keys so a flood of distinct keys can't grow memory without bound. */
     private readonly maxKeys = 20_000,
   ) {}
 
-  /** Records an attempt and says whether it is allowed. */
+  // Records an attempt and says whether it is allowed.
   public hit(key: string, now = Date.now()): { ok: boolean; retryAfterSec: number } {
     const since = now - this.windowMs;
     const list = (this.hits.get(key) ?? []).filter((t) => t > since);

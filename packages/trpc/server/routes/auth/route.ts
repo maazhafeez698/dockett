@@ -49,10 +49,9 @@ import { generatePath } from "../../utils/path-generator";
 const getPath = generatePath("/authentication");
 const TAGS = ["Authentication"];
 
-/**
- * Zod's own `.message` is a JSON blob, which is useless in a UI. Flatten it
- * to the first human-readable issue instead.
- */
+  // Zod's own `.message` is a JSON blob, which is useless in a UI. Flatten it
+  // to the first human-readable issue instead.
+ 
 function toReadableMessage(error: unknown, fallback: string) {
   if (error instanceof ZodError) {
     return error.issues[0]?.message ?? fallback;
@@ -274,7 +273,7 @@ export const authRouter = router({
     .mutation(async ({ input }) => {
       await userService.requestPasswordReset({ email: input.email });
 
-      // Always the same response, whether or not the email exists —
+      // Always the same response, whether or not the email exists, 
       // otherwise this endpoint leaks which emails are registered.
       return {
         success: true,

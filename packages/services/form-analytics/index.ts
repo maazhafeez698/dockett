@@ -1,4 +1,3 @@
-// packages/services/form-analytics/index.ts
 
 import { db, desc, eq } from "@repo/database";
 import { formFieldsTable } from "@repo/database/models/form-field";
@@ -17,8 +16,6 @@ import {
 } from "./model";
 import { buildResponseTimeline } from "./timeline";
 
-/** Small, deliberately unsophisticated UA sniff — no dependency, just
- * enough signal for a device-mix chart, not a precise analytics product. */
 function classifyDevice(
   userAgent: string | undefined,
 ): "DESKTOP" | "MOBILE" | "TABLET" | "UNKNOWN" {

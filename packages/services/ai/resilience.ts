@@ -1,11 +1,3 @@
-/**
- * Small in-process resilience primitives: circuit breaker + sliding-window
- * rate limiter. In-memory by design — correct for a single API instance,
- * which is what ~100 users/day needs. Anything that must be *exact across
- * instances* (quotas, spend, in-flight lock, idempotency) lives in Postgres
- * instead (see usage-store.ts); these two only shed load and abuse early.
- */
-
 import { quotaDay } from "./quota-day";
 
 export interface Clock {
@@ -13,19 +5,12 @@ export interface Clock {
 }
 export const systemClock: Clock = { now: () => Date.now() };
 
-// ------------------------------------------------------------------ breaker
 
 interface BreakerState {
   failures: number[];
   openUntil: number;
 }
 
-/**
- * Per-model breaker. After `failureThreshold` failures inside `windowMs` the
- * model is skipped for `cooldownMs`, so a provider outage stops costing every
- * user a timeout before the fallback kicks in. After the cooldown one request
- * is let through ("half-open"); success closes it, failure re-opens it.
- */
 export class CircuitBreaker {
   private readonly states = new Map<string, BreakerState>();
 
@@ -59,7 +44,6 @@ export class CircuitBreaker {
   }
 }
 
-// ------------------------------------------------------------- rate limiter
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -67,11 +51,6 @@ export interface RateLimitResult {
   retryAfterMs: number;
 }
 
-/**
- * Sliding-window log limiter. Memory is bounded: keys idle for a full window
- * are evicted on a timer, and the map is hard-capped so a flood of unique
- * keys (e.g. spoofed IPs) can't exhaust memory.
- */
 export class SlidingWindowLimiter {
   private readonly hits = new Map<string, number[]>();
   private sweeper?: ReturnType<typeof setInterval>;
@@ -122,22 +101,12 @@ export class SlidingWindowLimiter {
   }
 }
 
-// -------------------------------------------------------- free-tier quota
-
-
 export interface ModelQuotaDecision {
   ok: boolean;
   reason?: "rpm" | "rpd";
   retryAfterMs?: number;
 }
 
-/**
- * Keeps us under Google's per-model free-tier quotas (requests per minute and
- * per day) so we back off to the next model *before* Google answers 429.
- * In-memory: after a restart the daily count starts from zero, which is why
- * the hard app-wide daily budget also lives in Postgres and why a 429 from
- * Google is still handled by the orchestrator's fallback.
- */
 export class ModelQuota {
   private readonly minute: SlidingWindowLimiter;
   private readonly daily = new Map<string, { day: string; count: number }>();
@@ -149,7 +118,7 @@ export class ModelQuota {
     this.minute = new SlidingWindowLimiter(60_000, 1000, clock);
   }
 
-  /** Reserve one call on `model` if both quotas allow it. */
+  // Reserve one call on `model` if both quotas allow it. 
   tryAcquire(model: string): ModelQuotaDecision {
     const day = quotaDay(new Date(this.clock.now()));
     const d = this.daily.get(model);
@@ -168,13 +137,6 @@ export class ModelQuota {
   }
 }
 
-// ----------------------------------------------------------- abuse strikes
-
-/**
- * Counts off-topic / jailbreak attempts per user in a rolling window. Once a
- * user reaches the strike limit they are paused until their oldest strike
- * ages out — a natural cool-down that needs no extra state.
- */
 export class StrikeTracker {
   private readonly hits = new Map<string, number[]>();
 
@@ -203,7 +165,7 @@ export class StrikeTracker {
     this.hits.set(key, arr);
   }
 
-  /** Milliseconds until the user may talk to the model again; 0 if not paused. */
+  // Milliseconds until the user may talk to the model again; 0 if not paused. 
   cooldownMs(key: string): number {
     const arr = this.live(key);
     if (arr.length < this.limit) return 0;
@@ -213,9 +175,8 @@ export class StrikeTracker {
   }
 }
 
-// ------------------------------------------------------------------ backoff
 
-/** Exponential backoff with full jitter: random in [0, min(max, base·2^attempt)]. */
+// Exponential backoff with full jitter: random in [0, min(max, base·2^attempt)]. 
 export function backoffDelay(attemptIndex: number, baseMs: number, maxMs: number, rand: () => number = Math.random): number {
   const ceiling = Math.min(maxMs, baseMs * 2 ** attemptIndex);
   return Math.floor(rand() * ceiling);

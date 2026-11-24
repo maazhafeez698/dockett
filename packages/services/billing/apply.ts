@@ -1,7 +1,7 @@
 import type { SubscriptionSnapshot } from "./webhook-parse";
 import type { SubscriptionStatus } from "./entitlements";
 
-/** The existing row, as far as the update decision needs it. */
+// The existing row, as far as the update decision needs it. 
 export interface ExistingSubscription {
   userId: string;
   planKey: string;
@@ -34,15 +34,6 @@ export type ApplyDecision =
       };
     };
 
-/**
- * Pure decision: given what Paddle just told us and what we have, what do we write?
- *
- *  - The user comes from the signed checkout binding; if missing (e.g. a later
- *    `subscription.updated`), from the row we already hold for that subscription id.
- *  - Events older than the newest one applied are dropped (Paddle does not guarantee order).
- *  - A MANUAL (Business) row is never overwritten by Paddle events.
- *  - A failed payment starts the grace window once; recovery clears it.
- */
 export function decideUpdate(input: {
   snapshot: SubscriptionSnapshot;
   occurredAt: Date;
@@ -77,9 +68,6 @@ export function decideUpdate(input: {
   if (sameSub) {
     if (existing!.lastEventAt && occurredAt.getTime() < existing!.lastEventAt.getTime()) return { action: "stale" };
   } else if (existing && existing.status !== "CANCELED" && existing.status !== "PAUSED") {
-    // The user already has a live subscription. A DIFFERENT one may replace it only if it is itself
-    // active and newer (a fresh purchase); late events of an old/duplicate subscription are dropped
-    // so they can't revoke or overwrite the current one.
     const freshPurchase =
       (s.status === "ACTIVE" || s.status === "TRIALING") &&
       (!existing.lastEventAt || occurredAt.getTime() >= existing.lastEventAt.getTime());

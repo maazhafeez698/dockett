@@ -34,11 +34,11 @@ app.use(
 
 app.use(cookieParser());
 
-// Phase 6 — AI form generation streams over SSE, so it is not a tRPC procedure.
+// AI form generation streams over SSE, so it is not a tRPC procedure.
 // Mounted before the global JSON parser so it can carry its own, tighter body cap.
 app.post("/ai/form/stream", express.json({ limit: "128kb" }), aiStreamHandler);
 
-// Phase 7 — Paddle webhooks. The signature is computed over the exact bytes Paddle sends, so this
+// Paddle webhooks. The signature is computed over the exact bytes Paddle sends, so this
 // route needs the RAW body (not parsed JSON). It must stay above the global express.json() below.
 app.post(
   "/billing/paddle/webhook",

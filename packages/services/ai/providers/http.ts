@@ -1,13 +1,6 @@
 import { AiError, ProviderError, scrub } from "../errors";
 import type { FetchLike } from "./types";
 
-/**
- * Shared transport for streaming provider calls: timeouts, cancellation,
- * status→error classification and an SSE reader. Providers only translate
- * payloads; every reliability concern lives here so it is written (and
- * tested) once.
- */
-
 type AbortReason = "client" | "first_byte" | "idle" | "attempt";
 
 export class Watchdog {

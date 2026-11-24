@@ -53,7 +53,6 @@ export function ClassicShell(props: FormTemplateShellProps) {
 
   return (
     <div className="relative mx-auto w-full max-w-[640px]">
-      {/* progress */}
       {oneAtATime && !submitted ? (
         <div
           className={`${isPreview ? "absolute" : "fixed"} inset-x-0 top-0 z-20 h-1 bg-foreground/10`}
@@ -198,7 +197,6 @@ export function ClassicShell(props: FormTemplateShellProps) {
         )}
       </div>
 
-      {/* footer: step arrows + brand */}
       <div className="mt-4 flex items-center justify-between">
         {oneAtATime && !submitted ? (
           <div className="flex gap-1">

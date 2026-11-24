@@ -10,12 +10,6 @@ export interface ChatMessage {
 
 export type AiMode = "NEW_FORM" | "ADD_FIELDS";
 
-/**
- * The system prompt is the FIRST guardrail (scope, tone); the structured
- * output schema, the `intent` gate and the length caps in draft.ts, and the
- * local pre-screen in guard.ts are the ones that actually enforce it. Prompt
- * wording is never relied on for safety.
- */
 export function buildSystemPrompt(
   mode: AiMode,
   limits: Pick<AiPlanLimits, "maxFieldsPerForm">,
@@ -82,7 +76,7 @@ function fieldSummary(f: Pick<DraftField, "label" | "type" | "isRequired" | "con
 
 type FormLike = { title?: string; fields: Array<Pick<DraftField, "label" | "type" | "isRequired" | "config">> };
 
-/** Compact, size-bounded rendering of a form, wrapped in a delimiter tag the model treats as data. */
+// Compact, size-bounded rendering of a form, wrapped in a delimiter tag the model treats as data. 
 export function renderForm(tag: "current_form" | "pending_draft", form: FormLike | null, maxFields: number): string {
   if (!form || (form.fields.length === 0 && !form.title)) return "";
   const lines = form.fields.slice(0, maxFields).map(fieldSummary);
@@ -90,19 +84,14 @@ export function renderForm(tag: "current_form" | "pending_draft", form: FormLike
   return `<${tag}>\ntitle: ${escapeForPrompt(form.title ?? "(untitled)")}\nfields:\n${escapeForPrompt(lines.join("\n")) || "(none)"}${more}\n</${tag}>`;
 }
 
-/** Neutralise text that could close or forge our own delimiter tags. */
+// Neutralise text that could close or forge our own delimiter tags. 
 export function escapeForPrompt(text: string): string {
   return text.replace(/<\/?(user_request|current_form|pending_draft)>/gi, "");
 }
 
-/** Assistant turns come back from the browser, so they are untrusted too: keep them short. */
+// Assistant turns come back from the browser, so they are untrusted too: keep them short. 
 const ASSISTANT_TURN_CAP = 400;
 
-/**
- * Builds the provider-agnostic message list. The user's latest message is
- * wrapped in <user_request> with the form state beside it; history is trimmed
- * to the plan's window and every entry is length-capped.
- */
 export function buildMessages(input: {
   history: ChatMessage[];
   prompt: string;

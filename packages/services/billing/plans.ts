@@ -1,37 +1,23 @@
-/**
- * THE source of truth for what each plan includes. Everything that enforces a
- * limit (services), shows a limit (pricing UI via tRPC) or syncs a limit (AI
- * credits) reads from here — change a number in this file and it changes
- * everywhere, with no other edits.
- *
- * Plan keys are what is stored in `subscriptions.plan_key`; "basic" is never
- * stored — it is simply the absence of a subscription in good standing.
- */
-
 export type PlanKey = "basic" | "premium" | "business";
 
-/** Key into the AI engine's plan table (packages/services/ai/config.ts). */
 export type AiPlanKey = "free" | "pro" | "business";
 
-/** The visual templates only Pro and above may use. */
 export const PREMIUM_TEMPLATES = ["DEVELOPER", "RETRO", "TICKET"] as const;
 export type PremiumTemplate = (typeof PREMIUM_TEMPLATES)[number];
 
 export interface PlanLimits {
-  /** Published ("active") forms at once. null = unlimited. */
   maxActiveForms: number | null;
-  /** Submissions a single form can receive per calendar month. null = unlimited. */
+  // Submissions a single form can receive per calendar month. null = unlimited. 
   maxResponsesPerFormPerMonth: number | null;
 }
 
 export interface PlanFeatures {
-  /** Developer, Retro and Ticket templates. */
+  // Developer, Retro and Ticket templates. 
   premiumTemplates: boolean;
 }
 
 export interface PlanHighlight {
   text: string;
-  /** Shown with a "Coming soon" chip; not enforced because the feature doesn't exist yet. */
   soon?: boolean;
 }
 
@@ -39,10 +25,10 @@ export interface PlanDefinition {
   key: PlanKey;
   name: string;
   tagline: string;
-  /** USD. null = not sold by card (Basic is free, Business is contact-sales). */
+  // USD. null = not sold by card (Basic is free, Business is contact-sales).
   priceMonthlyUsd: number | null;
   priceYearlyUsd: number | null;
-  /** Self-serve checkout allowed? Only Pro. */
+  // Self-serve checkout allowed? Only Pro.
   purchasable: boolean;
   contactSales: boolean;
   limits: PlanLimits;
@@ -123,17 +109,17 @@ export function isPremiumTemplate(template: string): boolean {
   return (PREMIUM_TEMPLATES as readonly string[]).includes(template);
 }
 
-/** The template that is actually served: a premium template falls back to CLASSIC when not entitled. */
+// The template that is actually served: a premium template falls back to CLASSIC when not entitled. 
 export function effectiveTemplate<T extends string>(features: PlanFeatures, template: T): T | "CLASSIC" {
   return isPremiumTemplate(template) && !features.premiumTemplates ? "CLASSIC" : template;
 }
 
-/** Templates the AI may pick for a plan. */
+// Templates the AI may pick for a plan. 
 export function allowedTemplatesFor(features: PlanFeatures, all: readonly string[]): string[] {
   return all.filter((t) => features.premiumTemplates || !isPremiumTemplate(t));
 }
 
-/** `limit === null` means unlimited. */
+// `limit === null` means unlimited. 
 export function isAtLimit(count: number, limit: number | null): boolean {
   return limit !== null && count >= limit;
 }

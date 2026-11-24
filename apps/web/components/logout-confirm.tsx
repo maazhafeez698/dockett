@@ -17,7 +17,7 @@ import {
 } from "~/components/ui/alert-dialog";
 
 interface LogoutConfirmProps {
-  /** The clickable trigger — a button, a nav row, etc. */
+  // The clickable trigger — a button, a nav row, etc. 
   children: ReactNode;
 }
 

@@ -15,11 +15,6 @@ import {
 const TAGS = ["Billing"];
 const getPath = generatePath("/billing");
 
-/**
- * Plan changes never happen here. These procedures only READ the plan and hand
- * out links; the plan itself changes exclusively through verified Paddle
- * webhooks (see webhook-handler.ts), so a client can never grant itself a plan.
- */
 export const billingRouter = router({
   getOverview: authenticatedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/getOverview"), tags: TAGS, protect: true } })

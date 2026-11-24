@@ -1,29 +1,15 @@
 import { z } from "zod";
 
-/**
- * Billing configuration (server side). Everything Paddle-related comes from
- * the ROOT .env — the web app needs none of it: the public client token and
- * price ids reach the browser through the `billing.getOverview` tRPC call.
- *
- * Billing is "configured" only when ALL of the required values are present.
- * If not, the app runs normally with everyone on Basic limits and the upgrade
- * button explains that payments aren't set up yet — it never half-works.
- */
-
 export interface BillingConfig {
   configured: boolean;
-  /** Names of the required variables that are missing (for logs / the setup guide). */
   missing: string[];
   environment: "sandbox" | "production";
   apiBaseUrl: string;
   apiKey?: string;
   webhookSecret?: string;
-  /** Public, safe to expose: Paddle.js client-side token. */
   clientToken?: string;
   prices: { premiumMonthly?: string; premiumYearly?: string };
-  /** Days of Pro access kept after a failed renewal before dropping to Basic. */
   graceDays: number;
-  /** Webhook timestamp tolerance, seconds (replay protection). */
   webhookToleranceSec: number;
 }
 
@@ -39,7 +25,7 @@ const envSchema = z.object({
 });
 
 export function loadBillingConfig(rawEnv: Record<string, string | undefined>): BillingConfig {
-  // `FOO=` in a .env file arrives as "" — treat blank exactly like unset.
+  // `FOO=` in a .env file arrives as "" - treat blank exactly like unset.
   const cleaned = Object.fromEntries(
     Object.entries(rawEnv).filter(([, v]) => v !== undefined && v.trim() !== "").map(([k, v]) => [k, v!.trim()]),
   );

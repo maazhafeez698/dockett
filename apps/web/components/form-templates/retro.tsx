@@ -45,7 +45,6 @@ export function RetroShell(props: FormTemplateShellProps) {
       style={{ background: "#008080", ...bevelOut }}
     >
       <div className="bg-[#C0C0C0] text-[#1B1B1B]" style={bevelOut}>
-        {/* title bar */}
         <div className="flex items-center gap-2 bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] px-2 py-1">
           <span className="flex-1 truncate text-sm font-bold text-white select-none">
             {title || "Untitled"} — Guestbook

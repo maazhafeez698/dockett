@@ -11,25 +11,6 @@ import {
   type WindowSnapshot,
 } from "./usage-store";
 
-/**
- * Postgres implementation of UsageStore.
- *
- * Concurrency model (why this is safe with many API instances):
- *  - admission runs in ONE transaction;
- *  - the per-user window row is locked with SELECT … FOR UPDATE, so two
- *    simultaneous requests from one user are serialised;
- *  - the "one request in flight per user" and "same request id twice"
- *    rules are enforced by unique indexes, not by application checks;
- *  - free-tier ceilings are bumped with a conditional upsert
- *    (… DO UPDATE … WHERE total <= cap), so concurrent requests cannot
- *    overshoot a cap;
- *  - lock order is always window → global-day → global-month → user-day.
- *
- * Timestamps go in as ISO strings cast to timestamptz, and come out as epoch
- * milliseconds — drizzle's pg driver may hand back timestamps as strings in a
- * format `new Date()` does not reliably parse, so we never depend on that.
- */
-
 type Row = Record<string, unknown>;
 
 async function rows(q: PromiseLike<unknown>): Promise<Row[]> {
@@ -74,7 +55,7 @@ export class PostgresUsageStore implements UsageStore {
         );
         const status = existing[0]?.status;
         // Same id already finished → replay. Same id still running, or a
-        // *different* request is running (the per-user index tripped) → busy.
+        // *different* request is running (the per-user index tripped) -> busy.
         throw new AiError(status && status !== "IN_PROGRESS" ? "DUPLICATE_REQUEST" : "REQUEST_IN_PROGRESS");
       }
 
@@ -126,7 +107,7 @@ export class PostgresUsageStore implements UsageStore {
                updated_at = ${nowIso}::timestamptz
          WHERE user_id = ${i.userId}::uuid AND feature = ${i.feature}`);
 
-      // 3. Free-tier ceilings — conditional upserts: no row comes back if a cap would be exceeded.
+      // 3. Free-tier ceilings - conditional upserts: no row comes back if a cap would be exceeded.
       for (const b of i.budgets) {
         if (i.estimatedTokens > b.capTokens) throw budgetError(b, i.now);
         const bumped = await rows(

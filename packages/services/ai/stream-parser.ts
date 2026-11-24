@@ -1,30 +1,13 @@
-/**
- * Incremental parser for the model's streamed JSON.
- *
- * The model is constrained to emit
- *   {"reply":"…","form":{"title":…,"fields":[{…},{…}]}}
- * and we want the user to see the reply *as it is written* and each field
- * *as soon as it is complete* — without waiting for the closing brace.
- *
- * This is a small character-level state machine, not a general JSON parser:
- * it tracks string/escape state and container depth, emits decoded text for
- * the top-level "reply" string, and hands back the raw text of each complete
- * object inside form.fields. It never throws — malformed input just stops
- * producing events. The authoritative result is always the full-text
- * JSON.parse + validation done at the end (see draft.ts); this parser only
- * drives the live preview.
- */
-
 export interface StreamParserEvents {
   onReplyDelta(text: string): void;
   onFieldObject(rawJson: string): void;
-  /** Fires once, when the top-level "intent" string has been fully read. */
+  // Fires once, when the top-level "intent" string has been fully read. 
   onIntent?(intent: string): void;
 }
 
 interface Container {
   type: "obj" | "arr";
-  /** The key this container was opened under in its parent (objects only matter). */
+  // The key this container was opened under in its parent (objects only matter). 
   key: string | null;
 }
 
@@ -49,7 +32,7 @@ export class FormStreamParser {
   private fieldStart = -1;
   private started = false;
 
-  /** Hard cap so a runaway stream can't grow memory unbounded. */
+  // Hard cap so a runaway stream can't grow memory unbounded. 
   private static readonly MAX_CHARS = 200_000;
 
   constructor(events: StreamParserEvents) {
@@ -60,7 +43,7 @@ export class FormStreamParser {
     return this.buf;
   }
 
-  /** Decoded reply text emitted so far. */
+  // Decoded reply text emitted so far. 
   get replySoFar(): string {
     return this.replyText;
   }
@@ -147,7 +130,7 @@ export class FormStreamParser {
     return this.stack[this.stack.length - 1];
   }
 
-  /** Root object → "form" object → "fields" array → a field object. */
+  // Root object -> "form" object -> "fields" array -> a field object. 
   private isFieldObjectDepth(): boolean {
     return (
       this.stack.length === 4 &&
@@ -158,7 +141,7 @@ export class FormStreamParser {
     );
   }
 
-  /** Returns decoded reply text produced by this character (usually "" or 1 char). */
+  // Returns decoded reply text produced by this character (usually "" or 1 char). 
   private consumeStringChar(ch: string): string {
     let out = "";
 

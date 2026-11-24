@@ -1,8 +1,3 @@
-// apps/web/lib/plan-limit.ts
-//
-// The API refuses plan-restricted actions with a FORBIDDEN error whose `data.planLimit` says which
-// limit was hit. These helpers turn that into a friendly toast with an "Upgrade" button.
-
 import { toast } from "sonner";
 
 export type PlanLimitCode =
@@ -16,7 +11,7 @@ export function getPlanLimitCode(err: unknown): PlanLimitCode | null {
   return typeof code === "string" ? (code as PlanLimitCode) : null;
 }
 
-/** Shows the right toast for any error; plan-limit errors get an Upgrade action. Returns true if it was a plan limit. */
+// Shows the right toast for any error; plan-limit errors get an Upgrade action. Returns true if it was a plan limit. 
 export function toastError(err: unknown, fallback: string, goToBilling: () => void): boolean {
   const message = err instanceof Error && err.message ? err.message : fallback;
   const code = getPlanLimitCode(err);

@@ -1,17 +1,12 @@
-/**
- * Google resets free-tier requests-per-day (RPD) at midnight Pacific time, so
- * every "daily" counter in the AI feature uses the Pacific calendar day, not
- * UTC. That keeps our own daily ceilings aligned with the quota they protect.
- */
 const TZ = "America/Los_Angeles";
 const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
 
-/** "YYYY-MM-DD" in Pacific time. */
+// "YYYY-MM-DD" in Pacific time.
 export function quotaDay(at: Date): string {
   return fmt.format(at);
 }
 
-/** The next instant (to the minute) at which the Pacific calendar day changes. */
+// The next instant (to the minute) at which the Pacific calendar day changes.
 export function nextQuotaDayStart(at: Date): Date {
   const today = quotaDay(at);
   let t = at.getTime();

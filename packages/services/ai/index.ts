@@ -58,17 +58,11 @@ async function loadForm(userId: string, formId: string): Promise<ExistingFormCon
   };
 }
 
-/**
- * Facade the tRPC layer talks to (same pattern as FormService & co.).
- * The engine is created lazily so that merely importing the services package
- * never validates AI configuration or touches the network — a bad AI env var
- * fails the AI feature, not the whole API.
- */
 export default class AiService {
   private _engine?: AiFormEngine;
   private ipLimiter?: SlidingWindowLimiter;
 
-  /** Per-IP throttle, applied before authentication so junk traffic costs almost nothing. */
+  // Per-IP throttle, applied before authentication so junk traffic costs almost nothing.
   public checkIp(ip: string): void {
     this.ipLimiter ??= new SlidingWindowLimiter(60_000, 50_000);
     const r = this.ipLimiter.check(`ip:${ip}`, getAiConfig().ipLimit.perMinute);

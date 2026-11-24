@@ -15,17 +15,14 @@ export interface ProviderStreamParams {
   jsonSchema: object;
   maxOutputTokens: number;
   temperature: number;
-  /** Aborts when the *user* cancels or disconnects. */
+  // Aborts when the *user* cancels or disconnects. 
   clientSignal: AbortSignal;
   timeouts: { firstByteMs: number; idleMs: number; attemptMs: number };
 }
 
 export interface ModelProvider {
   readonly id: ProviderId;
-  /**
-   * Streams normalised chunks. Throws ProviderError for provider-side
-   * problems and AiError("CANCELLED") when clientSignal aborts.
-   */
+  
   stream(params: ProviderStreamParams): AsyncGenerator<ProviderChunk, void, void>;
 }
 

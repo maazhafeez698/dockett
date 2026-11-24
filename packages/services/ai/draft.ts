@@ -1,23 +1,6 @@
 import { z } from "zod";
 import { MAX_FIELDS_PER_FORM } from "../form-field/limits";
 
-/**
- * The form "draft" — what the AI proposes and what the user reviews before
- * anything touches the database.
- *
- * Two shapes exist on purpose:
- *  - the *model-facing* shape (`MODEL_OUTPUT_JSON_SCHEMA`, flat, every key
- *    required, "none" expressed as "" / [] / 0). That is the most portable
- *    thing to hand a provider's structured-output feature — no unions, no
- *    nullables, so it is the most portable thing to hand a provider.
- *  - the *app-facing* shape (`FormDraft`), which matches what the existing
- *    createFormFromTemplate / form_fields code already consumes.
- * `normalizeModelOutput` is the only bridge, and it is deliberately lenient
- * about cosmetics but strict about anything that could break the database.
- */
-
-// PASSWORD is intentionally absent: Phase 4 retired it as a question type, so
-// the AI must never produce one.
 export const AI_FIELD_TYPES = [
   "TEXT",
   "EMAIL",
@@ -55,12 +38,6 @@ const PLACEHOLDER_TYPES = new Set<string>(["TEXT", "EMAIL", "NUMBER", "LONG_TEXT
 const FILE_UPLOAD_KINDS = ["pdf", "docx", "jpg", "png"] as const;
 type FileUploadKind = (typeof FILE_UPLOAD_KINDS)[number];
 
-/**
- * What the model says the user's message is. This is the server-enforced
- * scope gate: only BUILD may carry fields; every other intent is reply-only
- * and hard-capped in length, so the model can't be turned into a general
- * chatbot even if a prompt talks it into trying.
- */
 export const AI_INTENTS = ["BUILD", "CLARIFY", "CHAT", "OFF_TOPIC"] as const;
 export type AiIntent = (typeof AI_INTENTS)[number];
 
@@ -72,13 +49,10 @@ export const LIMITS = {
   placeholder: 120,
   option: 200,
   maxOptions: 20,
-  /** Reply cap when a form is being built. */
   reply: 420,
-  /** Reply cap for everything else (greetings, questions, redirects) — a nudge, never an answer. */
   replyOther: 280,
 } as const;
 
-/** Shortens text to `max` chars, preferring a sentence / word boundary. */
 export function clipReply(text: string, max: number): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
@@ -88,9 +62,6 @@ export function clipReply(text: string, max: number): string {
   const space = cut.lastIndexOf(" ");
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trim()}…`;
 }
-
-// ---- app-facing schemas (used to validate anything a client sends back) ----
-
 export const draftFieldSchema = z.object({
   label: z.string().trim().min(1).max(LIMITS.label),
   type: z.enum(AI_FIELD_TYPES),
@@ -124,11 +95,6 @@ export const formDraftSchema = z.object({
 });
 export type FormDraft = z.infer<typeof formDraftSchema>;
 
-/**
- * Per-type rules the zod shape can't express. Used both when the AI output is
- * normalised and again on the server when a client asks to save a draft —
- * a client-supplied draft is never trusted just because it came from us.
- */
 export function assertDraftConsistent(draft: FormDraft, maxFields: number): void {
   if (draft.fields.length > maxFields) {
     throw new Error(`A form can have at most ${maxFields} fields here`);
@@ -139,9 +105,6 @@ export function assertDraftConsistent(draft: FormDraft, maxFields: number): void
     }
   }
 }
-
-// ---- model-facing schema ----
-
 const rawFieldSchema = z.object({
   label: z.string(),
   type: z.string(),
@@ -177,7 +140,6 @@ const rawOutputSchema = z.object({
     }),
 });
 
-/** JSON Schema handed to providers. Property order matters: `reply` first so it streams first. */
 export const MODEL_OUTPUT_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -291,9 +253,6 @@ export const MODEL_OUTPUT_JSON_SCHEMA = {
     },
   },
 } as const;
-
-// ---- normalisation ----
-
 export function toLabelKey(label: string): string {
   return label
     .toLowerCase()
@@ -310,15 +269,10 @@ function clip(text: string, max: number): string {
   return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim();
 }
 
-/** Strips control chars and anything that could be interpreted as markup by a careless renderer. */
 function cleanText(text: string): string {
   return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").replace(/[<>]/g, "");
 }
 
-/**
- * Turn one raw model field into a valid DraftField, or null if it can't be
- * salvaged. Never throws.
- */
 export function normalizeRawField(input: unknown): DraftField | null {
   const parsed = rawFieldSchema.safeParse(input);
   if (!parsed.success) return null;
@@ -381,7 +335,6 @@ export function normalizeRawField(input: unknown): DraftField | null {
   return field;
 }
 
-/** Make labels unique (by label-key) within a draft; later duplicates get " 2", " 3"… */
 export function dedupeLabels(fields: DraftField[], takenKeys: Iterable<string> = []): DraftField[] {
   const taken = new Set<string>(takenKeys);
   const out: DraftField[] = [];
@@ -404,7 +357,6 @@ export function dedupeLabels(fields: DraftField[], takenKeys: Iterable<string> =
 export interface NormalizedOutput {
   intent: AiIntent;
   reply: string;
-  /** null unless intent is BUILD and at least one valid field survived. */
   draft: FormDraft | null;
   droppedFields: number;
 }
@@ -423,11 +375,6 @@ function toIntent(raw: string, hasFields: boolean): AiIntent {
   return hasFields ? "BUILD" : "CLARIFY";
 }
 
-/**
- * Validate + clean the model's full JSON output. Throws Error (caught by the
- * orchestrator and treated as an invalid response) only when the output is
- * structurally unusable.
- */
 export function normalizeModelOutput(
   json: unknown,
   opts: { maxFields: number; allowedTemplates?: readonly string[] },
@@ -446,7 +393,7 @@ export function normalizeModelOutput(
   }
 
   if (form.fields.length === 0) {
-    // Said BUILD but built nothing — treat as a clarifying question rather than an error.
+    // Said BUILD but built nothing - treat as a clarifying question rather than an error.
     intent = "CLARIFY";
     return {
       intent,
@@ -501,7 +448,6 @@ export function normalizeModelOutput(
   };
 }
 
-/** Extract the JSON object from model text, tolerating stray code fences / prefix text. */
 export function parseModelJson(text: string): unknown {
   let t = text.trim();
   if (t.startsWith("```"))

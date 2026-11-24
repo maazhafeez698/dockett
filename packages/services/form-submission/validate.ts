@@ -1,9 +1,3 @@
-// packages/services/form-submission/validate.ts
-//
-// Validates a response against the EXACT published version it was submitted to (the snapshot's
-// fields), not against whatever the draft looks like now. Pure and synchronous, so it is easy to
-// test. FILE_UPLOAD answers are resolved separately (they reference verified uploads).
-
 import type { FormSnapshotField } from "@repo/database/models/form-version";
 import { analyzeConditionalLogic, calculateActivePath } from "@repo/services/form-logic";
 import { numberProblem } from "./number-rules";
@@ -26,7 +20,6 @@ const MAX_ANSWER_LENGTH = 20_000;
 const SHORT_TEXT_LENGTH = 2_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Is `value` exactly a "," joined list of DISTINCT options? (Options may themselves contain commas.) */
 function isOptionList(value: string, options: string[]): boolean {
   const set = new Set(options);
   const memo = new Map<string, boolean>();
@@ -48,11 +41,6 @@ function isOptionList(value: string, options: string[]): boolean {
   return walk(value, new Set());
 }
 
-/**
- * Returns the answer for every field of the version (empty string when not answered) or throws a
- * respondent-readable Error. FILE_UPLOAD fields are passed through untouched (and `required` is
- * checked for them by the caller after the files are resolved).
- */
 export function validateAnswers(fields: FormSnapshotField[], values: AnswerInput[]): Map<string, string> {
   const logicErrors = analyzeConditionalLogic(fields).errors;
   if (logicErrors.length > 0) throw new Error(`This form has invalid question logic: ${logicErrors[0]!.message}`);

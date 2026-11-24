@@ -1,4 +1,3 @@
-// apps/web/hooks/use-ai-chat.ts
 //
 // Conversation state for the AI Form Builder. Owns: the message list, the
 // live (still-streaming) field preview, the pending draft awaiting

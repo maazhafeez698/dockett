@@ -3,7 +3,7 @@
 import type { AiCredits } from "~/lib/ai-stream";
 import { formatReset } from "./shared";
 
-/** Prompt-weighted credit usage strip shown above the chat. */
+//  Prompt-weighted credit usage strip shown above the chat. 
 export function CreditsBar({ credits, now }: { credits: AiCredits | null; now: number }) {
   if (!credits) return <div className="h-[34px] border-b border-border/60" aria-hidden />;
 

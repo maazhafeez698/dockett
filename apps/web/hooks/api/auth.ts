@@ -106,7 +106,7 @@ export function useLogout() {
 
   const { mutateAsync: logoutMutateAsync, isPending } = trpc.auth.logout.useMutation({
     onSuccess: async () => {
-      // Clear every cached query, not just the user — nothing that was
+      // Clear every cached query, not just the user - nothing that was
       // scoped to this session should linger after logout.
       queryClient.clear();
     },
@@ -149,7 +149,7 @@ export function useSetPassword() {
   return { setPasswordAsync, error, isError, isSuccess, isPending };
 }
 
-/** Opens the emailed link: verifies the address and signs the user in. */
+// Opens the emailed link: verifies the address and signs the user in. 
 export function useVerifyEmail() {
   const utils = trpc.useUtils();
 

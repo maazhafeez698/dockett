@@ -5,9 +5,9 @@ import { createContext, useContext, type ReactNode } from "react";
 interface FormUploadContextValue {
   formId: string | null;
   accessCode?: string;
-  /** Credential from the respondent's email magic link (verified-email forms). */
+  // Credential from the respondent's email magic link (verified-email forms). 
   respondentToken?: string;
-  /** Builder preview: show the widget but don't upload anything. */
+  // Builder preview: show the widget but don't upload anything. 
   isPreview: boolean;
 }
 

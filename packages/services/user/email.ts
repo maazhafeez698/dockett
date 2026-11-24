@@ -63,7 +63,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
-/** Dockett sign-up: confirm the address and finish creating the account. */
+// Dockett sign-up: confirm the address and finish creating the account. 
 export async function sendVerificationEmail(to: string, verifyUrl: string) {
   await sendBrandedEmail({
     to,
@@ -77,7 +77,7 @@ export async function sendVerificationEmail(to: string, verifyUrl: string) {
   });
 }
 
-/** A respondent proving they own the address they will answer a form with. */
+// A respondent proving they own the address they will answer a form with. 
 export async function sendRespondentLinkEmail(to: string, linkUrl: string, formTitle: string) {
   await sendBrandedEmail({
     to,

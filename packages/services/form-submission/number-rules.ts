@@ -1,14 +1,9 @@
-// apps/web/lib/field-rules.ts
-//
-// Client-side answer rules that mirror what the server enforces (see form-submission/index.ts).
-
 export interface NumberRules {
   minValue?: number;
   maxValue?: number;
   step?: number;
 }
 
-/** null = fine; otherwise a short message for the respondent. */
 export function numberProblem(raw: string, rules: NumberRules): string | null {
   const text = raw.trim();
   if (text === "") return null;

@@ -38,7 +38,6 @@ async function expectProviderError(p: Promise<unknown>, kind: string) {
   await assert.rejects(p, (e: unknown) => e instanceof ProviderError && e.kind === kind, `expected ProviderError(${kind})`);
 }
 
-// ---------------- Gemini ----------------
 test("gemini: parses text, usage (thinking billed as output) and finish; key is in a header, not the URL", async () => {
   let seen: { url: string; init: RequestInit } | undefined;
   const p = new GeminiProvider({ apiKey: "SECRET-KEY", baseUrl: "https://g.test/v1beta" }, async (url, init) => {

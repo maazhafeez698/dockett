@@ -1,9 +1,10 @@
 # Dependencies
-node_modules
-.pnp
+node_modules/
+.pnp/
 .pnp.js
+.pnpm-store/
 
-# Local env files
+# Environment files and secrets (keep the checked-in template)
 .env
 .env.*
 **/.env
@@ -11,39 +12,41 @@ node_modules
 !.env.example
 !**/.env.example
 
-# Testing
-coverage
+# Build and tool output
+.next/
+**/.next/
+out/
+build/
+dist/
+coverage/
+.turbo/
+.vercel/
+
+# Local data, database files, and backups
 backups/
 **/backups/
 *.sql
 *.sql.gz
 !packages/database/drizzle/*.sql
+*.db
+*.sqlite
+*.sqlite3
 .deployed-image-tag*
 
-# Turbo
-.turbo
-
-.pnpm-store
-
-# Vercel
-.vercel
-
-# Build Outputs
-.next/
-out/
-build
-dist
-
-
-# Debug
+# Logs and temporary files
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tmp
+*.temp
 
-# Misc
-.DS_Store
+# Local credentials and certificates
+.aws/
+**/.aws/
+.ssh/
+**/.ssh/
 *.pem
 *.key
 *.p12
@@ -51,13 +54,8 @@ yarn-error.log*
 *.crt
 *.cer
 
-# Local credentials and machine-specific files
-.aws/
-.ssh/
+# Local editor and operating system files
 .vscode/
 .idea/
-
-# Local databases
-*.db
-*.sqlite
-*.sqlite3
+.DS_Store
+Thumbs.db

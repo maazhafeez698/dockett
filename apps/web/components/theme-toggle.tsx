@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 
 interface ThemeToggleProps {
-  /** "icon": a square icon button. "row": icon + mono label (used in the sidebar). */
+  // "icon": a square icon button. "row": icon + mono label (used in the sidebar). 
   variant?: "icon" | "row";
   className?: string;
 }

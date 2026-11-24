@@ -1,17 +1,9 @@
-// packages/services/form/ensure-version.ts
-//
-// Forms that were published BEFORE versioning existed have no published version yet. This creates
-// version 1 from their current content the first time anyone needs it (and the startup sweep does
-// it for all of them), so existing live forms keep working with zero manual data migration.
-// Idempotent and race-safe: the form row is locked and (formId, version) is unique.
-
 import { and, db, eq, isNull } from "@repo/database";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formsTable } from "@repo/database/models/form";
 import { formVersionsTable } from "@repo/database/models/form-version";
 import { buildSnapshot, hashSnapshot } from "./publication";
 
-/** Returns the published version id (existing, or newly created for a legacy published form), or null if there is none to create. */
 export async function ensurePublishedVersion(formId: string): Promise<string | null> {
   return db.transaction(async (tx) => {
     const form = (
