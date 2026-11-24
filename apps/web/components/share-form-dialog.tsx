@@ -17,7 +17,7 @@ import { Button } from "~/components/ui/button";
 
 interface ShareFormDialogProps {
   formId: string;
-  /** Trigger element. Omit it when the dialog is controlled (open / onOpenChange). */
+  // Trigger element. Omit it when the dialog is controlled (open / onOpenChange). 
   children?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -25,11 +25,11 @@ interface ShareFormDialogProps {
   accessCode?: string | null;
   respondentIdentity?: "ANONYMOUS" | "VERIFIED_EMAIL";
   oneResponsePerEmail?: boolean;
-  /** Live version number, shown after publishing. */
+  // Live version number, shown after publishing. 
   version?: number | null;
-  /** Exact scheduled closing time (ISO), if the form closes automatically. */
+  // Exact scheduled closing time (ISO), if the form closes automatically. 
   closesAt?: string | null;
-  /** True right after a successful publication. */
+  // True right after a successful publication. 
   justPublished?: boolean;
 }
 

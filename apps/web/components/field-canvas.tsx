@@ -322,7 +322,6 @@ function CanvasInner({
           color="color-mix(in srgb, var(--foreground) 24%, transparent)"
         />
 
-        {/* zoom */}
         <Panel
           position="bottom-left"
           className="flex items-center border border-border bg-card p-0.5 shadow-[2px_2px_0_0_var(--hard-shadow)]"
@@ -387,7 +386,6 @@ function CanvasInner({
           </button>
         </Panel>
 
-        {/* add node */}
         <Panel position="bottom-center" className="!mb-2 max-w-[calc(100%-1rem)] sm:!mb-3">
           <div className="scrollbar-none flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-solid p-1 text-solid-foreground">
             <span className="mono-label-sm shrink-0 px-2 opacity-70">Add node</span>

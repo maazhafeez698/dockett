@@ -4,12 +4,6 @@ export type PlanLimitCode =
   | "PREMIUM_TEMPLATE"
   | "FORM_UNAVAILABLE";
 
-/**
- * Thrown when an action is refused because of the user's plan. `message` is
- * written for end users. The tRPC layer turns this into a FORBIDDEN error and
- * forwards `code` as `data.planLimit` so the web app can offer an upgrade
- * instead of just showing a toast.
- */
 export class PlanLimitError extends Error {
   readonly planLimit: PlanLimitCode;
 

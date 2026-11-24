@@ -5,21 +5,6 @@ import { AiError, isAiError, describeError } from "@repo/services/ai";
 import { aiService, userService } from "../../services";
 import { ACCESS_TOKEN_COOKIE, getCookie } from "../../utils/cookie";
 
-/**
- * POST /ai/form/stream — Server-Sent Events over a POST (consumed with
- * fetch + ReadableStream, since EventSource can't POST or send a body).
- *
- * Order of defences (cheapest first):
- *   1. per-IP throttle          (in-memory, before any crypto/DB work)
- *   2. same-site check          (Origin must match WEB_URL when present)
- *   3. content-type check       (application/json — forces a CORS preflight cross-origin)
- *   4. authentication           (access-token cookie, verified server-side)
- *   5. everything else          (validation, plan limits, quota, budgets, single-flight,
- *                                idempotency) inside AiFormEngine.start — all of it
- *                                BEFORE any streaming header is sent, so rejections
- *                                are ordinary JSON responses with real HTTP statuses.
- */
-
 const HEARTBEAT_MS = 15_000;
 
 function allowedOrigins(): Set<string> {
@@ -28,7 +13,6 @@ function allowedOrigins(): Set<string> {
   try {
     set.add(new URL(web).origin);
   } catch {
-    /* misconfigured WEB_URL: nothing will match, requests with an Origin are rejected */
   }
   return set;
 }
@@ -77,7 +61,7 @@ export async function aiStreamHandler(req: Request, res: Response): Promise<void
       });
     }
 
-    // 5. cancellation wiring — abort the upstream model call the moment the browser goes away.
+    // 5. cancellation wiring - abort the upstream model call the moment the browser goes away.
     const controller = new AbortController();
     res.on("close", () => {
       if (!res.writableEnded) controller.abort();

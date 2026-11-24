@@ -20,12 +20,6 @@ function toExisting(r: typeof subscriptionsTable.$inferSelect | undefined): Exis
   };
 }
 
-/**
- * Applies one verified Paddle event. ONE transaction covers the idempotency
- * record and the subscription write, so a crash can never leave an event
- * "seen" but not applied (Paddle would then retry and we'd skip it forever).
- * Returns the affected user id so callers can drop their cached entitlements.
- */
 export async function applyPaddleEvent(
   event: PaddleEvent,
   cfg: Pick<BillingConfig, "prices" | "webhookSecret" | "graceDays">,

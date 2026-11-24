@@ -1,24 +1,9 @@
-/**
- * Local pre-screen — runs BEFORE any model call, costs zero tokens, and
- * handles the cases where asking an LLM would be a waste:
- *
- *  - plain greetings        → a friendly nudge toward the form
- *  - blatant jailbreaks     → playful refusal
- *  - blatant non-form tasks → playful refusal (poems, code, homework, ...)
- *
- * It is intentionally conservative: it only fires on unambiguous patterns.
- * Anything murkier goes to the model, whose structured `intent` field and
- * hard reply-length caps (draft.ts) enforce scope server-side. A form-ish
- * word anywhere in the message ("form", "survey", "quiz"...) always wins, so
- * legitimate requests are never blocked here.
- */
-
 export type GuardKind = "GREETING" | "OFF_TOPIC" | "INJECTION";
 
 export interface GuardResult {
   kind: GuardKind;
   reply: string;
-  /** Off-topic and jailbreak attempts count toward the cool-down; greetings don't. */
+  // Off-topic and jailbreak attempts count toward the cool-down; greetings don't.
   strike: boolean;
 }
 
@@ -66,10 +51,6 @@ function pick<T>(items: T[], seed: string): T {
   return items[Math.abs(h) % items.length]!;
 }
 
-/**
- * Returns a ready-made reply when the message can be answered without the
- * model, or null to continue to the model.
- */
 export function preScreen(prompt: string): GuardResult | null {
   const text = prompt.trim();
   if (!text) return null;
@@ -78,7 +59,7 @@ export function preScreen(prompt: string): GuardResult | null {
     return { kind: "GREETING", reply: pick(GREETING_REPLIES, text), strike: false };
   }
 
-  // A real form word means "probably legitimate" — let the model decide the details.
+  // A real form word means "probably legitimate" - let the model decide the details.
   const looksLikeForm = FORM_WORDS.test(text);
 
   if (INJECTION.test(text) || DAN.test(text)) {

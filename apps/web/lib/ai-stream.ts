@@ -1,15 +1,3 @@
-// apps/web/lib/ai-stream.ts
-//
-// Client for POST /ai/form/stream (Server-Sent Events over fetch).
-// Mirrors AiStreamEvent in packages/services/ai/engine.ts.
-//
-// Rules this file enforces so callers don't have to:
-//  - never auto-retries a generation (each retry could be a second paid call)
-//  - the ONE exception is a 401 → silent token refresh → replay of the same
-//    request id, which is safe because the server rejected it before admission
-//  - a stream that ends without `done` or `error` is reported as an error
-//  - cancellation via AbortSignal is silent (resolves, no error)
-
 import { getApiBaseUrl, refreshSession } from "~/trpc/create-client";
 
 export type AiFieldType =
@@ -63,12 +51,12 @@ export interface AiDraft {
   fields: AiDraftField[];
 }
 
-/** What the UI shows: credits (tokens) consumed in the current window. */
+// What the UI shows: credits (tokens) consumed in the current window. 
 export interface AiCredits {
-  /** 0-100 — "90% credits consumed". */
+  // 0-100 - "90% credits consumed". 
   percentUsed: number;
   limitReached: boolean;
-  /** ISO time the credits reset; null until the usage limit is reached. */
+  // ISO time the credits reset; null until the usage limit is reached.
   resetsAt: string | null;
   tokensUsed: number;
   tokensLimit: number;

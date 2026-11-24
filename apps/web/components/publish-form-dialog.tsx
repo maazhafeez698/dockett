@@ -45,7 +45,7 @@ export interface PublishResult {
 interface PublishFormDialogProps {
   formId: string;
   form: PublicationState;
-  /** Called after a successful save that left the form PUBLISHED (the caller opens the Share dialog). */
+  // Called after a successful save that left the form PUBLISHED (the caller opens the Share dialog).
   onPublished: (result: PublishResult) => void;
   children: ReactNode;
 }
@@ -137,7 +137,7 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
 
   const [open, setOpen] = useState(false);
 
-  // ---- draft of the settings, re-seeded every time the dialog opens ----
+  // draft of the settings, re-seeded every time the dialog opens
   const [status, setStatus] = useState<PublicationStatus>("PUBLISHED");
   const [accessMode, setAccessMode] = useState<"ANYONE" | "ACCESS_CODE">("ANYONE");
   const [identity, setIdentity] = useState<"ANONYMOUS" | "VERIFIED_EMAIL">("ANONYMOUS");
@@ -229,7 +229,7 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
               ? "Changes saved."
               : `Published (version ${result.version}).`,
         );
-        // Only now — after the server confirmed — does the Share dialog open.
+        // Only now - after the server confirmed — does the Share dialog open.
         onPublished({
           status: result.status,
           version: result.version,
@@ -280,7 +280,6 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
           </div>
         ) : null}
 
-        {/* ---------------- STATUS ---------------- */}
         <Section title="Status">
           <div className="grid grid-cols-3 border border-foreground/70 p-0.5" role="radiogroup" aria-label="Status">
             {(
@@ -313,7 +312,6 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
           </p>
         </Section>
 
-        {/* ---------------- ACCESS ---------------- */}
         <Section title="Access" hint="Forms are never listed publicly. Only people you share the link with can open them.">
           <div className="space-y-2" role="radiogroup" aria-label="Access">
             <Choice
@@ -367,7 +365,6 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
           ) : null}
         </Section>
 
-        {/* ---------------- RESPONDENT IDENTITY ---------------- */}
         <Section title="Respondent identity" hint="Respondents never need a Dockett account.">
           <div className="space-y-2" role="radiogroup" aria-label="Respondent identity">
             <Choice
@@ -398,7 +395,6 @@ export function PublishFormDialog({ formId, form, onPublished, children }: Publi
           ) : null}
         </Section>
 
-        {/* ---------------- AUTOMATIC CLOSURE ---------------- */}
         <Section title="Automatic closure">
           <div
             className={`rounded-md border px-3 py-2.5 transition-colors ${

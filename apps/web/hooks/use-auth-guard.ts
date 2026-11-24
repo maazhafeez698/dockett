@@ -1,4 +1,3 @@
-// apps/web/hooks/use-auth-guard.ts
 //
 // Client-side gate for signed-in pages: while the session is resolving it
 // reports `ready: false`; if there is no session it sends the visitor to the

@@ -1,4 +1,3 @@
-/** Minimal logger contract so the engine has no hard dependency on winston (and is testable). */
 export interface AiLogger {
   debug(message: string, meta?: Record<string, unknown>): void;
   info(message: string, meta?: Record<string, unknown>): void;

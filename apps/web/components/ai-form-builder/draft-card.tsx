@@ -46,7 +46,7 @@ export function FieldRow({ field, dim }: { field: AiDraftField; dim?: boolean })
   );
 }
 
-/** Streaming preview: fields appear as the model finishes them. No actions until it's done. */
+// Streaming preview: fields appear as the model finishes them. No actions until it's done. 
 export function LiveDraftPreview({ fields }: { fields: AiDraftField[] }) {
   if (!fields.length) return null;
   return (
@@ -65,11 +65,11 @@ export function LiveDraftPreview({ fields }: { fields: AiDraftField[] }) {
 
 interface DraftCardProps {
   draft: AiDraft;
-  /** Adding to a canvas that already has fields → only the new fields matter. */
+  // Adding to a canvas that already has fields → only the new fields matter. 
   additionsOnly: boolean;
   maxFields: number;
   approved: boolean;
-  /** True for the latest draft only; older cards are history. */
+  // True for the latest draft only; older cards are history. 
   interactive: boolean;
   busy: boolean;
   approveLabel: string;

@@ -1,4 +1,3 @@
-// packages/trpc/server/routes/file-upload/model.ts
 
 import { z } from "zod";
 

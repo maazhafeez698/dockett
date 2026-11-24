@@ -9,31 +9,18 @@ import { COOLDOWN_REPLY } from "./guard";
 
 export const FEATURE_FORM_BUILDER = "FORM_BUILDER";
 
-/** Maps a user to the AI engine's plan key ("free" | "pro" | "business"). */
+// Maps a user to the AI engine's plan key ("free" | "pro" | "business"). 
 export type PlanResolver = (userId: string) => Promise<string>;
 
-/**
- * Default resolver: everyone is "free". The real one (the user's Paddle subscription → Basic /
- * Premium / Business → free / pro / business) is injected by AiService, which keeps this engine
- * database-free and testable.
- */
 export const resolvePlanKey: PlanResolver = async () => "free";
 
 export function planLimits(config: AiConfig, planKey: string): AiPlanLimits {
   return config.plans[planKey] ?? config.plans.free!;
 }
 
-/**
- * What the UI shows: credits consumed in the current window. Credits are
- * tokens; the hidden per-window message cap is folded into the same
- * percentage so there is only ever ONE number for the user to understand.
- */
 export interface Credits {
-  /** 0-100, rounded down — "90% credits consumed". */
   percentUsed: number;
-  /** True once the window is exhausted; the user can't send until `resetsAt`. */
   limitReached: boolean;
-  /** ISO time the window resets; null when no window is open yet (nothing consumed). */
   resetsAt: string | null;
   tokensUsed: number;
   tokensLimit: number;
@@ -91,12 +78,10 @@ export class UsageService {
     return this.planResolver(userId);
   }
 
-  /** Worst case for one request: every input token plus the full output allowance. */
   estimateTokens(estimatedInputTokens: number, maxOutputTokens: number): number {
     return estimatedInputTokens + maxOutputTokens;
   }
 
-  /** Notional (not charged) cost of that worst case, across the most expensive model in the chain. */
   estimateCostMicros(estimatedInputTokens: number, maxOutputTokens: number): number {
     let worst = 0;
     for (const ref of this.config.chain) {
@@ -105,7 +90,6 @@ export class UsageService {
     return worst;
   }
 
-  /** Cheap in-memory guard against rapid-fire requests. Runs before any DB work or model call. */
   checkBurst(userId: string, limits: AiPlanLimits): void {
     const r = this.burst.check(`u:${userId}`, limits.burstPerMinute);
     if (!r.allowed) {
@@ -113,12 +97,10 @@ export class UsageService {
     }
   }
 
-  /** Off-topic / jailbreak attempts: remember them… */
   recordStrike(userId: string): void {
     this.strikes.record(userId);
   }
 
-  /** …and pause the user briefly once they pile up. Never touches the model or the database. */
   assertNotCoolingDown(userId: string): void {
     const ms = this.strikes.cooldownMs(userId);
     if (ms > 0) {
@@ -214,9 +196,7 @@ export class UsageService {
       fallbackUsed: boolean;
       inputTokens: number;
       outputTokens: number;
-      /** Notional cost of the tokens actually used. */
       actualCostMicros: number;
-      /** Whether this request should consume one of the user's (hidden) messages. */
       countRequest: boolean;
       firstTokenMs: number | null;
       errorCode: string | null;
@@ -252,7 +232,6 @@ export class UsageService {
     }
   }
 
-  /** Credits as they will stand after a settled request (no extra DB round trip). */
   creditsAfter(admission: Admission, actualTokens: number, counted: boolean): Credits {
     return computeCredits(
       admission.limits,

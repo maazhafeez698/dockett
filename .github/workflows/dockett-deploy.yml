@@ -76,6 +76,38 @@ jobs:
             ${{ vars.DOCKERHUB_USERNAME }}/dockett-app:latest
             ${{ vars.DOCKERHUB_USERNAME }}/dockett-app:${{ github.sha }}
 
+      - name: Prepare EC2 storage for deployment files
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            set -eu
+            target=/home/ubuntu/dockett
+
+            if [ ! -d "$target" ] || [ ! -w "$target" ]; then
+              echo "Deployment target is missing or not writable: $target" >&2
+              exit 1
+            fi
+
+            echo "Disk space before safe Docker cleanup:"
+            df -h "$target" /tmp
+            docker system df || true
+
+            docker image prune --force
+            docker builder prune --all --force
+
+            echo "Disk space after safe Docker cleanup:"
+            df -h "$target" /tmp
+
+            available_kb=$(df -Pk "$target" | awk 'NR == 2 { print $4 }')
+            if [ -z "$available_kb" ] || [ "$available_kb" -lt 65536 ]; then
+              echo "Less than 64 MiB is available at $target after cleanup; refusing to start file transfer." >&2
+              docker system df >&2 || true
+              exit 1
+            fi
+
       - name: Copy Compose file to EC2
         uses: appleboy/scp-action@v1
         with:

@@ -1,15 +1,3 @@
-/**
- * Error model for the AI feature.
- *
- * Two layers, on purpose:
- *  - `AiError`       — what the *user-facing layer* deals in. Carries a stable
- *                      machine `code`, a friendly `userMessage`, and an HTTP
- *                      status for errors raised before streaming starts.
- *  - `ProviderError` — what a *model provider adapter* throws. Carries a
- *                      `kind` the orchestrator uses to decide retry vs.
- *                      fallback vs. give up. Never shown to users as-is.
- */
-
 export type AiErrorCode =
   | "AI_DISABLED"
   | "UNAUTHENTICATED"
@@ -76,7 +64,7 @@ const DEFAULT_USER_MESSAGE: Record<AiErrorCode, string> = {
 export interface AiErrorOptions {
   userMessage?: string;
   retryAfterSec?: number;
-  /** Safe, structured extras (e.g. quota reset time). Never secrets. */
+  // Safe, structured extras (e.g. quota reset time). Never secrets. 
   details?: Record<string, unknown>;
   cause?: unknown;
 }
@@ -104,16 +92,6 @@ export function isAiError(e: unknown): e is AiError {
   return e instanceof AiError;
 }
 
-/**
- * kind → orchestrator policy
- *  transient        5xx / network / stream cut  → retry same model once, then fall back
- *  rate_limit       429 from provider           → do NOT hammer; fall back immediately
- *  timeout          our own timer fired         → treated like transient
- *  auth             401/403 (bad/blocked key)   → fall back; log loudly (config bug)
- *  bad_request      400/404/etc. (schema/model) → fall back; log loudly (config bug)
- *  invalid_response 200 but unusable output     → fall back (deterministic-ish)
- *  content_blocked  safety filter               → stop; retrying can't help
- */
 export type ProviderErrorKind =
   | "transient"
   | "rate_limit"
@@ -127,7 +105,7 @@ export class ProviderError extends Error {
   readonly kind: ProviderErrorKind;
   readonly status?: number;
   readonly retryAfterMs?: number;
-  /** True once any model output had been received when this failure hit. */
+  // True once any model output had been received when this failure hit. 
   outputStarted: boolean;
 
   constructor(
@@ -145,7 +123,7 @@ export class ProviderError extends Error {
   }
 }
 
-/** Log-safe error summary: bounded length, no stack, no payloads. */
+// Log-safe error summary: bounded length, no stack, no payloads. 
 export function describeError(e: unknown): { name: string; message: string; code?: string } {
   if (e instanceof AiError) return { name: e.name, message: scrub(e.message), code: e.code };
   if (e instanceof ProviderError)
@@ -154,7 +132,7 @@ export function describeError(e: unknown): { name: string; message: string; code
   return { name: "NonError", message: scrub(String(e)) };
 }
 
-/** Strips anything shaped like a credential and bounds the length. */
+// Strips anything shaped like a credential and bounds the length. 
 export function scrub(text: string, max = 300): string {
   return text
     .replace(/(api[_-]?key|authorization|bearer|token|secret)(["'\s:=]+)[^\s"',}]+/gi, "$1$2[redacted]")

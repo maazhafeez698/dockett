@@ -48,7 +48,7 @@ export const LAYOUT_LABEL = {
   ALL_AT_ONCE: "All at once",
 } as const;
 
-/** Changing a field's type must also reset the settings that only make sense for the old type. */
+// Changing a field's type must also reset the settings that only make sense for the old type. 
 export function retypeField(field: AiDraftField, type: AiFieldType): AiDraftField {
   const next: AiDraftField = { ...field, type };
   if (OPTION_TYPES.has(type)) {
@@ -119,7 +119,7 @@ export function validateDraft(draft: AiDraft, requireTitle: boolean): DraftError
   return out;
 }
 
-/** Trim everything and drop empties so what we save is exactly what the server will accept. */
+// Trim everything and drop empties so what we save is exactly what the server will accept. 
 export function cleanDraft(draft: AiDraft): AiDraft {
   return {
     ...draft,

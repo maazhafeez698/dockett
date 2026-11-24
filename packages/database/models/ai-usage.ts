@@ -13,23 +13,6 @@ import {
 import { sql } from "drizzle-orm";
 import { usersTable } from "./user";
 
-/**
- * Phase 6 — AI usage accounting.
- *
- * Deliberate choices, worth knowing before touching these tables:
- *  - Every timestamp here is `timestamptz`. The older tables use plain
- *    `timestamp`; the AI limiter does window arithmetic in SQL, where an
- *    ambiguous zone is a real bug source, so these are unambiguous.
- *  - Token safety limits are tracked independently from the prompt-weighted
- *    user-facing credit allocation. Money figures are NOTIONAL (free tier = $0)
- *    and stored as integer micro-USD (1 = $0.000001) in bigint columns — no floats.
- *  - Nothing here stores prompt or response text. Only sizes, token counts,
- *    cost, timing and error codes — enough to diagnose and bill, nothing
- *    users typed.
- *  - `feature` is a column (not hard-wired) so future AI features share the
- *    same limiter; today the only value is FORM_BUILDER.
- */
-
 export const aiRequestStatusEnum = pgEnum("ai_request_status_enum", [
   "IN_PROGRESS",
   "SUCCEEDED",
@@ -38,14 +21,6 @@ export const aiRequestStatusEnum = pgEnum("ai_request_status_enum", [
   "ABANDONED",
 ]);
 
-/**
- * One row per AI request. Doubles as:
- *  1. the audit/usage log (tokens, cost, model, latency, error code),
- *  2. the idempotency record — (user_id, request_id) is unique, so a replayed
- *     request id can never trigger a second paid model call, and
- *  3. the in-flight lock — the partial unique index below allows at most one
- *     IN_PROGRESS row per user.
- */
 export const aiRequestsTable = pgTable(
   "ai_requests",
   {
@@ -129,13 +104,6 @@ export const aiUsageWindowsTable = pgTable(
   (t) => [uniqueIndex("ai_usage_windows_user_feature_uq").on(t.userId, t.feature)],
 );
 
-/**
- * Free-tier ceilings keyed by a namespaced string, e.g.
- *   global:day:2026-09-30        — whole-app daily requests/tokens (Pacific day, like Google's RPD reset)
- *   user:<uuid>:day:2026-09-30   — one user's daily tokens
- * Admission increments these atomically and only if the cap still holds, so
- * concurrent requests cannot overshoot a ceiling.
- */
 export const aiSpendCountersTable = pgTable("ai_spend_counters", {
   key: varchar("key", { length: 120 }).primaryKey(),
   tokens: bigint("tokens", { mode: "number" }).notNull().default(0),

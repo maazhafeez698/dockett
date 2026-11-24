@@ -20,9 +20,6 @@ export const fileUploadStatusEnum = pgEnum("file_upload_status_enum", [
   "ATTACHED",
 ]);
 
-// One row per issued upload. Every foreign key is ON DELETE SET NULL on purpose: deleting a form,
-// field or submission must never silently orphan an object in storage. The cleanup job treats
-// "ATTACHED but missing its form/field/submission" as garbage and removes the stored object too.
 export const fileUploadsTable = pgTable(
   "file_uploads",
   {
@@ -46,7 +43,7 @@ export const fileUploadsTable = pgTable(
     // Canonical kind decided by the server: pdf | docx | jpg | png.
     kind: varchar("kind", { length: 8 }).notNull(),
     mimeType: varchar("mime_type", { length: 100 }).notNull(),
-    // Sanitised original name — display / download name only.
+    // Sanitised original name - display / download name only.
     displayName: varchar("display_name", { length: 200 }).notNull(),
     // Verified size, set at confirm time.
     bytes: integer("bytes"),

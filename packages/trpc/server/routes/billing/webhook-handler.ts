@@ -4,17 +4,6 @@ import { WebhookError } from "@repo/services/billing";
 
 import { billingService } from "../../services";
 
-/**
- * POST /billing/paddle/webhook — called by Paddle's servers, never by browsers.
- *
- * Mounted with express.raw() BEFORE the global JSON parser (see apps/api/src/server.ts) because the
- * signature is computed over the exact bytes Paddle sent; re-serialised JSON would never match.
- * No cookie auth / Origin check here: the HMAC signature IS the authentication.
- *
- *   2xx  event handled (or deliberately ignored) — Paddle stops retrying
- *   400  bad signature / malformed — retrying can't help
- *   5xx  our failure — Paddle retries with backoff for days, so a transient DB error loses nothing
- */
 export async function paddleWebhookHandler(req: Request, res: Response): Promise<void> {
   const body = req.body;
   if (!Buffer.isBuffer(body)) {

@@ -2,11 +2,11 @@ import { useId } from "react";
 
 interface LogoProps {
   className?: string;
-  /** Render only the symbol. */
+  // Render only the symbol. 
   markOnly?: boolean;
-  /** Symbol height in px (wordmark scales with it). */
+  // Symbol height in px (wordmark scales with it). 
   size?: number;
-  /** "color": ember symbol + themed wordmark. "mono": everything follows currentColor. */
+  // "color": ember symbol + themed wordmark. "mono": everything follows currentColor. 
   tone?: "color" | "mono";
 }
 
@@ -34,13 +34,10 @@ export function LogoMark({
       <defs>
         <mask id={`dk-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="44" height="40">
           <path d="M0 0h22a20 20 0 0 1 0 40H0z" fill="#fff" />
-          {/* punch hole */}
           <circle cx="29" cy="20" r="6.6" fill="#000" />
           {small ? null : (
             <>
-              {/* edge notch */}
               <circle cx="0" cy="20" r="4.4" fill="#000" />
-              {/* perforation */}
               <rect x="8.2" y="4.4" width="2.8" height="2.8" fill="#000" />
               <rect x="8.2" y="10.6" width="2.8" height="2.8" fill="#000" />
               <rect x="8.2" y="26.6" width="2.8" height="2.8" fill="#000" />

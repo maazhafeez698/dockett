@@ -1,17 +1,3 @@
-// packages/services/file-upload/index.ts
-//
-// File uploads: browser → storage directly, authorised and verified by this service.
-//
-//   createUpload   authorise (form live, access rules, field exists, type/size allowed, quotas,
-//                  rate limit) → insert a PENDING row → mint a signature for ONE random key.
-//   confirmUpload  after the browser finished: look at the STORED object (size, first bytes) and
-//                  only then mark it CONFIRMED. Anything that doesn't check out is deleted.
-//   discardUpload  respondent removed a file before submitting.
-//   getDownloadUrl owner-only, short-lived signed URL.
-//   cleanup        deletes abandoned / orphaned objects.
-//
-// Submission code uses prepareSubmissionFiles / attachSubmissionFiles (bottom of the file).
-
 import { createHmac, randomUUID } from "node:crypto";
 
 import { db, and, eq, inArray, isNull, lt, or, sql } from "@repo/database";
@@ -59,7 +45,7 @@ const MB = 1024 * 1024;
 const MIN = 60 * 1000;
 const HEAD_BYTES = 8192;
 
-/** What a FILE_UPLOAD field's `config` means (validated again here; never trust stored JSON blindly). */
+// What a FILE_UPLOAD field's `config` means (validated again here; never trust stored JSON blindly). 
 export interface FileFieldRules {
   accept: FileKind[];
   maxFiles: number;
@@ -79,7 +65,7 @@ export function fileFieldRules(config: unknown): FileFieldRules {
   return { accept: accept.length > 0 ? accept : [...ALL_FILE_KINDS], maxFiles, maxBytes };
 }
 
-/** A file as stored inside a submission's answer value. */
+// A file as stored inside a submission's answer value.
 export interface StoredFileRef {
   id: string;
   name: string;
@@ -104,7 +90,7 @@ export function parseFileRefs(value: string | undefined | null): StoredFileRef[]
   }
 }
 
-// ---- limiters (per API instance) ----
+// limiters (per API instance)
 const signLimiter = new SlidingWindowLimiter(env.UPLOAD_SIGN_LIMIT_PER_10_MIN, 10 * MIN);
 const confirmLimiter = new SlidingWindowLimiter(env.UPLOAD_SIGN_LIMIT_PER_10_MIN * 2, 10 * MIN);
 const testLimiter = new SlidingWindowLimiter(4, 10 * MIN);
@@ -138,7 +124,7 @@ export default class FileUploadService {
     return this.store.isConfigured();
   }
 
-  /** Authorise one upload and hand back a signature for exactly one random storage key. */
+  // Authorise one upload and hand back a signature for exactly one random storage key. 
   public async createUpload(payload: CreateUploadInputType) {
     const input = await createUploadInput.parseAsync(payload);
     if (!this.store.isConfigured()) {
@@ -210,7 +196,7 @@ export default class FileUploadService {
       throw new UploadError("INVALID", `That file is too large. The limit is ${formatMb(rules.maxBytes)}.`);
     }
 
-    // ---- quotas (database-backed, so they hold across API instances) ----
+    // quotas (database-backed, so they hold across API instances) 
     const twoHoursAgo = new Date(Date.now() - 120 * MIN);
     const [{ pending } = { pending: 0 }] = await db
       .select({ pending: sql<number>`count(*)::int` })
@@ -282,7 +268,7 @@ export default class FileUploadService {
     };
   }
 
-  /** The browser says it finished: inspect the stored object before trusting it. */
+  // The browser says it finished: inspect the stored object before trusting it.
   public async confirmUpload(payload: ConfirmUploadInputType) {
     const input = await confirmUploadInput.parseAsync(payload);
     enforceRate(confirmLimiter, actorKeyFor(input.requesterId, input.ip));
@@ -339,7 +325,7 @@ export default class FileUploadService {
     return this.toConfirmed(updated[0] ?? { ...row, bytes: info.bytes });
   }
 
-  /** A respondent removed a file before submitting. The (unguessable) id is the capability. */
+  // A respondent removed a file before submitting. The (unguessable) id is the capability.
   public async discardUpload(payload: DiscardUploadInputType) {
     const input = await discardUploadInput.parseAsync(payload);
     enforceRate(confirmLimiter, actorKeyFor(input.requesterId, input.ip));
@@ -349,7 +335,7 @@ export default class FileUploadService {
     return { ok: true };
   }
 
-  /** Owner-only: a 5-minute signed link that downloads the file under its original name. */
+  // Owner-only: a 5-minute signed link that downloads the file under its original name.
   public async getDownloadUrl(payload: DownloadUrlInputType) {
     const { uploadId, userId } = await downloadUrlInput.parseAsync(payload);
     const row = await this.getRow(uploadId);
@@ -372,11 +358,6 @@ export default class FileUploadService {
     };
   }
 
-  /**
-   * Owner tool ("Test storage" in the builder): runs an upload -> inspect -> download -> delete round
-   * trip against the real storage account, once per private delivery type, and reports every step with
-   * the provider's own error message. This is what to look at when the browser only says "403".
-   */
   public async testStorage(userId: string) {
     const r = testLimiter.hit(`test:${userId}`);
     if (!r.ok) {
@@ -391,10 +372,6 @@ export default class FileUploadService {
     return { configured: true, current, recommended: working as string | null, results };
   }
 
-  /**
-   * Deletes abandoned and orphaned objects. Safe to run concurrently / repeatedly: deleting a
-   * missing object is a no-op, and a row is only removed after its object is gone.
-   */
   public async cleanup(now = new Date()) {
     if (!this.store.isConfigured()) return { deleted: 0, failed: 0 };
 
@@ -418,7 +395,7 @@ export default class FileUploadService {
           and(
             eq(fileUploadsTable.status, "ATTACHED"),
             // A field removed from the draft later must NOT delete files already submitted to
-            // an earlier version — only a deleted form / submission orphans them.
+            // an earlier version - only a deleted form / submission orphans them.
             or(isNull(fileUploadsTable.submissionId), isNull(fileUploadsTable.formId)),
             lt(fileUploadsTable.attachedAt, ago(10 * MIN)),
           ),
@@ -443,10 +420,6 @@ export default class FileUploadService {
     return { deleted, failed };
   }
 
-  /**
-   * Runs cleanup() on an interval (and once shortly after boot). Returns a stop function.
-   * The timer is unref'd so it never keeps the process alive on its own.
-   */
   public startCleanup(): () => void {
     if (!this.store.isConfigured()) {
       logger.info("upload cleanup not started: file storage isn't configured");
@@ -474,9 +447,7 @@ export default class FileUploadService {
     };
   }
 
-  // ---- internals ----
-
-  /** The field as a respondent sees it: from the published version, else (unpublished draft) the live field. */
+  // The field as a respondent sees it: from the published version, else (unpublished draft) the live field.
   private async resolveFileField(formId: string, publishedVersionId: string | null, fieldId: string) {
     if (publishedVersionId) {
       const v = (
@@ -516,18 +487,9 @@ export default class FileUploadService {
     return { uploadId: row.id, name: row.displayName, size: row.bytes ?? 0, kind: row.kind };
   }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Used by form-submission                                                    */
-/* -------------------------------------------------------------------------- */
-
+// Used by form-submission                                                    
 const MAX_FILES_HARD = 5;
 
-/**
- * Turns the answer a respondent sent for a FILE_UPLOAD field (a JSON array of upload ids) into
- * verified file references. Throws unless every id is a CONFIRMED, not-yet-used upload that was
- * issued for THIS form and THIS field.
- */
 export async function prepareSubmissionFiles(
   formId: string,
   field: { id: string; label: string; config: unknown },
@@ -579,7 +541,7 @@ export async function prepareSubmissionFiles(
   return { ids: ids as string[], refs };
 }
 
-/** Marks the files as part of the submission. Returns false if any was claimed concurrently. */
+// Marks the files as part of the submission. Returns false if any was claimed concurrently.
 export async function attachSubmissionFiles(
   submissionId: string,
   formId: string,

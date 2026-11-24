@@ -28,8 +28,6 @@ export const serverRouter = router({
 export { createContext } from "./context";
 export { aiStreamHandler } from "./routes/ai/stream-handler";
 export { paddleWebhookHandler } from "./routes/billing/webhook-handler";
-/** Starts the abandoned-upload cleanup timer; returns a stop function. */
 export const startUploadCleanup = () => fileUploadService.startCleanup();
-/** Starts the sweep that closes forms whose automatic closure is due (or that went idle); returns a stop function. */
 export const startFormLifecycle = () => formService.startLifecycle();
 export type ServerRouter = typeof serverRouter;

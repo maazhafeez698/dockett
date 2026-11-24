@@ -37,9 +37,6 @@ export const createFormInput = z.object({
 
 export type CreateFormInputType = z.infer<typeof createFormInput>;
 
-// One template field, as passed from the template gallery when creating a
-// form pre-populated from a preset — mirrors the create-field input shape
-// closely enough that the service can loop straight into FormFieldService.
 export const templateFieldInput = z.object({
   label: z.string().min(1).max(100),
   type: z.enum([

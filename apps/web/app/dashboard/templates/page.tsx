@@ -23,7 +23,7 @@ export default function TemplatesPage() {
   const { createFormAsync, isPending: creatingBlank } = useCreateForm();
 
   const { overview } = useBillingOverview(ready);
-  const premiumUnlocked = overview?.plan.premiumTemplates ?? true; // unknown yet → let the server decide
+  const premiumUnlocked = overview?.plan.premiumTemplates ?? true; 
 
   const [previewing, setPreviewing] = useState<FormTemplate | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -152,7 +152,6 @@ export default function TemplatesPage() {
             );
           })}
 
-          {/* Trailing Custom Form card */}
           <button
             type="button"
             onClick={handleBlankForm}

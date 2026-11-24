@@ -10,17 +10,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./user";
 
-/**
- * Phase 7 — billing.
- *
- * `subscriptions` is the ONLY place a user's plan comes from. Paddle webhooks
- * write it (source = PADDLE); an operator can write it by hand for Business
- * customers (source = MANUAL). No row, or a row that is no longer in good
- * standing, means the Basic plan — see packages/services/billing/entitlements.ts.
- *
- * Timestamps are timestamptz: they come straight from Paddle (UTC ISO strings)
- * and are compared against "now" in code, so there must be no ambiguity.
- */
 export const subscriptionStatusEnum = pgEnum("subscription_status_enum", [
   "ACTIVE",
   "TRIALING",
@@ -71,11 +60,6 @@ export const subscriptionsTable = pgTable(
   ],
 );
 
-/**
- * Every Paddle webhook we have processed, keyed by Paddle's event id. Inserting
- * here is the idempotency gate: a redelivered event hits the primary key and
- * is skipped. Only metadata is stored — never the payload (it carries customer PII).
- */
 export const billingEventsTable = pgTable("billing_events", {
   eventId: varchar("event_id", { length: 64 }).primaryKey(),
   eventType: varchar("event_type", { length: 64 }).notNull(),

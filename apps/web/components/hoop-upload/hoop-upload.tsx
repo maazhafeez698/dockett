@@ -16,11 +16,10 @@ export type HoopUploadProps = Partial<HoopUploadOptions> & {
   className?: string;
 };
 
-/**
- * Options that must stay live (callbacks) are read through a ref, so a new function identity on
- * re-render never re-creates the widget. Everything else is read once at mount: change `key` to
- * re-mount with new limits.
- */
+  // Options that must stay live (callbacks) are read through a ref, so a new function identity on
+  // re-render never re-creates the widget. Everything else is read once at mount: change `key` to
+  // re-mount with new limits.
+ 
 export function HoopUpload({ className, ...options }: HoopUploadProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HoopUploadHandle | null>(null);

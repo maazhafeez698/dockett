@@ -29,12 +29,6 @@ function fieldRow(formId: string, f: DraftField, position: number) {
   };
 }
 
-/**
- * Persists an approved draft as a brand-new form owned by `userId`.
- * The draft is re-validated here: it came through the browser, so it is
- * untrusted no matter who originally produced it. One transaction —
- * a form is never left half-populated.
- */
 export async function saveDraftAsForm(userId: string, rawDraft: unknown): Promise<{ id: string }> {
   const parsed = formDraftSchema.safeParse(rawDraft);
   if (!parsed.success) {
@@ -76,13 +70,6 @@ export async function saveDraftAsForm(userId: string, rawDraft: unknown): Promis
   });
 }
 
-/**
- * Applies an approved draft to a form the user already has open on the canvas.
- *  - Empty canvas  → the draft IS the form: description, template and layout are applied too
- *    (and the title, unless the user already renamed it from "Untitled…").
- *  - Canvas has fields → the draft's fields are appended to the end; nothing else is touched.
- * One transaction, ownership-checked, and the draft is re-validated (it came through the browser).
- */
 export async function applyDraftToForm(
   userId: string,
   formId: string,

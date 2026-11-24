@@ -10,9 +10,9 @@ import { Label } from "~/components/ui/label";
 
 interface RespondentEmailGateProps {
   formTitle: string;
-  /** Pre-filled address (e.g. the one an expired link was sent to). */
+  // Pre-filled address (e.g. the one an expired link was sent to). 
   initialEmail?: string;
-  /** Shown above the form (expired / already used link). */
+  // Shown above the form (expired / already used link).
   notice?: string | null;
   oneResponsePerEmail: boolean;
   requestLink: (email: string) => Promise<void>;

@@ -1,9 +1,3 @@
-// packages/trpc/server/routes/file-upload/route.ts
-//
-// Direct-to-storage uploads. The browser never sends file bytes to this API: it asks for a
-// signature here, uploads straight to storage, then calls confirmUpload so the server can verify
-// the stored object before it is allowed to be submitted.
-
 import { TRPCError } from "@trpc/server";
 import { UploadError } from "@repo/services/file-upload";
 

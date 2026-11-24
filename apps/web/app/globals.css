@@ -7,18 +7,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
-  Dockett — "Ticket" theme (brand identity v1.0, DK-4721).
-
-  Light: Paper cards on Concrete, Ink text, Ember accent.
-  Dark:  Charcoal cards on Night, Paper text, Ember-night accent.
-  Ember is used sparingly: one primary action, numerals, the selected state.
-
-  The shadcn variable names are kept so every existing primitive picks the
-  new palette up automatically. Brand-specific extras live under
-  --solid / --ember / --paper / --concrete / --ink.
-*/
-
 @theme inline {
   --font-sans: "Poppins", sans-serif;
   --font-display: "Poppins", sans-serif;
@@ -90,7 +78,7 @@
 }
 
 :root {
-  /* brand palette (static) */
+   /* brand palette (static)  */
   --ember: #e8480c;
   --ember-night: #ff5a1f;
   --ink: #181818;

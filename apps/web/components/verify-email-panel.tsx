@@ -13,7 +13,7 @@ interface VerifyEmailPanelProps {
   email: string;
   onBack?: () => void;
   backLabel?: string;
-  /** "inline": the compact notice used on the sign-in form (nothing was just sent). */
+  // "inline": the compact notice used on the sign-in form (nothing was just sent).
   variant?: "page" | "inline";
 }
 

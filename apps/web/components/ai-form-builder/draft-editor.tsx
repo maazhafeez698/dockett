@@ -23,17 +23,16 @@ const errCls = "mt-1 text-[11px] text-destructive";
 
 interface DraftEditorProps {
   draft: AiDraft;
-  /** Title/description only matter when the draft becomes a whole form (not "additions" to a canvas). */
+  // Title/description only matter when the draft becomes a whole form (not "additions" to a canvas).
   showFormMeta: boolean;
   maxFields: number;
   onSave(draft: AiDraft): void;
   onCancel(): void;
 }
 
-/**
- * Edits a COPY of the draft. Save hands the copy back; Cancel just discards it,
- * so the structure in the chat is untouched and returns to its original state.
- */
+
+//  Edits a COPY of the draft. Save hands the copy back; Cancel just discards it,
+//  so the structure in the chat is untouched and returns to its original state.
 export function DraftEditor({
   draft,
   showFormMeta,

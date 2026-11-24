@@ -1,14 +1,8 @@
-// packages/services/form/publication.ts
-//
-// Pure helpers for the publish flow: snapshots + hashing (versioning) and the "effective"
-// status of a form (what it is RIGHT NOW, derived from server timestamps).
-
 import { createHash } from "node:crypto";
 import type { FormSnapshot, FormSnapshotField } from "@repo/database/models/form-version";
 import type { FormDesignSettings } from "@repo/database/models/form";
 import { env } from "../env";
 
-/** Automatic closure bounds, enforced by the server (the UI offers presets + a custom value). */
 export const MIN_AUTO_CLOSE_MINUTES = 5;
 export const MAX_AUTO_CLOSE_MINUTES = 30 * 24 * 60; // 30 days
 
@@ -24,11 +18,6 @@ interface TimingRow {
   closedReason: string | null;
 }
 
-/**
- * What the form is right now. A PUBLISHED row whose deadline passed, or that has been idle for a
- * month, is CLOSED even if the background sweep has not flipped the column yet — so enforcement
- * never depends on the sweep (or on anyone's browser).
- */
 export function effectiveState(
   f: TimingRow,
   now: Date = new Date(),
@@ -61,7 +50,6 @@ interface LiveFieldRow {
   updatedAt: Date | null;
 }
 
-/** `fields` must already be ordered by `index` (as the database returns them). */
 export function buildSnapshot(
   form: { title: string; description: string | null; template: string; submissionLayout: string; designSettings?: FormDesignSettings | null },
   fields: LiveFieldRow[],
@@ -102,7 +90,6 @@ function canonical(value: unknown): string {
   return JSON.stringify(value === undefined ? null : value);
 }
 
-/** Content identity of a snapshot. Timestamps are ignored: only what a respondent sees counts. */
 export function hashSnapshot(s: FormSnapshot): string {
   const content = {
     title: s.title,

@@ -66,7 +66,6 @@ function SidebarBody({ liveForms, onNavigate }: { liveForms: number; onNavigate?
         </ul>
       </nav>
 
-      {/* wordmark + live counter */}
       <div className="mt-auto flex items-end gap-2 px-4 pb-3">
         <span
           aria-hidden="true"
@@ -102,12 +101,12 @@ function SidebarBody({ liveForms, onNavigate }: { liveForms: number; onNavigate?
 
 interface AppShellProps {
   children: ReactNode;
-  /** DOC STRIP page label, e.g. "CREATE FORM". */
+  // DOC STRIP page label, e.g. "CREATE FORM". 
   docLabel?: string;
-  /**
-   * true (default): the page scrolls inside the shell.
-   * false: the page fills the shell and manages its own scrolling (builder).
-   */
+  
+    // true (default): the page scrolls inside the shell.
+    // false: the page fills the shell and manages its own scrolling (builder).
+   
   scroll?: boolean;
 }
 
@@ -118,12 +117,10 @@ export function AppShell({ children, docLabel = "WORKSPACE", scroll = true }: Ap
 
   return (
     <div className="ticket-page-background flex h-dvh overflow-hidden">
-      {/* desktop sidebar */}
       <aside className="hidden w-[232px] shrink-0 border-r border-border bg-card lg:block">
         <SidebarBody liveForms={liveForms} />
       </aside>
 
-      {/* mobile nav sheet */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-[260px] gap-0 p-0 sm:max-w-[260px]">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
@@ -132,7 +129,6 @@ export function AppShell({ children, docLabel = "WORKSPACE", scroll = true }: Ap
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* mobile top bar */}
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3 lg:hidden">
           <Link href="/dashboard" aria-label="Dockett — dashboard">
             <Logo size={20} />

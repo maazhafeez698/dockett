@@ -30,12 +30,6 @@ function toTrpcError(error: unknown, fallback: string) {
   return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: fallback });
 }
 
-/**
- * Note: generation itself is NOT a tRPC procedure. It streams over
- * Server-Sent Events at POST /ai/form/stream (see stream-handler.ts) because
- * tRPC's OpenAPI adapter is request/response only. These procedures cover
- * the non-streaming parts of the feature.
- */
 export const aiRouter = router({
   getUsage: authenticatedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/getUsage"), tags: TAGS, protect: true } })

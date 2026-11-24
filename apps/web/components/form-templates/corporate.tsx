@@ -34,7 +34,6 @@ export function CorporateShell(props: FormTemplateShellProps) {
 
   return (
     <div className="mx-auto grid max-w-4xl gap-0 overflow-hidden rounded-2xl border border-slate-700/40 bg-slate-950 shadow-2xl sm:grid-cols-[280px_1fr]">
-      {/* Left rail */}
       <aside className="p-8" style={{ background: design.accent, color: design.accentForeground }}>
         <p className="text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
           Application Form
@@ -66,7 +65,6 @@ export function CorporateShell(props: FormTemplateShellProps) {
         </ol>
       </aside>
 
-      {/* Content */}
       <div className="bg-slate-50 p-8 text-slate-900 sm:p-10">
         {submitted ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">

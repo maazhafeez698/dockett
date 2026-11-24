@@ -1,11 +1,3 @@
-// apps/web/lib/templates-data.ts
-//
-// 8 templates, each pairing a real field set for a real use case with a
-// structurally distinct design (see components/form-templates/*) — not a
-// recolor of one layout. `template` selects the design; `submissionLayout`
-// is each template's sensible default pacing (the owner can still change
-// either after "Use Template").
-
 import type { FormTemplateId } from "./template-designs";
 
 export type TemplateFieldType =

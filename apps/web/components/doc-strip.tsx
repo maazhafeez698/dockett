@@ -13,9 +13,9 @@ export function formatDocDate(d: Date) {
 }
 
 interface DocStripProps {
-  /** Page name, e.g. "CREATE FORM". Rendered after the document number in Ember. */
+  // Page name, e.g. "CREATE FORM". Rendered after the document number in Ember.
   label: string;
-  /** ZONE cell — the number of live (published) forms, zero-padded. */
+  // ZONE cell — the number of live (published) forms, zero-padded.
   zone?: string;
   className?: string;
 }

@@ -1,4 +1,3 @@
-// packages/services/file-upload/errors.ts
 
 export type UploadErrorCode =
   | "NOT_CONFIGURED"
@@ -8,7 +7,7 @@ export type UploadErrorCode =
   | "INVALID"
   | "QUOTA";
 
-/** Safe-to-show errors from the upload service (the message is written for end users). */
+// Safe-to-show errors from the upload service (the message is written for end users). 
 export class UploadError extends Error {
   constructor(
     public readonly code: UploadErrorCode,

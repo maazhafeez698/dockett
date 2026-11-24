@@ -1,4 +1,3 @@
-// apps/web/hooks/api/analytics.ts
 
 import { trpc } from "~/trpc/client";
 
@@ -54,7 +53,7 @@ export const useListSubmissions = (formId: string | null) => {
   return { submissions, error, isFetched, isFetching, isLoading, status };
 };
 
-/** Imperative fetch (not a live query) — only pulled when the user actually
+/** Imperative fetch (not a live query) - only pulled when the user actually
  * clicks Export, since it's the one endpoint that returns every answer for
  * every submission and there's no reason to keep it warm in the cache. */
 export const useExportData = () => {
@@ -81,7 +80,7 @@ export const useGetSubmissionDetail = (submissionId: string | null) => {
 };
 
 /**
- * Sum of responses across the given forms — drives the dashboard's REPLIES
+ * Sum of responses across the given forms - drives the dashboard's REPLIES
  * counter. One (batched) analytics query per form; cached by react-query.
  */
 export const useTotalResponses = (formIds: string[], enabled = true) => {

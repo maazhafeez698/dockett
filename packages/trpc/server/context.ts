@@ -15,11 +15,8 @@ export interface TRPCContext {
   setCookie: (name: string, value: string, opts: CookieOptions) => void;
   getCookie: (name: string) => string | undefined;
   clearCookie: (name: string) => void;
-  /** Raw User-Agent header, for the lightweight device classification used
-   * by view tracking. Nothing else in the app should need more of `req`
-   * than this, so we don't expose the whole request object on ctx. */
+  
   userAgent: string | undefined;
-  /** Client IP (honours `trust proxy`), used only for rate limiting. Never stored raw. */
   ip: string | undefined;
 
   user?: TRPCCtxUser;

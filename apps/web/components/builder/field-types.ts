@@ -13,11 +13,11 @@ import {
   Upload,
 } from "lucide-react";
 
-/**
- * The final field list (12). PASSWORD is intentionally not here: it is no longer offered in the
- * builder, but forms that already contain one keep working (see LEGACY_LABELS).
- * DROPDOWN is the stored value of the "Single-select" field.
- */
+
+  // The final field list (12). PASSWORD is intentionally not here: it is no longer offered in the
+  // builder, but forms that already contain one keep working (see LEGACY_LABELS).
+  // DROPDOWN is the stored value of the "Single-select" field.
+ 
 export type FieldType =
   | "TEXT"
   | "LONG_TEXT"
@@ -37,13 +37,13 @@ export type AcceptedFileKind = "pdf" | "docx" | "jpg" | "png";
 export interface FieldConfig {
   options?: string[];
   maxLength?: number;
-  /** rating scale (stars) */
+  // rating scale (stars) 
   max?: number;
-  /** NUMBER */
+  // NUMBER 
   minValue?: number;
   maxValue?: number;
   step?: number;
-  /** FILE_UPLOAD */
+  // FILE_UPLOAD
   accept?: AcceptedFileKind[];
   maxFiles?: number;
   maxSizeMB?: number;
@@ -56,7 +56,7 @@ export interface FieldConfig {
   }[] };
 }
 
-/** A field as both builder views render it. */
+// A field as both builder views render it. 
 export interface BuilderField {
   id: string;
   label: string;

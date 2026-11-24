@@ -15,9 +15,9 @@ import { cn } from "~/lib/utils";
 export interface FieldConfig {
   options?: string[];
   maxLength?: number;
-  /** rating scale (stars) */
+  // rating scale (stars) 
   max?: number;
-  /** NUMBER */
+  // NUMBER 
   minValue?: number;
   maxValue?: number;
   step?: number;
@@ -38,7 +38,7 @@ interface FormFieldRendererProps {
   value: string;
   onChange: (value: string) => void;
   isMissing?: boolean;
-  /** Accent hex from the form's theme — used for the rating scale's selected state. */
+  // Accent hex from the form's theme — used for the rating scale's selected state.
   accent?: string;
   fieldBackground?: string;
   fieldForeground?: string;

@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Always resolves with a generic success message, whether or not the
-    // email is registered — that's intentional, see the backend service.
+    // email is registered - that's intentional, see the backend service.
     await forgotPasswordAsync({ email });
   };
 

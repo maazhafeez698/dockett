@@ -17,20 +17,15 @@ export const formSubmissionsTable = pgTable(
 
     formId: uuid("form_id").references(() => formsTable.id, { onDelete: "cascade" }),
 
-    // The published version this response was submitted to (and validated against).
-    // Null only for responses collected before versioning existed.
     versionId: uuid("version_id").references(() => formVersionsTable.id),
 
     // Legacy: set when a signed-in Dockett user submitted (older forms). New
-    // responses never use it — respondents don't need an account.
+    // responses never use it - respondents don't need an account.
     submittedBy: uuid("submitted_by").references(() => usersTable.id),
 
-    // The verified email (VERIFIED_EMAIL forms), lower-cased.
     respondentEmail: varchar("respondent_email", { length: 255 }),
-    // Same address, set ONLY while the form enforces one response per email; the
-    // unique index below is what makes that rule race-proof.
+
     emailKey: varchar("email_key", { length: 255 }),
-    // Client-generated per fill attempt: a retried request returns the original response.
     idempotencyKey: varchar("idempotency_key", { length: 64 }),
 
     values: json("values").$type<FormSubmissionValueRow>(),

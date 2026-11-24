@@ -8,8 +8,8 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 interface SubmissionDetailProps {
   submissionId: string;
-  /** Ordered ids from the same list the card grid renders, so prev/next
-   * walks the real response order rather than just the visible cards. */
+  //  Ordered ids from the same list the card grid renders, so prev/next
+  //  walks the real response order rather than just the visible cards. 
   orderedIds: string[];
   onSelect: (id: string) => void;
   onClose: () => void;

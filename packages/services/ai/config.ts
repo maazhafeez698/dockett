@@ -1,22 +1,5 @@
 import { z } from "zod";
 
-/**
- * Everything tunable about the AI feature lives here and is driven by
- * environment variables — model choice, fallback order, limits, timeouts.
- * Changing any of it is a config change, never a code change.
- *
- * FREE TIER ONLY: this build talks to the Gemini API's free tier and nothing
- * else. There is no paid provider in the code, and `AI_MODEL_CHAIN` is
- * checked against the Flash / Flash-Lite families (Pro, image, audio and
- * embedding models have no free tier and are rejected at startup). The real
- * guarantee is on Google's side: use an API key from a Google Cloud project
- * that has NO billing account attached — then Google cannot charge you, it
- * can only answer 429 when a free quota is used up (which this code handles).
- *
- * `loadAiConfig` is a pure function of an env object so it can be tested
- * without touching process.env.
- */
-
 export type ProviderId = "gemini";
 
 export interface ModelRef {
@@ -25,43 +8,29 @@ export interface ModelRef {
 }
 
 export interface ModelPricing {
-  /** USD per 1M input tokens. Numerically equal to micro-USD per token. */
+  // USD per 1M input tokens. Numerically equal to micro-USD per token. 
   inPerM: number;
-  /** USD per 1M output tokens (thinking tokens bill as output). */
+  // USD per 1M output tokens (thinking tokens bill as output). 
   outPerM: number;
 }
 
-/**
- * Everything that can differ between subscription tiers. Phase 7 will map a
- * user's plan to one of these via `resolvePlanKey` (see usage.ts) — nothing
- * else in the AI code needs to change when that happens.
- *
- * Credits are measured in TOKENS (input + output), like other LLM products.
- * `maxRequestsPerWindow` stays as a second, hidden guard behind the scenes.
- */
 export interface AiPlanLimits {
-  /** Length of one credit window ("session"). */
   windowMs: number;
   maxRequestsPerWindow: number;
   maxTokensPerWindow: number;
   maxTokensPerDay: number;
-  /** Per-message cap on what the user types. */
   maxPromptChars: number;
-  /** How many prior chat messages are sent to the model as context. */
   maxHistoryMessages: number;
   maxOutputTokens: number;
   maxFieldsPerForm: number;
-  /** Short-term burst guard (requests per rolling minute). */
   burstPerMinute: number;
 }
 
 export interface AiConfig {
   enabled: boolean;
-  /** Why AI is off, when it is (for logs / health checks). */
   disabledReason?: string;
   providers: { gemini?: { apiKey: string; baseUrl: string } };
   chain: ModelRef[];
-  /** Used only for *notional* cost reporting / future billing — the free tier charges nothing. */
   pricing: Record<string, ModelPricing>;
   defaultPricing: ModelPricing;
   temperature: number;
@@ -79,14 +48,10 @@ export interface AiConfig {
     maxDelayMs: number;
   };
   breaker: { failureThreshold: number; windowMs: number; cooldownMs: number };
-  /** Client-side guards that keep us under Google's free-tier per-model quotas. */
   freeTier: { rpmPerModel: number; rpdPerModel: number };
-  /** App-wide daily ceilings (Pacific-time day, matching Google's RPD reset). */
   budgets: { globalDailyRequests: number; globalDailyTokens: number };
   ipLimit: { perMinute: number };
-  /** Off-topic / abuse strikes before a short cool-down. */
   abuse: { offTopicStrikes: number; offTopicWindowMs: number };
-  /** An IN_PROGRESS row older than this is considered dead (crashed server). */
   staleRequestMs: number;
   plans: Record<string, AiPlanLimits>;
 }
@@ -102,13 +67,12 @@ export const DEFAULT_PRICING: Record<string, ModelPricing> = {
   "gemini-3.8-flash": { inPerM: 0.75, outPerM: 3.75 },
 };
 
-/** Primary first. Both are Flash-Lite (largest free quotas) and each has its own per-model quota. */
+// Primary first. Both are Flash-Lite (largest free quotas) and each has its own per-model quota. 
 export const DEFAULT_CHAIN = "gemini:gemini-3.5-flash-lite,gemini:gemini-3.1-flash-lite";
 
 const FREE_FAMILY = /^gemini-[0-9]+(\.[0-9]+)?-flash(-lite)?(-preview)?$/;
 const NEVER_FREE = /(pro|image|tts|live|embedding|veo|imagen|omni|computer-use|deep-research|audio|native)/;
 
-/** True when the model id belongs to a family that has a Gemini API free tier. */
 export function isFreeTierModel(model: string, extraAllowed: ReadonlySet<string> = new Set()): boolean {
   if (extraAllowed.has(model)) return true;
   return FREE_FAMILY.test(model) && !NEVER_FREE.test(model);
@@ -225,8 +189,6 @@ export function defaultPlans(windowMs: number, free: Partial<AiPlanLimits>): Rec
   };
   return {
     free: freePlan,
-    // Plan keys here are the AI engine's own: free ↔ Basic, pro ↔ Premium, business ↔ Business.
-    // Which user gets which is decided by their subscription (packages/services/billing/plans.ts).
     pro: {
       ...freePlan,
       maxRequestsPerWindow: 100,
@@ -238,7 +200,7 @@ export function defaultPlans(windowMs: number, free: Partial<AiPlanLimits>): Rec
       burstPerMinute: 12,
     },
     // Business ("Unlimited everything"): the same engine, with ceilings high enough that no normal
-    // team meets them. Still finite on purpose — the AI runs on a shared Gemini quota.
+    // team meets them. Still finite on purpose - the AI runs on a shared Gemini quota.
     business: {
       ...freePlan,
       maxRequestsPerWindow: 300,
@@ -357,7 +319,6 @@ export function pricingFor(config: AiConfig, model: string): ModelPricing {
   return config.pricing[model] ?? config.defaultPricing;
 }
 
-/** NOTIONAL cost in integer micro-USD ($/1M tokens == micro-USD/token). Not charged on the free tier. */
 export function costMicros(config: AiConfig, model: string, inputTokens: number, outputTokens: number): number {
   const p = pricingFor(config, model);
   return Math.ceil(inputTokens * p.inPerM + outputTokens * p.outPerM);
@@ -365,7 +326,6 @@ export function costMicros(config: AiConfig, model: string, inputTokens: number,
 
 let cached: AiConfig | null = null;
 
-/** Lazily reads process.env once. Throws a clear error if the env is malformed. */
 export function getAiConfig(): AiConfig {
   if (!cached) cached = loadAiConfig(process.env);
   return cached;

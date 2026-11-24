@@ -10,7 +10,7 @@ export function getApiBaseUrl() {
   return trpcUrl.replace(/\/trpc\/?$/, "");
 }
 
-// Dedupe concurrent refresh attempts — several queries can 401 at once
+// Dedupe concurrent refresh attempts - several queries can 401 at once
 // when the access token expires, and they should all wait on one refresh.
 let refreshInFlight: Promise<boolean> | null = null;
 

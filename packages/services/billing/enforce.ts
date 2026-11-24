@@ -7,16 +7,7 @@ import { PlanLimitError } from "./errors";
 import { PLANS, effectiveTemplate, isAtLimit, isPremiumTemplate, formatLimit, type PlanDefinition } from "./plans";
 import { findSubscription } from "./store";
 
-/**
- * Server-side plan enforcement. Every function here is called from the
- * service layer (not the UI), so a locked button in the browser is only a
- * courtesy — the API refuses regardless of who calls it.
- */
-
 type DbOrTx = Pick<typeof db, "select" | "execute">;
-
-// ---------------------------------------------------------------- entitlements
-
 interface CacheEntry {
   plan: PlanDefinition;
   expires: number;
@@ -24,12 +15,10 @@ interface CacheEntry {
 const CACHE_MS = 10_000;
 const cache = new Map<string, CacheEntry>();
 
-/** Drop a user's cached plan (called whenever a webhook changes it). */
 export function invalidateEntitlements(userId: string): void {
   cache.delete(userId);
 }
 
-/** The user's current plan. Cached for a few seconds: public pages call this on every view. */
 export async function getUserPlan(userId: string): Promise<PlanDefinition> {
   const hit = cache.get(userId);
   const now = Date.now();
@@ -43,9 +32,7 @@ export async function getUserPlan(userId: string): Promise<PlanDefinition> {
   return plan;
 }
 
-// ------------------------------------------------------------------ templates
 
-/** Setting / creating with a premium template requires a plan that includes it. */
 export async function assertTemplateAllowed(userId: string, template: string | undefined): Promise<void> {
   if (!template || !isPremiumTemplate(template)) return;
   const plan = await getUserPlan(userId);
@@ -57,7 +44,6 @@ export async function assertTemplateAllowed(userId: string, template: string | u
   }
 }
 
-/** The template that must actually be rendered for a form owned by `ownerId`. */
 export async function templateForOwner<T extends string>(
   ownerId: string | null,
   template: T,
@@ -67,7 +53,6 @@ export async function templateForOwner<T extends string>(
   return effectiveTemplate(plan.features, template);
 }
 
-// --------------------------------------------------------------- active forms
 
 export async function countPublishedForms(userId: string, exec: DbOrTx = db, excludeFormId?: string): Promise<number> {
   const rows = await exec
@@ -83,11 +68,6 @@ export async function countPublishedForms(userId: string, exec: DbOrTx = db, exc
   return rows[0]?.n ?? 0;
 }
 
-/**
- * Runs `apply` inside a transaction that first takes a per-user lock and
- * re-counts the user's published forms — so two simultaneous "Publish" clicks
- * cannot both slip under the limit.
- */
 export async function withPublishLimit<T>(
   userId: string,
   formId: string,
@@ -113,11 +93,6 @@ export async function withPublishLimit<T>(
   });
 }
 
-/**
- * After a downgrade a user can have more published forms than their plan
- * allows. Nothing is deleted: the OLDEST published forms (up to the limit)
- * stay live; the rest are suspended until the user upgrades or closes some.
- */
 export async function isFormSuspended(formId: string, ownerId: string | null): Promise<boolean> {
   if (!ownerId) return false;
   const plan = await getUserPlan(ownerId);
@@ -137,7 +112,6 @@ export async function isFormSuspended(formId: string, ownerId: string | null): P
   return Number(rows[0]?.ahead ?? 0) >= limit;
 }
 
-// ------------------------------------------------------------------ responses
 
 export async function countResponsesThisMonth(formId: string, exec: DbOrTx = db): Promise<number> {
   const res = (await exec.execute(sql`
@@ -157,11 +131,6 @@ export async function isResponseLimitReached(formId: string, ownerId: string | n
   return isAtLimit(await countResponsesThisMonth(formId), limit);
 }
 
-/**
- * Runs `insert` inside a transaction that first locks the form and re-counts
- * this month's responses, so a burst of simultaneous submissions can never
- * push a form past its monthly quota.
- */
 export async function withResponseQuota<T>(
   formId: string,
   ownerId: string | null,

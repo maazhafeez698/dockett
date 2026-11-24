@@ -51,7 +51,7 @@ interface AiChatDialogProps {
   onOpenChange(open: boolean): void;
   mode: "NEW_FORM" | "ADD_FIELDS";
   formId?: string;
-  /** Sent automatically the first time the dialog opens (used by the dashboard prompt bar). */
+  // Sent automatically the first time the dialog opens (used by the dashboard prompt bar). 
   initialPrompt?: string;
   onInitialPromptConsumed?(): void;
 }

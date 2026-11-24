@@ -1,8 +1,3 @@
-// apps/web/lib/paddle.ts
-//
-// Loads Paddle.js (Paddle's hosted checkout) on demand and opens the checkout overlay.
-// Nothing here decides what plan a user has — only a verified Paddle webhook on the server does.
-
 const SCRIPT_SRC = "https://cdn.paddle.com/paddle/v2/paddle.js";
 
 interface PaddleGlobal {

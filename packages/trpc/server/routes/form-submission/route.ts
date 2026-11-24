@@ -1,4 +1,3 @@
-// packages/trpc/server/routes/form-submission/route.ts
 
 import { TRPCError } from "@trpc/server";
 
@@ -54,9 +53,6 @@ export const formSubmissionRouter = router({
     .query(async ({ input, ctx }) => {
       const { formId } = input;
 
-      // IDOR fix: this previously returned any form's submissions to any
-      // signed-in user, not just the owner. Same "not found" message for a
-      // non-owner and a nonexistent form, matching the rest of the app.
       try {
         await assertFormOwnership(formId, ctx.user.id);
       } catch {

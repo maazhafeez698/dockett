@@ -1,35 +1,40 @@
+# Git metadata and local tooling
 .git
 .github
-.turbo
+.vscode
+.idea
+.aws
+.ssh
+
+# Dependencies and generated output
 node_modules
 **/node_modules
+.pnpm-store
+.turbo
 .next
 **/.next
 dist
 **/dist
+build
 coverage
+out
+.vercel
+
+# Local environment and credentials
 .env
 .env.*
 **/.env
 **/.env.*
 !.env.example
-*.log
+!**/.env.example
 *.pem
 *.key
 *.p12
 *.pfx
 *.crt
 *.cer
-.DS_Store
-Thumbs.db
-.aws
-**/.aws
-.ssh
-**/.ssh
-.vscode
-**/.vscode
-.idea
-**/.idea
+
+# Local data, logs, and OS files
 backups
 **/backups
 *.sql
@@ -38,5 +43,10 @@ backups
 *.db
 *.sqlite
 *.sqlite3
+*.log
+.DS_Store
+Thumbs.db
 .deployed-image-tag*
+
+# Compose is not needed in the application image build context
 docker-compose.dev.yml

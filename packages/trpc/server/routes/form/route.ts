@@ -35,9 +35,6 @@ function toReadableMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** Maps the service's gate signals to the right tRPC error code + a
- * message the client can key off of to render a gate screen instead of a
- * generic error toast. */
 function toGatedError(error: unknown) {
   const planError = toPlanLimitTrpcError(error);
   if (planError) return planError;
@@ -139,7 +136,7 @@ export const formRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const info = await formService.getFormAccessInfo(input.formId);
-        // Best-effort view tracking — never blocks or fails the actual
+        // Best-effort view tracking - never blocks or fails the actual
         // page load; see FormAnalyticsService.recordView.
         void formAnalyticsService.recordView({ formId: input.formId, userAgent: ctx.userAgent });
         return getFormAccessInfoOutputModel.parse(info);

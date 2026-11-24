@@ -48,9 +48,6 @@ function FeatureCard({
     </article>
   );
 }
-
-/* -------------------------------- features -------------------------------- */
-
 function AiDemo() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -259,9 +256,6 @@ export function FeaturesSection() {
     </section>
   );
 }
-
-/* --------------------------------- steps ---------------------------------- */
-
 export function StepsSection() {
   const steps = [
     ["01", "Issue", "Describe your form to AI, or pick a template and make it yours."],
@@ -295,9 +289,6 @@ export function StepsSection() {
     </section>
   );
 }
-
-/* --------------------------------- pricing -------------------------------- */
-
 // Mirrors packages/services/billing/plans.ts (public marketing copy).
 const PLANS = [
   {
@@ -432,9 +423,6 @@ export function PricingSection() {
     </section>
   );
 }
-
-/* ----------------------------------- faq ---------------------------------- */
-
 const FAQ = [
   {
     q: "Is Dockett free?",
@@ -508,9 +496,6 @@ export function FaqSection() {
     </section>
   );
 }
-
-/* ------------------------------- final CTA -------------------------------- */
-
 export function FinalCta() {
   return (
     <section className="py-16 sm:py-24">
@@ -547,9 +532,6 @@ export function FinalCta() {
     </section>
   );
 }
-
-/* --------------------------------- footer --------------------------------- */
-
 export function LandingFooter() {
   const cols: { title: string; items: { label: string; href?: string }[] }[] = [
     {

@@ -1,13 +1,3 @@
-// apps/web/lib/file-upload.ts
-//
-// Browser side of direct-to-storage uploads:
-//   1. ask our API for a signature (it authorises the upload and picks a random storage key)
-//   2. POST the file straight to storage with that signature (progress via XHR)
-//   3. ask our API to confirm — the server inspects the stored object before it can be submitted
-//
-// File bytes never pass through our API. Secrets never reach the browser: the signature only
-// covers one object key.
-
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
@@ -26,7 +16,7 @@ export interface UploadedFile {
 const META = new Map<string, { name: string; size: number }>();
 export const getUploadMeta = (id: string) => META.get(id);
 
-/** Accepted kinds (server enforces the same list; this only drives the picker + early feedback). */
+// Accepted kinds (server enforces the same list; this only drives the picker + early feedback). 
 export const KIND_EXTENSIONS: Record<string, string[]> = {
   pdf: [".pdf"],
   docx: [".docx"],
@@ -36,7 +26,7 @@ export const KIND_EXTENSIONS: Record<string, string[]> = {
 export const ALL_KINDS = ["pdf", "docx", "jpg", "png"] as const;
 export const KIND_LABELS: Record<string, string> = { pdf: "PDF", docx: "DOCX", jpg: "JPEG", png: "PNG" };
 
-/** Cloudinary answers errors as {"error":{"message":"..."}} — surface it instead of a bare status. */
+// Cloudinary answers errors as {"error":{"message":"..."}} - surface it instead of a bare status. 
 function storageErrorMessage(): string {
   return "The file could not be uploaded. Please try again.";
 }
@@ -79,7 +69,7 @@ interface UploaderContext {
   respondentToken?: string;
 }
 
-/** Returns the `upload` / `discard` functions for one FILE_UPLOAD field. */
+// Returns the `upload` / `discard` functions for one FILE_UPLOAD field. 
 export function useFileFieldUploader(ctx: UploaderContext) {
   const create = trpc.fileUpload.createUpload.useMutation();
   const confirm = trpc.fileUpload.confirmUpload.useMutation();

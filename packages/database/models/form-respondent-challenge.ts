@@ -15,9 +15,6 @@ export const formRespondentChallengesTable = pgTable(
     // Lower-cased address the link was sent to.
     email: varchar("email", { length: 255 }).notNull(),
 
-    // Random id kept by the respondent's browser for one fill attempt. Asking for a link
-    // again (e.g. after correcting a typo'd address) invalidates the earlier pending links
-    // that carry the same nonce.
     nonce: varchar("nonce", { length: 64 }).notNull(),
 
     tokenHash: text("token_hash").notNull().unique(),

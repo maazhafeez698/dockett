@@ -1,13 +1,3 @@
-// packages/services/file-upload/kinds.ts
-//
-// The ONLY file types Dockett accepts. This list is hard-coded on purpose (not an env var or a
-// per-request option) so a misconfiguration or a tampered request can never widen it.
-//
-// Three independent checks must agree before a file is accepted:
-//   1. the extension of the declared filename          (kindFromFilename)
-//   2. the declared MIME type, when the browser sent one (mimeCompatible)
-//   3. the real bytes at the start of the stored object  (sniffKind)  <- the one that is trusted
-
 export type FileKind = "pdf" | "docx" | "jpg" | "png";
 
 export const FILE_KINDS: Record<
